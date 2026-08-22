@@ -337,8 +337,11 @@ function showLogin(msg) {
 }
 
 async function login() {
+  const username = document.getElementById('u').value.trim();
+  const password = document.getElementById('p').value;
+  if (!username || !password) { loginErr.textContent = 'نام کاربری و رمز را وارد کنید'; return; }
   try {
-    const d = await api('/auth/login', { method:'POST', body:{ username:u.value, password:p.value }});
+    const d = await api('/auth/login', { method:'POST', body:{ username, password }});
     setUser(d.user);
     boot();
   } catch(e) { loginErr.textContent = e.message; }
