@@ -242,10 +242,24 @@ const api = async (path, opts={}) => {
   const r = await fetch('/api'+path, { ...opts,
     headers: { 'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined });
+  // نشست منقضی/نامعتبر → برگشت به لاگین
+  if (r.status === 401 && path !== '/auth/login') {
+    showLogin('نشست شما منقضی شده؛ دوباره وارد شوید');
+    throw new Error('unauthorized');
+  }
   const d = await r.json().catch(()=>({}));
   if (!r.ok) throw new Error(d.error || 'خطا');
   return d;
 };
+
+// نمایش صفحهٔ لاگین و پنهان‌کردن کل اپ (ری‌دایرکت به لاگین)
+function showLogin(msg) {
+  token = null; localStorage.removeItem('token');
+  document.getElementById('login').classList.remove('hidden');
+  nav.classList.add('hidden'); who.classList.add('hidden');
+  ['ops','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+  loginErr.textContent = msg || '';
+}
 
 async function login() {
   try {
@@ -258,26 +272,31 @@ async function login() {
     boot();
   } catch(e) { loginErr.textContent = e.message; }
 }
-function logoutFn(e){ e && e.preventDefault(); localStorage.clear(); location.reload(); }
+function logoutFn(e){ e && e.preventDefault(); localStorage.clear(); token=null; showLogin(); }
 
 const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت',
                   store:'فروشگاه', distribution:'مدیر پخش', driver:'راننده',
                   farmer:'دامدار', customer:'مشتری' };
 
 async function boot() {
-  document.getElementById('login').classList.add('hidden');
-  nav.classList.remove('hidden'); who.classList.remove('hidden');
-  const isFin = role==='admin' || role==='accountant';
-  whoName.textContent = (localStorage.getItem('name')||'') + ' — ' + (ROLE_FA[role]||role)
-                        + (myBranchName ? ' @ ' + myBranchName : '');
-  // فقط مدیر اصلی پنل سایت‌ها/کاربران را می‌بیند
-  document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
-  // پرداخت/تسویه فقط برای مدیر و حسابداری
-  document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
-  products = await api('/products');
-  branches = await api('/branches');
-  showView('ops');           // همه مستقیم روی صفحهٔ تحویل شیر/عملیات می‌آیند
-  loadPersons();
+  try {
+    document.getElementById('login').classList.add('hidden');
+    nav.classList.remove('hidden'); who.classList.remove('hidden');
+    const isFin = role==='admin' || role==='accountant';
+    whoName.textContent = (localStorage.getItem('name')||'') + ' — ' + (ROLE_FA[role]||role)
+                          + (myBranchName ? ' @ ' + myBranchName : '');
+    // فقط مدیر اصلی پنل سایت‌ها/کاربران را می‌بیند
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
+    // پرداخت/تسویه فقط برای مدیر و حسابداری
+    document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
+    products = await api('/products');
+    branches = await api('/branches');
+    showView('ops');           // همه مستقیم روی صفحهٔ تحویل شیر/عملیات می‌آیند
+    loadPersons();
+  } catch(e) {
+    // اگر توکن نامعتبر بود یا بارگذاری اولیه شکست خورد، به لاگین برگرد
+    if (e.message !== 'unauthorized') showLogin('خطا در بارگذاری: ' + e.message);
+  }
 }
 
 function showView(v) {
@@ -458,7 +477,7 @@ async function addUser() {
 }
 
 document.getElementById('logout').onclick = logoutFn;
-if (token) boot();
+if (token) boot(); else showLogin();
 </script>
 </body>
 </html>
