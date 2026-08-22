@@ -43,6 +43,11 @@ app.use(session({
 }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
+// اپ تک‌صفحه‌ای است؛ /login (و /app) هم همان صفحهٔ اصلی را می‌دهد
+app.get(['/login', '/app'], (req, res) =>
+  res.sendFile(path.join(__dirname, '../public/index.html')));
+
 app.use('/api/auth', authRoutes);
 
 // از اینجا به بعد نیاز به ورود
