@@ -11,8 +11,10 @@ router.post('/login', wrap(async (req, res) => {
   if (!username || !password) throw new AppError(400, 'نام کاربری و رمز لازم است');
 
   const [[user]] = await pool.query(
-    `SELECT u.*, r.name AS role_name
-       FROM users u JOIN roles r ON r.id = u.role_id
+    `SELECT u.*, r.name AS role_name, b.name AS branch_name
+       FROM users u
+       JOIN roles r ON r.id = u.role_id
+       LEFT JOIN branches b ON b.id = u.branch_id
       WHERE u.username = ? AND u.is_active = 1`,
     [username]
   );
@@ -23,7 +25,13 @@ router.post('/login', wrap(async (req, res) => {
 
   await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
   const token = signToken(user);
-  res.json({ token, user: { id: user.id, name: user.fullname, role: user.role_name } });
+  res.json({
+    token,
+    user: {
+      id: user.id, name: user.fullname, role: user.role_name,
+      branch_id: user.branch_id, branch_name: user.branch_name,
+    },
+  });
 }));
 
 export default router;

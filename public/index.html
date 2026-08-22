@@ -113,9 +113,9 @@
         <h3>عملیات سریع</h3>
         <div class="row">
           <button onclick="openInvoice()">🧾 فاکتور تحویل شیر و خرید</button>
-          <button onclick="doPay('out')" class="ghost">💵 پرداخت به دامدار</button>
-          <button onclick="doPay('in')" class="ghost">📥 دریافت از مشتری</button>
-          <button onclick="doSettle()" class="red">تسویهٔ کامل</button>
+          <button onclick="doPay('out')" class="ghost fin-only">💵 پرداخت به دامدار</button>
+          <button onclick="doPay('in')" class="ghost fin-only">📥 دریافت از مشتری</button>
+          <button onclick="doSettle()" class="red fin-only">تسویهٔ کامل</button>
         </div>
       </div>
 
@@ -158,7 +158,7 @@
   <div class="card">
     <h3>سایت‌های تعریف‌شده</h3>
     <table>
-      <thead><tr><th>#</th><th>کد</th><th>نام</th><th>نوع</th><th>تلفن</th><th>انبار</th><th>کاربر</th><th>وضعیت</th></tr></thead>
+      <thead><tr><th>#</th><th>کد</th><th>نام</th><th>نوع</th><th>تلفن</th><th>انبار</th><th>کاربر</th><th>وضعیت</th><th>متصدی</th></tr></thead>
       <tbody id="sitesTable"></tbody>
     </table>
   </div>
@@ -233,6 +233,8 @@
 <script>
 let token = localStorage.getItem('token');
 let role = localStorage.getItem('role');
+let myBranch = Number(localStorage.getItem('branch')) || null;
+let myBranchName = localStorage.getItem('branchName') || '';
 let currentPerson = null;
 let products = [], branches = [];
 const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
@@ -249,21 +251,32 @@ async function login() {
   try {
     const d = await api('/auth/login', { method:'POST', body:{ username:u.value, password:p.value }});
     token = d.token; role = d.user.role;
+    myBranch = d.user.branch_id || null; myBranchName = d.user.branch_name || '';
     localStorage.setItem('token', token); localStorage.setItem('role', role);
     localStorage.setItem('name', d.user.name);
+    localStorage.setItem('branch', myBranch || ''); localStorage.setItem('branchName', myBranchName);
     boot();
   } catch(e) { loginErr.textContent = e.message; }
 }
 function logoutFn(e){ e && e.preventDefault(); localStorage.clear(); location.reload(); }
 
+const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت',
+                  store:'فروشگاه', distribution:'مدیر پخش', driver:'راننده',
+                  farmer:'دامدار', customer:'مشتری' };
+
 async function boot() {
   document.getElementById('login').classList.add('hidden');
   nav.classList.remove('hidden'); who.classList.remove('hidden');
-  whoName.textContent = (localStorage.getItem('name')||'') + ' ('+role+')';
+  const isFin = role==='admin' || role==='accountant';
+  whoName.textContent = (localStorage.getItem('name')||'') + ' — ' + (ROLE_FA[role]||role)
+                        + (myBranchName ? ' @ ' + myBranchName : '');
+  // فقط مدیر اصلی پنل سایت‌ها/کاربران را می‌بیند
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
+  // پرداخت/تسویه فقط برای مدیر و حسابداری
+  document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
   products = await api('/products');
   branches = await api('/branches');
-  showView('ops');
+  showView('ops');           // همه مستقیم روی صفحهٔ تحویل شیر/عملیات می‌آیند
   loadPersons();
 }
 
@@ -323,12 +336,12 @@ async function refresh(){ if(currentPerson) selectPerson(currentPerson); loadPer
 
 async function doPay(dir) {
   const a = prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a) return;
-  try { await api('/payments', { method:'POST', body:{ person_id:currentPerson, direction:dir, amount:Number(a), branch_id:2 }}); refresh(); }
+  try { await api('/payments', { method:'POST', body:{ person_id:currentPerson, direction:dir, amount:Number(a), branch_id:myBranch||null }}); refresh(); }
   catch(e){ alert(e.message); }
 }
 async function doSettle() {
   if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟')) return;
-  try { const r = await api('/payments/settle', { method:'POST', body:{ person_id:currentPerson, branch_id:2 }});
+  try { const r = await api('/payments/settle', { method:'POST', body:{ person_id:currentPerson, branch_id:myBranch||null }});
     alert('تسویه شد: '+fmt(r.paid)); refresh(); } catch(e){ alert(e.message); }
 }
 async function newPerson() {
@@ -344,6 +357,7 @@ function openInvoice() {
   invErr.textContent='';
   invPerson.textContent = 'برای: ' + pName.textContent + ' (' + pCode.textContent + ')';
   invSite.innerHTML = branches.filter(b=>b.is_active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  if (myBranch) invSite.value = myBranch;   // متصدی: سایت خودش پیش‌فرض
   invShift.value=''; invWeight.value=''; invPrice.value=''; invNote.value='';
   invItems.innerHTML=''; addItemRow(); calcInv();
   invoiceModal.classList.remove('hidden');
@@ -401,7 +415,19 @@ async function loadSites() {
   sitesTable.innerHTML = branches.map(b=>`
     <tr><td>${b.id}</td><td>${b.code}</td><td>${b.name}</td><td>${typeFa[b.type]||b.type}</td>
     <td>${b.phone||'—'}</td><td>${b.warehouse_count}</td><td>${b.user_count}</td>
-    <td><span class="pill ${b.is_active?'creditor':'debtor'}">${b.is_active?'فعال':'غیرفعال'}</span></td></tr>`).join('');
+    <td><span class="pill ${b.is_active?'creditor':'debtor'}">${b.is_active?'فعال':'غیرفعال'}</span></td>
+    <td><button class="ghost" onclick="addOperator(${b.id}, '${b.name.replace(/'/g,"")}')">+ متصدی</button></td></tr>`).join('');
+}
+// ساخت متصدی سایت: کاربری با نقش «متصدی سایت» که به همان سایت وصل است
+async function addOperator(branchId, branchName) {
+  const fullname = prompt('نام متصدی سایت «'+branchName+'»:'); if(!fullname) return;
+  const username = prompt('نام کاربری برای ورود:'); if(!username) return;
+  const password = prompt('رمز عبور:'); if(!password) return;
+  try {
+    await api('/users', { method:'POST', body:{ fullname, username, password, role:'station', branch_id:branchId }});
+    alert('متصدی سایت ساخته شد: '+username);
+    loadSites();
+  } catch(e){ alert(e.message); }
 }
 async function addSite() {
   try {
