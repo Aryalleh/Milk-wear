@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سامانه مدیریت لبنیات</title>
+<style>
+  :root { --bg:#f4f6f8; --card:#fff; --line:#e3e8ee; --pri:#0d7a5f; --pri2:#0a6350;
+          --txt:#1a2027; --muted:#6b7683; --red:#c0392b; --green:#1e8449; }
+  * { box-sizing:border-box; font-family:Tahoma,"Segoe UI",sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--txt); }
+  header { background:var(--pri); color:#fff; padding:14px 20px; display:flex;
+           justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; margin:0; }
+  .wrap { max-width:1100px; margin:20px auto; padding:0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:16px; margin-bottom:16px; }
+  input,select,button { font-size:14px; padding:9px 12px; border:1px solid var(--line);
+          border-radius:8px; background:#fff; }
+  button { background:var(--pri); color:#fff; border:none; cursor:pointer; }
+  button:hover { background:var(--pri2); }
+  button.ghost { background:#eef2f5; color:var(--txt); }
+  button.red { background:var(--red); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { padding:9px 10px; border-bottom:1px solid var(--line); text-align:right; }
+  th { color:var(--muted); font-weight:600; background:#fafbfc; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .stat { background:#f8fafb; border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .stat .lbl { color:var(--muted); font-size:12px; }
+  .stat .val { font-size:20px; font-weight:700; margin-top:4px; }
+  .payable { background:var(--pri); color:#fff; }
+  .payable .lbl { color:#d6efe6; opacity:.9; }
+  .pill { padding:2px 10px; border-radius:20px; font-size:12px; }
+  .creditor { background:#e8f6ef; color:var(--green); }
+  .debtor { background:#fdeceb; color:var(--red); }
+  .settled { background:#eef2f5; color:var(--muted); }
+  .person-item { padding:10px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; }
+  .person-item:hover { background:#f8fafb; }
+  .hidden { display:none; }
+  .credit { color:var(--green); } .debit { color:var(--red); }
+  #login { max-width:340px; margin:80px auto; }
+  h3 { margin:0 0 12px; font-size:15px; }
+  .muted { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥛 سامانه یکپارچه مدیریت لبنیات</h1>
+  <div id="who" class="hidden"><span id="whoName"></span> · <a href="#" id="logout" style="color:#fff">خروج</a></div>
+</header>
+
+<div id="login" class="card">
+  <h3>ورود</h3>
+  <div class="row" style="flex-direction:column; align-items:stretch">
+    <input id="u" placeholder="نام کاربری" value="admin">
+    <input id="p" type="password" placeholder="رمز عبور" value="admin123">
+    <button onclick="login()">ورود</button>
+    <div id="loginErr" class="muted" style="color:var(--red)"></div>
+  </div>
+</div>
+
+<div id="app" class="wrap hidden">
+  <div style="display:grid; grid-template-columns:320px 1fr; gap:16px">
+    <!-- ستون اشخاص -->
+    <div class="card">
+      <h3>اشخاص</h3>
+      <div class="row">
+        <input id="search" placeholder="جستجو..." oninput="loadPersons()" style="flex:1">
+        <button class="ghost" onclick="newPerson()">+</button>
+      </div>
+      <div id="persons" style="margin-top:10px"></div>
+    </div>
+
+    <!-- ستون جزئیات -->
+    <div id="detail" class="hidden">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div><h3 id="pName" style="margin:0"></h3><span id="pCode" class="muted"></span></div>
+          <span id="pStatus" class="pill"></span>
+        </div>
+        <div class="grid" style="margin-top:14px">
+          <div class="stat payable"><div class="lbl">قابل پرداخت تا این لحظه</div><div class="val" id="sPayable">—</div></div>
+          <div class="stat"><div class="lbl">شیر این ماه (کیلو)</div><div class="val" id="sKg">—</div></div>
+          <div class="stat"><div class="lbl">ارزش شیر این ماه</div><div class="val" id="sMilk">—</div></div>
+          <div class="stat"><div class="lbl">مجموع خرید</div><div class="val" id="sBuy">—</div></div>
+          <div class="stat"><div class="lbl">برداشت نقدی</div><div class="val" id="sCash">—</div></div>
+          <div class="stat"><div class="lbl">مجموع پرداخت‌ها</div><div class="val" id="sPaid">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>عملیات سریع</h3>
+        <div class="row">
+          <button onclick="doMilk()">🥛 ثبت شیر</button>
+          <button onclick="doSale()">🛒 فروش/خوراک</button>
+          <button onclick="doPay('out')">💵 پرداخت به دامدار</button>
+          <button onclick="doPay('in')">📥 دریافت از مشتری</button>
+          <button onclick="doWithdraw()" class="ghost">برداشت نقدی</button>
+          <button onclick="doSettle()" class="red">تسویهٔ کامل</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>گردش حساب (دفتر)</h3>
+        <table>
+          <thead><tr><th>تاریخ</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead>
+          <tbody id="ledger"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="empty" class="card muted">یک شخص را انتخاب کنید.</div>
+  </div>
+</div>
+
+<script>
+let token = localStorage.getItem('token');
+let currentPerson = null;
+let products = [];
+const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+const api = async (path, opts={}) => {
+  const r = await fetch('/api'+path, { ...opts,
+    headers: { 'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const d = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(d.error || 'خطا');
+  return d;
+};
+
+async function login() {
+  try {
+    const d = await api('/auth/login', { method:'POST', body:{ username:u.value, password:p.value }});
+    token = d.token; localStorage.setItem('token', token);
+    localStorage.setItem('name', d.user.name);
+    boot();
+  } catch(e) { loginErr.textContent = e.message; }
+}
+function logoutFn(e){ e && e.preventDefault(); localStorage.clear(); location.reload(); }
+
+async function boot() {
+  login_.classList.add('hidden'); app.classList.remove('hidden');
+  who.classList.remove('hidden'); whoName.textContent = localStorage.getItem('name')||'';
+  products = await api('/products');
+  loadPersons();
+}
+
+async function loadPersons() {
+  const q = search.value ? '?q='+encodeURIComponent(search.value) : '';
+  const list = await api('/persons'+q);
+  persons.innerHTML = list.map(p => `
+    <div class="person-item" onclick="selectPerson(${p.id})">
+      <span>${p.fullname}<br><span class="muted">${p.person_code}</span></span>
+      <span class="${p.balance>0?'credit':p.balance<0?'debit':''}">${fmt(p.balance)}</span>
+    </div>`).join('') || '<div class="muted">موردی نیست</div>';
+}
+
+async function selectPerson(id) {
+  currentPerson = id;
+  empty.classList.add('hidden'); detail.classList.remove('hidden');
+  const d = await api('/persons/'+id+'/dashboard');
+  pName.textContent = d.person.fullname; pCode.textContent = d.person.code;
+  const st = d.balance.status;
+  pStatus.className = 'pill '+st;
+  pStatus.textContent = st==='creditor'?'بستانکار':st==='debtor'?'بدهکار':'تسویه';
+  sPayable.textContent = fmt(d.balance.payable_now) + ' ریال';
+  sKg.textContent = fmt(d.balance.milk_kg_month);
+  sMilk.textContent = fmt(d.balance.milk_value_month);
+  sBuy.textContent = fmt(d.balance.purchases_total);
+  sCash.textContent = fmt(d.balance.cash_withdrawal_total);
+  sPaid.textContent = fmt(d.balance.payments_total);
+  loadLedger(id);
+}
+
+async function loadLedger(id) {
+  const rows = await api('/persons/'+id+'/ledger');
+  ledger.innerHTML = rows.map(r => `
+    <tr><td>${r.date_jalali}</td><td>${r.description||r.type}</td>
+    <td class="debit">${r.debit?fmt(r.debit):'—'}</td>
+    <td class="credit">${r.credit?fmt(r.credit):'—'}</td>
+    <td><b>${fmt(r.balance)}</b></td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">تراکنشی نیست</td></tr>';
+}
+
+async function refresh(){ if(currentPerson) selectPerson(currentPerson); loadPersons(); }
+
+async function doMilk() {
+  const shift = confirm('شیر صبح؟ (لغو = شب)') ? 'morning' : 'evening';
+  const w = prompt('وزن شیر (کیلوگرم):'); if(!w) return;
+  try { const r = await api('/milk/deliveries', { method:'POST',
+    body:{ person_id:currentPerson, shift, weight_kg:Number(w), branch_id:2 }});
+    alert('ثبت شد. مبلغ: '+fmt(r.amount)+' (قیمت '+fmt(r.price)+')'); refresh();
+  } catch(e){ alert(e.message); }
+}
+async function doSale() {
+  const opts = products.map((p,i)=>`${i+1}) ${p.name} (${fmt(p.base_price)})`).join('\n');
+  const idx = prompt('کالا را انتخاب کنید:\n'+opts); if(!idx) return;
+  const prod = products[Number(idx)-1]; if(!prod) return alert('نامعتبر');
+  const qty = prompt('تعداد/مقدار:'); if(!qty) return;
+  try { const r = await api('/orders', { method:'POST',
+    body:{ person_id:currentPerson, channel:'farmer', warehouse_id:1,
+           items:[{product_id:prod.id, quantity:Number(qty)}], branch_id:2 }});
+    alert('فروش ثبت شد. جمع: '+fmt(r.total_amount)); refresh();
+  } catch(e){ alert(e.message); }
+}
+async function doPay(dir) {
+  const a = prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a) return;
+  try { await api('/payments', { method:'POST',
+    body:{ person_id:currentPerson, direction:dir, amount:Number(a), branch_id:2 }});
+    refresh();
+  } catch(e){ alert(e.message); }
+}
+async function doWithdraw() {
+  const a = prompt('مبلغ برداشت نقدی:'); if(!a) return;
+  try { await api('/payments', { method:'POST',
+    body:{ person_id:currentPerson, direction:'out', kind:'withdrawal', amount:Number(a), branch_id:2 }});
+    refresh();
+  } catch(e){ alert(e.message); }
+}
+async function doSettle() {
+  if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟')) return;
+  try { const r = await api('/payments/settle', { method:'POST', body:{ person_id:currentPerson, branch_id:2 }});
+    alert('تسویه شد: '+fmt(r.paid)); refresh();
+  } catch(e){ alert(e.message); }
+}
+async function newPerson() {
+  const name = prompt('نام شخص:'); if(!name) return;
+  const role = confirm('دامدار است؟ (لغو = مشتری)') ? 'farmer':'customer';
+  try { await api('/persons', { method:'POST', body:{ fullname:name, roles:[role] }}); loadPersons(); }
+  catch(e){ alert(e.message); }
+}
+
+// bind
+const login_ = document.getElementById('login');
+document.getElementById('logout').onclick = logoutFn;
+if (token) boot();
+</script>
+</body>
+</html>
