@@ -65,7 +65,8 @@
 <header>
   <h1>🥛 سامانه یکپارچه مدیریت لبنیات</h1>
   <nav id="nav" class="hidden">
-    <button data-view="ops" class="active staff-only" onclick="showView('ops')">عملیات</button>
+    <button data-view="dashboard" class="active staff-only" onclick="showView('dashboard')">داشبورد</button>
+    <button data-view="ops" class="staff-only" onclick="showView('ops')">عملیات</button>
     <button data-view="inventory" class="staff-only" onclick="showView('inventory')">انبار</button>
     <button data-view="sites" class="admin-only" onclick="showView('sites')">سایت‌ها</button>
     <button data-view="users" class="admin-only" onclick="showView('users')">کاربران</button>
@@ -81,6 +82,31 @@
     <input id="p" type="password" placeholder="رمز عبور" value="admin123">
     <button onclick="login()">ورود</button>
     <div id="loginErr" class="muted" style="color:var(--red)"></div>
+  </div>
+</div>
+
+<!-- ===== داشبورد امروز ===== -->
+<div id="view-dashboard" class="wrap hidden">
+  <div class="card">
+    <div class="row" style="justify-content:space-between; align-items:baseline">
+      <h3 style="margin:0">📊 خلاصهٔ امروز</h3>
+      <span class="muted">امروز: <b id="dToday">—</b></span>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="stat payable"><div class="lbl">شیر دریافتی امروز</div><div class="val"><span id="dMilkKg">—</span> kg</div></div>
+      <div class="stat"><div class="lbl">ارزش شیر امروز (ریال)</div><div class="val" id="dMilkVal">—</div></div>
+      <div class="stat"><div class="lbl">کالاهای تحویلی امروز (ریال)</div><div class="val" id="dGoods">—</div></div>
+      <div class="stat"><div class="lbl">علی‌الحساب‌های امروز (ریال)</div><div class="val" id="dOnAcc">—</div></div>
+      <div class="stat"><div class="lbl">دریافتی از مشتری امروز (ریال)</div><div class="val" id="dReceived">—</div></div>
+      <div class="stat"><div class="lbl">تعداد دامدار امروز</div><div class="val" id="dFarmers">—</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>شیر امروز به تفکیک دامدار</h3>
+    <table>
+      <thead><tr><th>دامدار</th><th>شیر امروز</th><th>ارزش شیر</th><th>کالای خریداری‌شده</th></tr></thead>
+      <tbody id="dFarmerTable"></tbody>
+    </table>
   </div>
 </div>
 
@@ -382,7 +408,7 @@ async function boot() {
     document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
     products = await api('/products');
     branches = await api('/branches');
-    showView('ops');
+    showView('dashboard');     // صفحهٔ اول کارمندان = داشبورد امروز
     loadPersons();
   } catch(e) {
     if (e.message !== 'unauthorized') showLogin('خطا در بارگذاری: ' + e.message);
@@ -390,9 +416,10 @@ async function boot() {
 }
 
 function showView(v) {
-  ['ops','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+  ['dashboard','ops','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
   document.getElementById('view-'+v).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view===v));
+  if (v==='dashboard') loadDashboard();
   if (v==='sites') loadSites();
   if (v==='users') loadUsers();
   if (v==='inventory') loadInventory();
@@ -575,6 +602,23 @@ async function linkBale(id) {
   if (v === null) return;
   try { await api('/users/'+id+'/bale', { method:'PUT', body:{ bale_user_id: v.trim()||null }}); loadUsers(); }
   catch(e){ alert(e.message); }
+}
+
+/* ---------- داشبورد امروز ---------- */
+async function loadDashboard() {
+  const d = await api('/dashboard');
+  dToday.textContent = d.date_jalali;
+  dMilkKg.textContent = fmt(d.milk_today.kg);
+  dMilkVal.textContent = fmt(d.milk_today.value);
+  dGoods.textContent = fmt(d.goods_today);
+  dOnAcc.textContent = fmt(d.onaccount_today);
+  dReceived.textContent = fmt(d.received_today);
+  dFarmers.textContent = fmt(d.milk_today.farmers);
+  dFarmerTable.innerHTML = d.by_farmer.map(f => `
+    <tr><td>${f.fullname}</td><td><b>${fmt(f.kg)}</b> kg</td>
+    <td class="credit">${fmt(f.value)}</td>
+    <td class="debit">${f.goods ? fmt(f.goods) : '—'}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">امروز شیری ثبت نشده</td></tr>';
 }
 
 /* ---------- انبار (کارمند) ---------- */
