@@ -40,6 +40,8 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   role_id       BIGINT NOT NULL,
   mobile        VARCHAR(15),
+  bale_user_id  BIGINT NULL UNIQUE,           -- اتصال به کاربر بله برای لاگین خودکار مینی‌اپ
+  bale_username VARCHAR(64) NULL,
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   last_login_at TIMESTAMP NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

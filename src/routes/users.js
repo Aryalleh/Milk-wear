@@ -11,6 +11,7 @@ router.use(requireRole('admin'));   // مدیریت کاربران فقط برا
 router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
     `SELECT u.id, u.fullname, u.username, u.mobile, u.is_active,
+            u.bale_user_id, u.bale_username,
             r.name AS role, r.title AS role_title,
             b.name AS branch_name
        FROM users u
@@ -28,7 +29,7 @@ router.get('/roles', wrap(async (req, res) => {
 
 // ساخت کاربر برای یک سایت (مثلاً مسئول ایستگاه)
 router.post('/', wrap(async (req, res) => {
-  const { fullname, username, password, role, branch_id, mobile } = req.body;
+  const { fullname, username, password, role, branch_id, mobile, bale_user_id } = req.body;
   if (!fullname || !username || !password || !role)
     throw new AppError(400, 'نام، نام‌کاربری، رمز و نقش لازم است');
 
@@ -40,11 +41,22 @@ router.post('/', wrap(async (req, res) => {
 
   const hash = await bcrypt.hash(password, 10);
   const [r] = await pool.query(
-    `INSERT INTO users (branch_id, fullname, username, password_hash, role_id, mobile)
-     VALUES (?,?,?,?,?,?)`,
-    [branch_id || null, fullname, username, hash, roleRow.id, mobile || null]
+    `INSERT INTO users (branch_id, fullname, username, password_hash, role_id, mobile, bale_user_id)
+     VALUES (?,?,?,?,?,?,?)`,
+    [branch_id || null, fullname, username, hash, roleRow.id, mobile || null, bale_user_id || null]
   );
   res.status(201).json({ id: r.insertId });
+}));
+
+// اتصال/تغییر شناسهٔ بله یک کاربر موجود (برای لاگین خودکار مینی‌اپ)
+router.put('/:id/bale', wrap(async (req, res) => {
+  const { bale_user_id } = req.body;
+  const [r] = await pool.query(
+    'UPDATE users SET bale_user_id = ? WHERE id = ?',
+    [bale_user_id || null, req.params.id]
+  );
+  if (!r.affectedRows) throw new AppError(404, 'کاربر یافت نشد');
+  res.json({ ok: true });
 }));
 
 export default router;

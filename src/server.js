@@ -18,6 +18,14 @@ import receiptRoutes from './routes/receipts.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
+
+// اجازهٔ باز شدن مینی‌اپ داخل iframe نسخهٔ وب بله (بدون X-Frame-Options)
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy',
+    'frame-ancestors https://*.bale.ai; frame-src https://*.bale.ai');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ---- session سمت سرور، ذخیره‌شده در MySQL (پایدار در برابر ری‌استارت) ----

@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SDK مینی‌اپ بله؛ باید قبل از هر اسکریپت دیگری باشد -->
+<script src="https://tapi.bale.ai/miniapp.js?3"></script>
 <title>سامانه مدیریت لبنیات</title>
 <style>
   :root { --bg:#f4f6f8; --card:#fff; --line:#e3e8ee; --pri:#0d7a5f; --pri2:#0a6350;
@@ -170,17 +172,18 @@
     <h3>افزودن کاربر برای سایت</h3>
     <div class="row">
       <input id="uName" placeholder="نام کامل" style="flex:1">
-      <input id="uUser" placeholder="نام کاربری" style="width:150px">
-      <input id="uPass" placeholder="رمز عبور" style="width:150px">
+      <input id="uUser" placeholder="نام کاربری" style="width:130px">
+      <input id="uPass" placeholder="رمز عبور" style="width:120px">
       <select id="uRole"></select>
       <select id="uBranch"></select>
+      <input id="uBale" placeholder="شناسه بله (اختیاری)" style="width:150px">
       <button onclick="addUser()">افزودن کاربر</button>
     </div>
   </div>
   <div class="card">
     <h3>کاربران سیستم</h3>
     <table>
-      <thead><tr><th>#</th><th>نام</th><th>نام کاربری</th><th>نقش</th><th>سایت</th><th>وضعیت</th></tr></thead>
+      <thead><tr><th>#</th><th>نام</th><th>نام کاربری</th><th>نقش</th><th>سایت</th><th>وضعیت</th><th>بله (لاگین خودکار)</th></tr></thead>
       <tbody id="usersTable"></tbody>
     </table>
   </div>
@@ -243,7 +246,7 @@ const api = async (path, opts={}) => {
     headers: { 'Content-Type':'application/json' },
     body: opts.body ? JSON.stringify(opts.body) : undefined });
   // نشست منقضی/نامعتبر → برگشت به لاگین
-  if (r.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+  if (r.status === 401 && !['/auth/login','/auth/me','/auth/bale'].includes(path)) {
     showLogin('نشست شما منقضی شده؛ دوباره وارد شوید');
     throw new Error('unauthorized');
   }
@@ -469,28 +472,48 @@ async function loadUsers() {
   usersTable.innerHTML = list.map(u=>`
     <tr><td>${u.id}</td><td>${u.fullname}</td><td>${u.username}</td><td>${u.role_title}</td>
     <td>${u.branch_name||'—'}</td>
-    <td><span class="pill ${u.is_active?'creditor':'debtor'}">${u.is_active?'فعال':'غیرفعال'}</span></td></tr>`).join('');
+    <td><span class="pill ${u.is_active?'creditor':'debtor'}">${u.is_active?'فعال':'غیرفعال'}</span></td>
+    <td>${u.bale_user_id
+        ? (u.bale_user_id + (u.bale_username?(' (@'+u.bale_username+')'):'') + ` <button class="ghost" onclick="linkBale(${u.id})">تغییر</button>`)
+        : `<button class="ghost" onclick="linkBale(${u.id})">اتصال بله</button>`}</td></tr>`).join('');
 }
 async function addUser() {
   try {
     await api('/users', { method:'POST', body:{
       fullname:uName.value, username:uUser.value, password:uPass.value,
-      role:uRole.value, branch_id:uBranch.value||null }});
-    uName.value=uUser.value=uPass.value=''; loadUsers();
+      role:uRole.value, branch_id:uBranch.value||null, bale_user_id:uBale.value||null }});
+    uName.value=uUser.value=uPass.value=uBale.value=''; loadUsers();
   } catch(e){ alert(e.message); }
+}
+// اتصال/تغییر شناسهٔ بله یک کاربر موجود
+async function linkBale(id) {
+  const v = prompt('شناسهٔ عددی کاربر بله (برای حذف اتصال خالی بگذارید):');
+  if (v === null) return;
+  try { await api('/users/'+id+'/bale', { method:'PUT', body:{ bale_user_id: v.trim()||null }}); loadUsers(); }
+  catch(e){ alert(e.message); }
 }
 
 document.getElementById('logout').onclick = logoutFn;
 
-// بارگذاری اولیه: اگر نشست فعال باشد مستقیم وارد شو، وگرنه لاگین
+// بارگذاری اولیه
 (async function init() {
-  try {
-    const d = await api('/auth/me');
-    setUser(d.user);
-    boot();
-  } catch {
-    showLogin();
+  const wa = window.Bale && window.Bale.WebApp;
+  if (wa) { try { wa.ready(); wa.expand(); } catch {} }
+
+  // ۱) داخل بله باز شده و initData دارد → لاگین خودکار مینی‌اپ
+  if (wa && wa.initData) {
+    try {
+      const d = await api('/auth/bale', { method:'POST', body:{ initData: wa.initData }});
+      setUser(d.user); boot(); return;
+    } catch(e) {
+      // اتصال حساب برقرار نبود یا اعتبارسنجی ناموفق → فرم لاگین با پیام
+      showLogin(e.message === 'unauthorized' ? '' : e.message); return;
+    }
   }
+
+  // ۲) مرورگر عادی: نشست فعال؟ وارد شو، وگرنه لاگین
+  try { const d = await api('/auth/me'); setUser(d.user); boot(); }
+  catch { showLogin(); }
 })();
 </script>
 </body>
