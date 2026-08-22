@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فاکتور</title>
+<style>
+  * { box-sizing:border-box; font-family:Tahoma,sans-serif; }
+  body { margin:0; background:#eceff1; color:#1a2027; }
+  .sheet { background:#fff; max-width:420px; margin:20px auto; padding:20px 22px;
+           border:1px solid #ddd; border-radius:8px; }
+  .center { text-align:center; }
+  h2 { margin:0 0 2px; font-size:17px; }
+  .muted { color:#6b7683; font-size:12px; }
+  .hr { border-top:1px dashed #bbb; margin:12px 0; }
+  .row { display:flex; justify-content:space-between; font-size:13px; margin:4px 0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  th,td { padding:5px 4px; border-bottom:1px solid #eee; text-align:right; }
+  th { color:#6b7683; }
+  .tot { font-weight:700; }
+  .credit { color:#1e8449; } .debit { color:#c0392b; }
+  .net { font-size:16px; font-weight:800; }
+  .bar { max-width:420px; margin:12px auto; text-align:center; }
+  button { padding:9px 22px; border:none; border-radius:8px; background:#0d7a5f; color:#fff; cursor:pointer; font-size:14px; }
+  @media print { .bar { display:none; } body { background:#fff; } .sheet { border:none; margin:0; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button onclick="window.print()">🖨 پرینت</button>
+  <button onclick="window.close()" style="background:#eef2f5;color:#1a2027">بستن</button>
+</div>
+<div class="sheet" id="sheet">در حال بارگذاری…</div>
+<script>
+const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+const id = new URLSearchParams(location.search).get('id');
+const token = localStorage.getItem('token');
+
+(async () => {
+  const r = await fetch('/api/receipts/'+id, { headers:{ Authorization:'Bearer '+token }});
+  if (!r.ok) { sheet.innerHTML = 'خطا در دریافت فاکتور'; return; }
+  const d = await r.json();
+  const rc = d.receipt;
+  let milkRows = '';
+  if (d.milk) {
+    const label = d.milk.shift === 'morning' ? 'شیر صبح' : 'شیر شب';
+    milkRows = `<tr><td>${label}</td><td>${fmt(d.milk.weight_kg)} کیلو</td>
+      <td>${fmt(d.milk.price_per_kg)}</td><td class="credit">${fmt(d.milk.amount)}</td></tr>`;
+  }
+  const itemRows = (d.items||[]).map(i =>
+    `<tr><td>${i.product_name}</td><td>${fmt(i.quantity)} ${i.unit||''}</td>
+     <td>${fmt(i.unit_price)}</td><td class="debit">${fmt(i.amount)}</td></tr>`).join('');
+
+  sheet.innerHTML = `
+    <div class="center">
+      <h2>${d.branch?.name || 'سامانه لبنیات'}</h2>
+      <div class="muted">${d.branch?.phone || ''} ${d.branch?.address || ''}</div>
+      <div class="muted">فاکتور تحویل شیر و خرید</div>
+    </div>
+    <div class="hr"></div>
+    <div class="row"><span>شماره فاکتور:</span><b>${rc.receipt_no}</b></div>
+    <div class="row"><span>تاریخ:</span><span>${rc.issued_at_jalali}</span></div>
+    <div class="row"><span>طرف حساب:</span><b>${d.person.fullname} (${d.person.person_code})</b></div>
+    <div class="hr"></div>
+    <table>
+      <thead><tr><th>شرح</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ</th></tr></thead>
+      <tbody>${milkRows}${itemRows}</tbody>
+    </table>
+    <div class="hr"></div>
+    <div class="row"><span>جمع بستانکار (شیر):</span><span class="credit tot">${fmt(rc.milk_amount)}</span></div>
+    <div class="row"><span>جمع بدهکار (خرید):</span><span class="debit tot">${fmt(rc.purchase_amount)}</span></div>
+    <div class="row"><span>خالص این فاکتور:</span><span class="net">${fmt(rc.net_amount)}</span></div>
+    <div class="hr"></div>
+    <div class="row"><span>مانده کل حساب پس از فاکتور:</span>
+      <b class="${rc.balance_after>=0?'credit':'debit'}">${fmt(Math.abs(rc.balance_after))} ${rc.balance_after>=0?'(بستانکار)':'(بدهکار)'}</b></div>
+    <div class="hr"></div>
+    <div class="center muted">با تشکر — این فاکتور سند رسمی حساب شماست</div>
+    <div class="row" style="margin-top:24px"><span>امضای تحویل‌دهنده</span><span>امضای تحویل‌گیرنده</span></div>
+  `;
+  // ثبت پرینت + چاپ خودکار
+  fetch('/api/receipts/'+id+'/printed', { method:'POST', headers:{ Authorization:'Bearer '+token }});
+  setTimeout(() => window.print(), 400);
+})();
+</script>
+</body>
+</html>

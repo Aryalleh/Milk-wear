@@ -5,7 +5,7 @@
 USE milk_wear;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS audit_logs, account_balances, transactions, payments,
+DROP TABLE IF EXISTS receipts, audit_logs, account_balances, transactions, payments,
   order_items, orders, stock_movements, stock_balances, milk_deliveries,
   milk_price_history, warehouses, products, product_categories, units,
   person_roles, person_types, persons, users, roles, month_closings,
@@ -255,6 +255,29 @@ CREATE TABLE account_balances (
   status               ENUM('settled','debtor','creditor') NOT NULL DEFAULT 'settled',
   updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_ab_person FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============ فاکتور ترکیبی (تحویل شیر + خرید) ============
+CREATE TABLE receipts (
+  id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+  branch_id         BIGINT,
+  receipt_no        VARCHAR(30) NOT NULL UNIQUE,
+  person_id         BIGINT NOT NULL,
+  issued_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  year_month_jalali CHAR(7) NOT NULL,
+  milk_delivery_id  BIGINT NULL,
+  order_id          BIGINT NULL,
+  milk_amount       DECIMAL(18,0) NOT NULL DEFAULT 0,
+  purchase_amount   DECIMAL(18,0) NOT NULL DEFAULT 0,
+  net_amount        DECIMAL(18,0) NOT NULL DEFAULT 0,
+  balance_after     DECIMAL(18,0) NOT NULL DEFAULT 0,
+  note              VARCHAR(255),
+  printed_at        TIMESTAMP NULL,
+  created_by        BIGINT,
+  CONSTRAINT fk_rc_person FOREIGN KEY (person_id) REFERENCES persons(id),
+  CONSTRAINT fk_rc_branch FOREIGN KEY (branch_id) REFERENCES branches(id),
+  INDEX idx_rc_person (person_id),
+  INDEX idx_rc_branch (branch_id, issued_at)
 ) ENGINE=InnoDB;
 
 -- ============ سیستمی ============

@@ -9,6 +9,9 @@ import milkRoutes from './routes/milk.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import paymentRoutes from './routes/payments.js';
+import branchRoutes from './routes/branches.js';
+import userRoutes from './routes/users.js';
+import receiptRoutes from './routes/receipts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -24,6 +27,9 @@ app.use('/api/milk', authRequired, milkRoutes);
 app.use('/api/products', authRequired, productRoutes);
 app.use('/api/orders', authRequired, orderRoutes);
 app.use('/api/payments', authRequired, paymentRoutes);
+app.use('/api/branches', authRequired, branchRoutes);
+app.use('/api/users', authRequired, userRoutes);
+app.use('/api/receipts', authRequired, receiptRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {
