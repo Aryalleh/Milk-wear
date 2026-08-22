@@ -231,19 +231,19 @@
 </div>
 
 <script>
-let token = localStorage.getItem('token');
-let role = localStorage.getItem('role');
-let myBranch = Number(localStorage.getItem('branch')) || null;
-let myBranchName = localStorage.getItem('branchName') || '';
+let role = null, myBranch = null, myBranchName = '', myName = '';
 let currentPerson = null;
 let products = [], branches = [];
 const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+
+// احراز هویت با session/کوکی؛ credentials لازم است تا کوکی ارسال/دریافت شود
 const api = async (path, opts={}) => {
   const r = await fetch('/api'+path, { ...opts,
-    headers: { 'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{}) },
+    credentials: 'same-origin',
+    headers: { 'Content-Type':'application/json' },
     body: opts.body ? JSON.stringify(opts.body) : undefined });
   // نشست منقضی/نامعتبر → برگشت به لاگین
-  if (r.status === 401 && path !== '/auth/login') {
+  if (r.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
     showLogin('نشست شما منقضی شده؛ دوباره وارد شوید');
     throw new Error('unauthorized');
   }
@@ -252,9 +252,13 @@ const api = async (path, opts={}) => {
   return d;
 };
 
+function setUser(u) {
+  role = u.role; myBranch = u.branch_id || null;
+  myBranchName = u.branch_name || ''; myName = u.name || '';
+}
+
 // نمایش صفحهٔ لاگین و پنهان‌کردن کل اپ (ری‌دایرکت به لاگین)
 function showLogin(msg) {
-  token = null; localStorage.removeItem('token');
   document.getElementById('login').classList.remove('hidden');
   nav.classList.add('hidden'); who.classList.add('hidden');
   ['ops','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
@@ -264,15 +268,15 @@ function showLogin(msg) {
 async function login() {
   try {
     const d = await api('/auth/login', { method:'POST', body:{ username:u.value, password:p.value }});
-    token = d.token; role = d.user.role;
-    myBranch = d.user.branch_id || null; myBranchName = d.user.branch_name || '';
-    localStorage.setItem('token', token); localStorage.setItem('role', role);
-    localStorage.setItem('name', d.user.name);
-    localStorage.setItem('branch', myBranch || ''); localStorage.setItem('branchName', myBranchName);
+    setUser(d.user);
     boot();
   } catch(e) { loginErr.textContent = e.message; }
 }
-function logoutFn(e){ e && e.preventDefault(); localStorage.clear(); token=null; showLogin(); }
+async function logoutFn(e){
+  e && e.preventDefault();
+  try { await api('/auth/logout', { method:'POST' }); } catch {}
+  showLogin();
+}
 
 const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت',
                   store:'فروشگاه', distribution:'مدیر پخش', driver:'راننده',
@@ -283,7 +287,7 @@ async function boot() {
     document.getElementById('login').classList.add('hidden');
     nav.classList.remove('hidden'); who.classList.remove('hidden');
     const isFin = role==='admin' || role==='accountant';
-    whoName.textContent = (localStorage.getItem('name')||'') + ' — ' + (ROLE_FA[role]||role)
+    whoName.textContent = myName + ' — ' + (ROLE_FA[role]||role)
                           + (myBranchName ? ' @ ' + myBranchName : '');
     // فقط مدیر اصلی پنل سایت‌ها/کاربران را می‌بیند
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
@@ -477,7 +481,17 @@ async function addUser() {
 }
 
 document.getElementById('logout').onclick = logoutFn;
-if (token) boot(); else showLogin();
+
+// بارگذاری اولیه: اگر نشست فعال باشد مستقیم وارد شو، وگرنه لاگین
+(async function init() {
+  try {
+    const d = await api('/auth/me');
+    setUser(d.user);
+    boot();
+  } catch {
+    showLogin();
+  }
+})();
 </script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 import express from 'express';
 import 'dotenv/config';
+import session from 'express-session';
+import expressMySQLSession from 'express-mysql-session';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { authRequired } from './auth.js';
@@ -17,6 +19,28 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// ---- session سمت سرور، ذخیره‌شده در MySQL (پایدار در برابر ری‌استارت) ----
+const MySQLStore = expressMySQLSession(session);
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'milk_wear',
+  createDatabaseTable: true,          // جدول sessions را خودکار می‌سازد
+  clearExpired: true,
+  charset: 'utf8mb4_unicode_ci',
+});
+app.use(session({
+  name: 'mw.sid',
+  secret: process.env.SESSION_SECRET || 'milk-wear-dev-secret',
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,                      // با هر درخواست، عمر کوکی تمدید می‌شود
+  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 12 * 60 * 60 * 1000 },
+}));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 app.use('/api/auth', authRoutes);

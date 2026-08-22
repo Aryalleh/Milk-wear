@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
-import { signToken } from '../auth.js';
 import { AppError, wrap } from '../util.js';
 
 const router = Router();
+
+// شکل یکسان خروجی کاربر برای login و me
+function userPayload(u) {
+  return { id: u.uid, name: u.name, role: u.role, branch_id: u.branch, branch_name: u.branch_name };
+}
 
 router.post('/login', wrap(async (req, res) => {
   const { username, password } = req.body;
@@ -24,14 +28,27 @@ router.post('/login', wrap(async (req, res) => {
   if (!ok) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
 
   await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
-  const token = signToken(user);
-  res.json({
-    token,
-    user: {
-      id: user.id, name: user.fullname, role: user.role_name,
-      branch_id: user.branch_id, branch_name: user.branch_name,
-    },
-  });
+
+  // ذخیرهٔ کاربر در session سمت سرور
+  req.session.user = {
+    uid: user.id, role: user.role_name, branch: user.branch_id,
+    branch_name: user.branch_name, name: user.fullname,
+  };
+  res.json({ user: userPayload(req.session.user) });
 }));
+
+// وضعیت نشست جاری (برای بارگذاری اولیهٔ صفحه)
+router.get('/me', (req, res) => {
+  if (req.session && req.session.user) return res.json({ user: userPayload(req.session.user) });
+  res.status(401).json({ error: 'ورود لازم است' });
+});
+
+// خروج: نابودی session و پاک‌کردن کوکی
+router.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('mw.sid');
+    res.json({ ok: true });
+  });
+});
 
 export default router;
