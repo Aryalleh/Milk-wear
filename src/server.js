@@ -28,7 +28,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public'), {
+  setHeaders: (res, filePath) => {
+    // HTML همیشه تازه بارگذاری شود تا نسخهٔ قدیمیِ کش‌شده باعث خطای ورود نشود
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 
 // ---- session سمت سرور، ذخیره‌شده در MySQL (پایدار در برابر ری‌استارت) ----
 const MySQLStore = expressMySQLSession(session);
