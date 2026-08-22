@@ -8,7 +8,10 @@ const router = Router();
 
 // شکل یکسان خروجی کاربر برای login و me
 function userPayload(u) {
-  return { id: u.uid, name: u.name, role: u.role, branch_id: u.branch, branch_name: u.branch_name };
+  return {
+    kind: u.kind, id: u.uid, person_id: u.person_id, name: u.name,
+    role: u.role, branch_id: u.branch, branch_name: u.branch_name,
+  };
 }
 
 // اعتبارسنجی initData دریافت‌شده از مینی‌اپ بله
@@ -56,7 +59,7 @@ router.post('/login', wrap(async (req, res) => {
 
   // ذخیرهٔ کاربر در session سمت سرور
   req.session.user = {
-    uid: user.id, role: user.role_name, branch: user.branch_id,
+    kind: 'staff', uid: user.id, role: user.role_name, branch: user.branch_id,
     branch_name: user.branch_name, name: user.fullname,
   };
   res.json({ user: userPayload(req.session.user) });
@@ -78,8 +81,8 @@ router.post('/bale', wrap(async (req, res) => {
 
   const bale = data.user;   // { id, first_name, username, ... }
 
-  // اتصال کاربر بله به حساب سیستم
-  const [[user]] = await pool.query(
+  // ۱) اتصال به حساب کارمند → ورود کارمندی
+  const [[staff]] = await pool.query(
     `SELECT u.*, r.name AS role_name, b.name AS branch_name
        FROM users u
        JOIN roles r ON r.id = u.role_id
@@ -87,21 +90,47 @@ router.post('/bale', wrap(async (req, res) => {
       WHERE u.bale_user_id = ? AND u.is_active = 1`,
     [bale.id]
   );
-  if (!user) {
-    // کاربر بله هنوز به هیچ حسابی متصل نیست؛ شناسه را برمی‌گردانیم تا مدیر متصلش کند
-    throw new AppError(403,
-      `حساب بله شما (شناسه ${bale.id}) به هیچ کاربری متصل نیست. لطفاً با مدیر تماس بگیرید.`);
+  if (staff) {
+    await pool.query('UPDATE users SET bale_username = ?, last_login_at = NOW() WHERE id = ?',
+      [bale.username || null, staff.id]);
+    req.session.user = {
+      kind: 'staff', uid: staff.id, role: staff.role_name, branch: staff.branch_id,
+      branch_name: staff.branch_name, name: staff.fullname,
+    };
+    return res.json({ user: userPayload(req.session.user) });
   }
 
-  // به‌روزرسانی نام‌کاربری بله و آخرین ورود
-  await pool.query(
-    'UPDATE users SET bale_username = ?, last_login_at = NOW() WHERE id = ?',
-    [bale.username || null, user.id]
+  // ۲) اتصال به یک شخص (دامدار/مشتری) → پنل شخصی
+  let [[person]] = await pool.query(
+    `SELECT p.*, GROUP_CONCAT(pt.\`key\`) AS role_keys
+       FROM persons p
+       LEFT JOIN person_roles pr ON pr.person_id = p.id
+       LEFT JOIN person_types pt ON pt.id = pr.person_type_id
+      WHERE p.bale_user_id = ? AND p.deleted_at IS NULL
+      GROUP BY p.id`,
+    [bale.id]
   );
 
+  // ۳) کاربر بلهِ ناشناس → ساخت خودکار «مشتری» و اتصال به بله
+  if (!person) {
+    const code = `C${Date.now().toString().slice(-8)}`;
+    const [ins] = await pool.query(
+      `INSERT INTO persons (person_code, fullname, bale_user_id, bale_username) VALUES (?,?,?,?)`,
+      [code, bale.first_name || `کاربر ${bale.id}`, bale.id, bale.username || null]);
+    await pool.query(
+      `INSERT IGNORE INTO person_roles (person_id, person_type_id)
+       SELECT ?, id FROM person_types WHERE \`key\` = 'customer'`, [ins.insertId]);
+    person = { id: ins.insertId, fullname: bale.first_name || `کاربر ${bale.id}`, role_keys: 'customer' };
+  } else {
+    await pool.query('UPDATE persons SET bale_username = ? WHERE id = ?',
+      [bale.username || null, person.id]);
+  }
+
+  const roles = (person.role_keys || 'customer').split(',');
+  const primaryRole = roles.includes('farmer') ? 'farmer' : 'customer';
   req.session.user = {
-    uid: user.id, role: user.role_name, branch: user.branch_id,
-    branch_name: user.branch_name, name: user.fullname,
+    kind: 'person', person_id: person.id, role: primaryRole,
+    name: person.fullname, branch: null, branch_name: null,
   };
   res.json({ user: userPayload(req.session.user) });
 }));

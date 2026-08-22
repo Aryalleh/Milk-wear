@@ -5,8 +5,27 @@ import { AppError, wrap, currentJalaliMonth } from '../util.js';
 
 const router = Router();
 
-// ثبت فروش/سفارش → تراکنش خرید (بدهکار شخص) + خروج از انبار
+// دریافت یک سفارش (برای بارنامه/فاکتور) — کارمند یا صاحب سفارش
+router.get('/:id', wrap(async (req, res) => {
+  const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
+  if (!order) throw new AppError(404, 'سفارش یافت نشد');
+  if (req.user.kind !== 'staff' && order.person_id !== req.user.person_id)
+    throw new AppError(403, 'دسترسی مجاز نیست');
+
+  const [[person]] = await pool.query(
+    'SELECT id, person_code, fullname, mobile, address FROM persons WHERE id = ?', [order.person_id]);
+  const [[branch]] = await pool.query(
+    'SELECT id, name, phone, address FROM branches WHERE id = ?', [order.branch_id]);
+  const [items] = await pool.query(
+    `SELECT oi.*, p.name AS product_name, u.symbol AS unit
+       FROM order_items oi JOIN products p ON p.id = oi.product_id
+       LEFT JOIN units u ON u.id = p.unit_id WHERE oi.order_id = ?`, [order.id]);
+  res.json({ order, person, branch, items });
+}));
+
+// ثبت فروش/سفارش توسط کارمند → تراکنش خرید (بدهکار شخص) + خروج از انبار
 router.post('/', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فروش ثبت کنند');
   const { person_id, items, channel = 'store', warehouse_id, note, branch_id } = req.body;
   if (!person_id || !Array.isArray(items) || items.length === 0)
     throw new AppError(400, 'شخص و حداقل یک قلم کالا لازم است');

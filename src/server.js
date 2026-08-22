@@ -4,7 +4,7 @@ import session from 'express-session';
 import expressMySQLSession from 'express-mysql-session';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { authRequired } from './auth.js';
+import { authRequired, staffRequired } from './auth.js';
 import authRoutes from './routes/auth.js';
 import personRoutes from './routes/persons.js';
 import milkRoutes from './routes/milk.js';
@@ -14,6 +14,8 @@ import paymentRoutes from './routes/payments.js';
 import branchRoutes from './routes/branches.js';
 import userRoutes from './routes/users.js';
 import receiptRoutes from './routes/receipts.js';
+import meRoutes from './routes/me.js';
+import inventoryRoutes from './routes/inventory.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -58,15 +60,22 @@ app.get(['/login', '/app'], (req, res) =>
 
 app.use('/api/auth', authRoutes);
 
-// از اینجا به بعد نیاز به ورود
-app.use('/api/persons', authRequired, personRoutes);
-app.use('/api/milk', authRequired, milkRoutes);
+// پنل شخصی دامدار/مشتری (فقط دادهٔ خودش)
+app.use('/api/me', authRequired, meRoutes);
+
+// کالاها برای همهٔ کاربران واردشده (شخص برای سفارش لازم دارد)
 app.use('/api/products', authRequired, productRoutes);
+// سفارش و فاکتور خودگارد هستند (کارمند یا صاحب سند)
 app.use('/api/orders', authRequired, orderRoutes);
-app.use('/api/payments', authRequired, paymentRoutes);
-app.use('/api/branches', authRequired, branchRoutes);
-app.use('/api/users', authRequired, userRoutes);
 app.use('/api/receipts', authRequired, receiptRoutes);
+
+// بخش‌های کارمندی
+app.use('/api/persons', staffRequired, personRoutes);
+app.use('/api/milk', staffRequired, milkRoutes);
+app.use('/api/payments', staffRequired, paymentRoutes);
+app.use('/api/branches', staffRequired, branchRoutes);
+app.use('/api/users', staffRequired, userRoutes);
+app.use('/api/inventory', staffRequired, inventoryRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {

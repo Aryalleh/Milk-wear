@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
 import { postTransaction, resolveMilkPrice, recomputeBalance } from '../ledger.js';
+import { notifyReceipt } from '../bale.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -10,6 +11,7 @@ const router = Router();
 //         milk: { shift, weight_kg, price_per_kg? },
 //         items: [{ product_id, quantity, unit_price? }], note }
 router.post('/', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فاکتور ثبت کنند');
   const { person_id, branch_id, warehouse_id, milk, items = [], note } = req.body;
   if (!person_id) throw new AppError(400, 'شخص لازم است');
   const hasMilk = milk && milk.shift && Number(milk.weight_kg) > 0;
@@ -107,8 +109,19 @@ router.post('/', wrap(async (req, res) => {
       [branch_id || null, receiptNo, person_id, month, milkDeliveryId, orderId,
        milkAmount, purchaseAmount, netAmount, balanceAfter, note || null, uid]
     );
-    return { id: rc.insertId, receipt_no: receiptNo };
+    return { id: rc.insertId, receipt_no: receiptNo,
+             milk_amount: milkAmount, purchase_amount: purchaseAmount,
+             net_amount: netAmount, balance_after: balanceAfter };
   });
+
+  // اطلاع‌رسانی به شخص در بله (در صورت اتصال حساب) + لینک فاکتور — بدون بلاک‌کردن پاسخ
+  const [[person]] = await pool.query(
+    'SELECT id, fullname, bale_user_id FROM persons WHERE id = ?', [person_id]);
+  if (person?.bale_user_id) {
+    notifyReceipt(person, receipt)
+      .then((r) => { if (r?.ok) pool.query('UPDATE receipts SET notified_at = NOW() WHERE id = ?', [receipt.id]); })
+      .catch(() => {});
+  }
 
   res.status(201).json(receipt);
 }));
@@ -117,6 +130,8 @@ router.post('/', wrap(async (req, res) => {
 router.get('/:id', wrap(async (req, res) => {
   const [[rc]] = await pool.query('SELECT * FROM receipts WHERE id = ?', [req.params.id]);
   if (!rc) throw new AppError(404, 'فاکتور یافت نشد');
+  if (req.user.kind !== 'staff' && rc.person_id !== req.user.person_id)
+    throw new AppError(403, 'دسترسی مجاز نیست');
 
   const [[person]] = await pool.query(
     'SELECT id, person_code, fullname, mobile, address FROM persons WHERE id = ?', [rc.person_id]);
@@ -147,8 +162,9 @@ router.get('/:id', wrap(async (req, res) => {
   });
 }));
 
-// لیست فاکتورهای یک شخص یا سایت
+// لیست فاکتورهای یک شخص یا سایت (کارمند)
 router.get('/', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
   const { person_id, branch_id } = req.query;
   const where = [], params = [];
   if (person_id) { where.push('r.person_id = ?'); params.push(person_id); }

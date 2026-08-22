@@ -65,7 +65,8 @@
 <header>
   <h1>🥛 سامانه یکپارچه مدیریت لبنیات</h1>
   <nav id="nav" class="hidden">
-    <button data-view="ops" class="active" onclick="showView('ops')">عملیات</button>
+    <button data-view="ops" class="active staff-only" onclick="showView('ops')">عملیات</button>
+    <button data-view="inventory" class="staff-only" onclick="showView('inventory')">انبار</button>
     <button data-view="sites" class="admin-only" onclick="showView('sites')">سایت‌ها</button>
     <button data-view="users" class="admin-only" onclick="showView('users')">کاربران</button>
   </nav>
@@ -189,6 +190,73 @@
   </div>
 </div>
 
+<!-- ===== نمای انبار (کارمند) ===== -->
+<div id="view-inventory" class="wrap hidden">
+  <div class="card">
+    <h3>ثبت ورود کالا به انبار (چیا اومده)</h3>
+    <div class="row">
+      <select id="invWh"></select>
+      <select id="invProd"></select>
+      <input id="invQty" type="number" step="0.001" placeholder="مقدار" style="width:120px">
+      <input id="invCost" type="number" placeholder="بهای واحد (اختیاری)" style="width:170px">
+      <button onclick="receiveStock()">ثبت ورود</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>موجودی انبار</h3>
+    <table>
+      <thead><tr><th>کالا</th><th>دسته</th><th>واحد</th><th>وارد شده</th><th>فروش/خروج</th><th>موجودی فعلی</th></tr></thead>
+      <tbody id="invTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== پنل شخصی دامدار/مشتری ===== -->
+<div id="view-me" class="wrap hidden">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h3 id="meName" style="margin:0"></h3>
+      <span id="meStatus" class="pill"></span>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="stat payable"><div class="lbl" id="meBalLbl">مانده حساب</div><div class="val" id="meBal">—</div></div>
+      <div class="stat"><div class="lbl">شیر این ماه (کیلو)</div><div class="val" id="meKg">—</div></div>
+      <div class="stat"><div class="lbl">ارزش شیر این ماه</div><div class="val" id="meMilk">—</div></div>
+      <div class="stat"><div class="lbl">مجموع خرید</div><div class="val" id="meBuy">—</div></div>
+      <div class="stat"><div class="lbl">مجموع پرداخت‌ها</div><div class="val" id="mePaid">—</div></div>
+    </div>
+  </div>
+
+  <!-- ثبت سفارش (مشتری) -->
+  <div id="meOrderCard" class="card">
+    <h3>🛒 ثبت سفارش جدید</h3>
+    <div id="meItems"></div>
+    <button class="ghost" onclick="meAddItemRow()">+ افزودن قلم</button>
+    <div class="field" style="margin-top:10px"><label>آدرس/محل تحویل</label><input id="meDest" placeholder="آدرس تحویل"></div>
+    <div class="sum">جمع سفارش: <b id="meSum">۰</b> ریال</div>
+    <div class="row" style="justify-content:flex-end; margin-top:10px">
+      <button onclick="mePlaceOrder()">ثبت سفارش و ساخت فاکتور/بارنامه</button>
+    </div>
+    <div id="meOrderErr" class="muted" style="color:var(--red)"></div>
+  </div>
+
+  <div class="card">
+    <h3>سفارش‌های من</h3>
+    <table>
+      <thead><tr><th>شماره</th><th>مبلغ</th><th>وضعیت</th><th>فاکتور</th><th>بارنامه</th></tr></thead>
+      <tbody id="meOrders"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>گردش حساب من</h3>
+    <table>
+      <thead><tr><th>تاریخ</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead>
+      <tbody id="meLedger"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ===== مودال فاکتور ===== -->
 <div id="invoiceModal" class="overlay hidden">
   <div class="modal">
@@ -234,7 +302,7 @@
 </div>
 
 <script>
-let role = null, myBranch = null, myBranchName = '', myName = '';
+let myKind = null, role = null, myBranch = null, myBranchName = '', myName = '';
 let currentPerson = null;
 let products = [], branches = [];
 const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
@@ -256,7 +324,7 @@ const api = async (path, opts={}) => {
 };
 
 function setUser(u) {
-  role = u.role; myBranch = u.branch_id || null;
+  myKind = u.kind; role = u.role; myBranch = u.branch_id || null;
   myBranchName = u.branch_name || ''; myName = u.name || '';
 }
 
@@ -288,30 +356,43 @@ const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', stat
 async function boot() {
   try {
     document.getElementById('login').classList.add('hidden');
-    nav.classList.remove('hidden'); who.classList.remove('hidden');
-    const isFin = role==='admin' || role==='accountant';
+    who.classList.remove('hidden');
     whoName.textContent = myName + ' — ' + (ROLE_FA[role]||role)
                           + (myBranchName ? ' @ ' + myBranchName : '');
-    // فقط مدیر اصلی پنل سایت‌ها/کاربران را می‌بیند
+
+    // --- پنل شخصی دامدار/مشتری ---
+    if (myKind === 'person') {
+      nav.classList.add('hidden');
+      ['ops','inventory','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+      document.getElementById('view-me').classList.remove('hidden');
+      products = await api('/products');
+      await loadMe();
+      // اگر از طریق دیپ‌لینک فاکتور آمده باشد، مستقیم چاپ
+      if (pendingReceiptId) { printReceipt(pendingReceiptId); pendingReceiptId = null; }
+      return;
+    }
+
+    // --- کارمندان ---
+    nav.classList.remove('hidden');
+    const isFin = role==='admin' || role==='accountant';
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
-    // پرداخت/تسویه فقط برای مدیر و حسابداری
     document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
     products = await api('/products');
     branches = await api('/branches');
-    showView('ops');           // همه مستقیم روی صفحهٔ تحویل شیر/عملیات می‌آیند
+    showView('ops');
     loadPersons();
   } catch(e) {
-    // اگر توکن نامعتبر بود یا بارگذاری اولیه شکست خورد، به لاگین برگرد
     if (e.message !== 'unauthorized') showLogin('خطا در بارگذاری: ' + e.message);
   }
 }
 
 function showView(v) {
-  ['ops','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+  ['ops','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
   document.getElementById('view-'+v).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view===v));
   if (v==='sites') loadSites();
   if (v==='users') loadUsers();
+  if (v==='inventory') loadInventory();
 }
 
 /* ---------- عملیات / اشخاص ---------- */
@@ -493,7 +574,98 @@ async function linkBale(id) {
   catch(e){ alert(e.message); }
 }
 
+/* ---------- انبار (کارمند) ---------- */
+async function loadInventory() {
+  const [rows, whs] = await Promise.all([api('/inventory'), api('/inventory/warehouses')]);
+  invTable.innerHTML = rows.map(p=>`
+    <tr><td>${p.name}</td><td>${p.category||'—'}</td><td>${p.unit||''}</td>
+    <td class="credit">${fmt(p.total_in)}</td><td class="debit">${fmt(p.total_out)}</td>
+    <td><b>${fmt(p.on_hand)}</b></td></tr>`).join('') || '<tr><td colspan="6" class="muted">کالایی نیست</td></tr>';
+  invWh.innerHTML = whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
+  invProd.innerHTML = products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+}
+async function receiveStock() {
+  try {
+    await api('/inventory/receive', { method:'POST', body:{
+      warehouse_id:Number(invWh.value), product_id:Number(invProd.value),
+      quantity:Number(invQty.value), unit_cost:invCost.value||null }});
+    invQty.value=invCost.value=''; loadInventory();
+  } catch(e){ alert(e.message); }
+}
+
+/* ---------- پنل شخصی دامدار/مشتری ---------- */
+async function loadMe() {
+  const d = await api('/me/dashboard');
+  meName.textContent = d.person.fullname + ' (' + d.person.code + ')';
+  const cb = d.balance.current_balance;
+  meStatus.className = 'pill ' + d.balance.status;
+  meStatus.textContent = d.balance.status==='creditor'?'بستانکار':d.balance.status==='debtor'?'بدهکار':'تسویه';
+  meBalLbl.textContent = cb>=0 ? 'قابل دریافت از شرکت' : 'بدهی شما به شرکت';
+  meBal.textContent = fmt(Math.abs(cb)) + ' ریال';
+  meKg.textContent = fmt(d.balance.milk_kg_month);
+  meMilk.textContent = fmt(d.balance.milk_value_month);
+  meBuy.textContent = fmt(d.balance.purchases_total);
+  mePaid.textContent = fmt(d.balance.payments_total);
+  meItems.innerHTML=''; meAddItemRow(); meCalc();
+  await Promise.all([loadMeOrders(), loadMeLedger()]);
+}
+async function loadMeLedger() {
+  const rows = await api('/me/ledger');
+  meLedger.innerHTML = rows.map(r=>`<tr><td>${r.date_jalali}</td><td>${r.description||r.type}</td>
+    <td class="debit">${r.debit?fmt(r.debit):'—'}</td><td class="credit">${r.credit?fmt(r.credit):'—'}</td>
+    <td><b>${fmt(r.balance)}</b></td></tr>`).join('') || '<tr><td colspan="5" class="muted">تراکنشی نیست</td></tr>';
+}
+async function loadMeOrders() {
+  const rows = await api('/me/orders');
+  meOrders.innerHTML = rows.map(o=>`<tr><td>${o.order_no}</td><td>${fmt(o.total_amount)}</td>
+    <td>${o.status}</td>
+    <td>${o.receipt_id?`<button class="ghost" onclick="printReceipt(${o.receipt_id})">فاکتور</button>`:'—'}</td>
+    <td><button class="ghost" onclick="printWaybill(${o.id})">بارنامه</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">سفارشی نیست</td></tr>';
+}
+function printWaybill(orderId){ window.open('/waybill.html?id='+orderId, '_blank'); }
+function meAddItemRow() {
+  const div=document.createElement('div'); div.className='item-row';
+  div.innerHTML = `<select class="mi-prod"><option value="">— کالا —</option>
+    ${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+    <input class="mi-qty" type="number" step="0.001" placeholder="تعداد" oninput="meCalc()">
+    <input class="mi-price" type="number" placeholder="قیمت" disabled>
+    <button class="x" onclick="this.parentElement.remove(); meCalc()">×</button>`;
+  meItems.appendChild(div);
+  div.querySelector('.mi-prod').onchange=(e)=>{ div.querySelector('.mi-price').value=e.target.selectedOptions[0]?.dataset.price||''; meCalc(); };
+}
+function meReadItems(){
+  return [...meItems.querySelectorAll('.item-row')].map(r=>({
+    product_id:Number(r.querySelector('.mi-prod').value), quantity:Number(r.querySelector('.mi-qty').value)
+  })).filter(x=>x.product_id && x.quantity>0);
+}
+function meCalc(){
+  const total = [...meItems.querySelectorAll('.item-row')].reduce((s,r)=>{
+    const price=Number(r.querySelector('.mi-price').value)||0, q=Number(r.querySelector('.mi-qty').value)||0;
+    return s+Math.round(price*q); },0);
+  meSum.textContent=fmt(total);
+}
+async function mePlaceOrder(){
+  meOrderErr.textContent='';
+  const items=meReadItems();
+  if(!items.length){ meOrderErr.textContent='حداقل یک قلم کالا لازم است'; return; }
+  try {
+    const r = await api('/me/orders', { method:'POST', body:{ items, destination:meDest.value||null }});
+    meDest.value=''; await loadMe();
+    window.open('/receipt.html?id='+r.receipt_id,'_blank');  // فاکتور
+    window.open('/waybill.html?id='+r.order_id,'_blank');    // بارنامه
+  } catch(e){ meOrderErr.textContent=e.message; }
+}
+
 document.getElementById('logout').onclick = logoutFn;
+
+// دیپ‌لینک بله: startapp=receipt_<id> → بعد از ورود، فاکتور را چاپ کن
+let pendingReceiptId = null;
+(function parseStartParam(){
+  const sp = new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
+  const m = sp.match(/^receipt_(\d+)$/);
+  if (m) pendingReceiptId = Number(m[1]);
+})();
 
 // بارگذاری اولیه
 (async function init() {

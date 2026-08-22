@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بارنامه</title>
+<style>
+  * { box-sizing:border-box; font-family:Tahoma,sans-serif; }
+  body { margin:0; background:#eceff1; color:#1a2027; }
+  .sheet { background:#fff; max-width:640px; margin:20px auto; padding:22px 26px; border:1px solid #ddd; border-radius:8px; }
+  .center { text-align:center; }
+  h2 { margin:0 0 2px; font-size:18px; }
+  .muted { color:#6b7683; font-size:12px; }
+  .hr { border-top:1px dashed #bbb; margin:12px 0; }
+  .row { display:flex; justify-content:space-between; font-size:13px; margin:5px 0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
+  th,td { padding:6px 8px; border:1px solid #e3e8ee; text-align:right; }
+  th { background:#f7f9fb; color:#374; }
+  .bar { max-width:640px; margin:12px auto; text-align:center; }
+  button { padding:9px 22px; border:none; border-radius:8px; background:#0d7a5f; color:#fff; cursor:pointer; font-size:14px; }
+  .sign { display:flex; justify-content:space-between; margin-top:34px; font-size:13px; }
+  @media print { .bar { display:none; } body { background:#fff; } .sheet { border:none; margin:0; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button onclick="window.print()">🖨 چاپ بارنامه</button>
+  <button onclick="window.close()" style="background:#eef2f5;color:#1a2027">بستن</button>
+</div>
+<div class="sheet" id="sheet">در حال بارگذاری…</div>
+<script>
+const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+const id = new URLSearchParams(location.search).get('id');
+const token = localStorage.getItem('token'); // در مرورگر عادی؛ در بله با کوکی
+(async () => {
+  const r = await fetch('/api/orders/'+id, { credentials:'same-origin',
+    headers: token ? { Authorization:'Bearer '+token } : {} });
+  if (!r.ok) { sheet.innerHTML='خطا در دریافت بارنامه'; return; }
+  const d = await r.json();
+  const o = d.order;
+  const items = (d.items||[]).map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.product_name}</td>
+    <td>${fmt(i.quantity)} ${i.unit||''}</td><td>${fmt(i.unit_price)}</td><td>${fmt(i.amount)}</td></tr>`).join('');
+  sheet.innerHTML = `
+    <div class="center"><h2>${d.branch?.name || 'سامانه لبنیات'}</h2>
+      <div class="muted">بارنامه / حواله تحویل کالا</div></div>
+    <div class="hr"></div>
+    <div class="row"><span>شماره بارنامه:</span><b>${o.waybill_no||'—'}</b></div>
+    <div class="row"><span>شماره سفارش:</span><span>${o.order_no}</span></div>
+    <div class="row"><span>تحویل‌گیرنده:</span><b>${d.person.fullname} (${d.person.person_code})</b></div>
+    <div class="row"><span>تلفن:</span><span>${d.person.mobile||'—'}</span></div>
+    <div class="row"><span>مقصد تحویل:</span><span>${o.destination || d.person.address || '—'}</span></div>
+    <div class="hr"></div>
+    <table>
+      <thead><tr><th>#</th><th>کالا</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ</th></tr></thead>
+      <tbody>${items}</tbody>
+    </table>
+    <div class="row" style="margin-top:8px"><span>جمع کل:</span><b>${fmt(o.total_amount)} ریال</b></div>
+    <div class="sign"><span>امضای راننده / تحویل‌دهنده</span><span>امضای تحویل‌گیرنده</span></div>
+  `;
+  setTimeout(()=>window.print(), 400);
+})();
+</script>
+</body>
+</html>
