@@ -5,7 +5,8 @@
 USE milk_wear;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS receipts, audit_logs, account_balances, transactions, payments,
+DROP TABLE IF EXISTS receipts, production_outputs, production_inputs, production_batches,
+  audit_logs, account_balances, transactions, payments,
   order_items, orders, stock_movements, stock_balances, milk_deliveries,
   milk_price_history, warehouses, products, product_categories, units,
   person_roles, person_types, persons, users, roles, month_closings,
@@ -142,6 +143,39 @@ CREATE TABLE stock_balances (
   quantity         DECIMAL(14,3) NOT NULL DEFAULT 0,
   last_movement_at TIMESTAMP NULL,
   PRIMARY KEY (warehouse_id, product_id)
+) ENGINE=InnoDB;
+
+-- ============ تولید (فراوری شیر به محصولات) ============
+CREATE TABLE production_batches (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  branch_id   BIGINT,
+  batch_code  VARCHAR(30) NOT NULL UNIQUE,
+  started_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  finished_at TIMESTAMP NULL,
+  status      ENUM('planned','running','done') NOT NULL DEFAULT 'done',
+  note        VARCHAR(255),
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pb_started (started_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE production_inputs (
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  batch_id     BIGINT NOT NULL,
+  product_id   BIGINT NOT NULL,
+  warehouse_id BIGINT NULL,
+  quantity     DECIMAL(14,3) NOT NULL,
+  CONSTRAINT fk_pi_batch FOREIGN KEY (batch_id) REFERENCES production_batches(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pi_prod  FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE production_outputs (
+  id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+  batch_id     BIGINT NOT NULL,
+  product_id   BIGINT NOT NULL,
+  warehouse_id BIGINT NULL,
+  quantity     DECIMAL(14,3) NOT NULL,
+  CONSTRAINT fk_po_batch FOREIGN KEY (batch_id) REFERENCES production_batches(id) ON DELETE CASCADE,
+  CONSTRAINT fk_po_prod  FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB;
 
 -- ============ شیر ============

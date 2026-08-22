@@ -17,6 +17,7 @@ import receiptRoutes from './routes/receipts.js';
 import meRoutes from './routes/me.js';
 import inventoryRoutes from './routes/inventory.js';
 import dashboardRoutes from './routes/dashboard.js';
+import productionRoutes from './routes/production.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -83,6 +84,7 @@ app.use('/api/branches', staffRequired, branchRoutes);
 app.use('/api/users', staffRequired, userRoutes);
 app.use('/api/inventory', staffRequired, inventoryRoutes);
 app.use('/api/dashboard', staffRequired, dashboardRoutes);
+app.use('/api/production', staffRequired, productionRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {

@@ -59,6 +59,9 @@
   .section { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
   .section h4 { margin:0 0 10px; font-size:14px; }
   .sum { background:#f8fafb; border-radius:8px; padding:10px 12px; margin-top:6px; font-size:14px; }
+  .drow { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px solid var(--line); }
+  .drow:last-child { border-bottom:none; }
+  .drow span { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -67,6 +70,7 @@
   <nav id="nav" class="hidden">
     <button data-view="dashboard" class="active staff-only" onclick="showView('dashboard')">داشبورد</button>
     <button data-view="ops" class="staff-only" onclick="showView('ops')">عملیات</button>
+    <button data-view="production" class="staff-only" onclick="showView('production')">تولید</button>
     <button data-view="inventory" class="staff-only" onclick="showView('inventory')">انبار</button>
     <button data-view="sites" class="admin-only" onclick="showView('sites')">سایت‌ها</button>
     <button data-view="users" class="admin-only" onclick="showView('users')">کاربران</button>
@@ -85,26 +89,65 @@
   </div>
 </div>
 
-<!-- ===== داشبورد امروز ===== -->
+<!-- ===== داشبورد مدیریت ===== -->
 <div id="view-dashboard" class="wrap hidden">
   <div class="card">
     <div class="row" style="justify-content:space-between; align-items:baseline">
-      <h3 style="margin:0">📊 خلاصهٔ امروز</h3>
+      <h3 style="margin:0">📊 داشبورد مدیریت</h3>
       <span class="muted">امروز: <b id="dToday">—</b></span>
     </div>
-    <div class="grid" style="margin-top:14px">
-      <div class="stat payable"><div class="lbl">شیر دریافتی امروز</div><div class="val"><span id="dMilkKg">—</span> kg</div></div>
-      <div class="stat"><div class="lbl">ارزش شیر امروز (ریال)</div><div class="val" id="dMilkVal">—</div></div>
-      <div class="stat"><div class="lbl">کالاهای تحویلی امروز (ریال)</div><div class="val" id="dGoods">—</div></div>
-      <div class="stat"><div class="lbl">علی‌الحساب‌های امروز (ریال)</div><div class="val" id="dOnAcc">—</div></div>
-      <div class="stat"><div class="lbl">دریافتی از مشتری امروز (ریال)</div><div class="val" id="dReceived">—</div></div>
-      <div class="stat"><div class="lbl">تعداد دامدار امروز</div><div class="val" id="dFarmers">—</div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); margin-bottom:16px">
+    <div class="card" style="margin:0">
+      <h3>🥛 ایستگاه شیر</h3>
+      <div class="drow"><span>دریافت امروز</span><b><span id="dMilkKg">—</span> kg</b></div>
+      <div class="drow"><span>ارزش امروز</span><b id="dMilkVal">—</b></div>
+      <div class="drow"><span>دامدار امروز</span><b id="dFarmers">—</b></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>🏭 سالن تولید</h3>
+      <div class="drow"><span>شیر مصرفی امروز</span><b><span id="dProdMilk">—</span> kg</b></div>
+      <div class="drow"><span>بَچ امروز</span><b id="dProdBatches">—</b></div>
+      <div id="dProdOut" class="muted" style="margin-top:6px"></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>🏪 فروشگاه</h3>
+      <div class="drow"><span>فروش امروز</span><b id="dStoreVal">—</b></div>
+      <div class="drow"><span>تعداد فاکتور</span><b id="dStoreCount">—</b></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>🚚 پخش</h3>
+      <div class="drow"><span>سفارش امروز</span><b id="dDistOrders">—</b></div>
+      <div class="drow"><span>تحویل‌شده</span><b class="credit" id="dDistDelivered">—</b></div>
+      <div class="drow"><span>باقیمانده</span><b class="debit" id="dDistRemaining">—</b></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>💰 حساب‌ها</h3>
+      <div class="drow"><span>طلب از مشتریان</span><b class="debit" id="dReceivable">—</b></div>
+      <div class="drow"><span>بدهی به دامداران</span><b class="credit" id="dPayable">—</b></div>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>💵 نقدینگی امروز</h3>
+      <div class="drow"><span>علی‌الحساب پرداختی</span><b id="dOnAcc">—</b></div>
+      <div class="drow"><span>دریافت از مشتری</span><b id="dReceived">—</b></div>
+      <div class="drow"><span>کالای تحویلی</span><b id="dGoods">—</b></div>
     </div>
   </div>
+
+  <div class="card">
+    <h3>🧀 روند فراوری شیر به محصولات (این ماه)</h3>
+    <div class="drow"><span>شیر ورودی این ماه</span><b><span id="dProcMilk">—</span> kg</b></div>
+    <table style="margin-top:8px">
+      <thead><tr><th>محصول تولیدشده</th><th>مقدار این ماه</th><th>نسبت از شیر</th></tr></thead>
+      <tbody id="dProcTable"></tbody>
+    </table>
+  </div>
+
   <div class="card">
     <h3>شیر امروز به تفکیک دامدار</h3>
     <table>
-      <thead><tr><th>دامدار</th><th>شیر امروز</th><th>ارزش شیر</th><th>کالای خریداری‌شده</th></tr></thead>
+      <thead><tr><th>دامدار</th><th>شیر امروز</th><th>ارزش شیر</th></tr></thead>
       <tbody id="dFarmerTable"></tbody>
     </table>
   </div>
@@ -233,6 +276,32 @@
     <table>
       <thead><tr><th>کالا</th><th>دسته</th><th>واحد</th><th>وارد شده</th><th>فروش/خروج</th><th>موجودی فعلی</th></tr></thead>
       <tbody id="invTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== نمای تولید (کارمند) ===== -->
+<div id="view-production" class="wrap hidden">
+  <div class="card">
+    <h3>🏭 ثبت تولید (فراوری شیر خام به محصولات)</h3>
+    <div class="row">
+      <label style="margin:0">شیر خام مصرفی (کیلو):</label>
+      <input id="prMilk" type="number" step="0.001" placeholder="مثلاً ۲۰۰۰" style="width:150px">
+      <select id="prWh"></select>
+    </div>
+    <h4 style="margin:12px 0 6px">محصولات تولیدشده:</h4>
+    <div id="prOutputs"></div>
+    <button class="ghost" onclick="prAddRow()">+ افزودن محصول</button>
+    <div class="row" style="justify-content:flex-end; margin-top:12px">
+      <button onclick="prSubmit()">ثبت بَچ تولید</button>
+    </div>
+    <div id="prErr" class="muted" style="color:var(--red)"></div>
+  </div>
+  <div class="card">
+    <h3>بَچ‌های اخیر تولید</h3>
+    <table>
+      <thead><tr><th>کد بَچ</th><th>تاریخ</th><th>شیر مصرفی</th><th>محصولات</th></tr></thead>
+      <tbody id="prTable"></tbody>
     </table>
   </div>
 </div>
@@ -416,13 +485,14 @@ async function boot() {
 }
 
 function showView(v) {
-  ['dashboard','ops','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+  ['dashboard','ops','production','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
   document.getElementById('view-'+v).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view===v));
   if (v==='dashboard') loadDashboard();
   if (v==='sites') loadSites();
   if (v==='users') loadUsers();
   if (v==='inventory') loadInventory();
+  if (v==='production') loadProduction();
 }
 
 /* ---------- عملیات / اشخاص ---------- */
@@ -604,21 +674,77 @@ async function linkBale(id) {
   catch(e){ alert(e.message); }
 }
 
-/* ---------- داشبورد امروز ---------- */
+/* ---------- داشبورد مدیریت ---------- */
 async function loadDashboard() {
   const d = await api('/dashboard');
   dToday.textContent = d.date_jalali;
-  dMilkKg.textContent = fmt(d.milk_today.kg);
-  dMilkVal.textContent = fmt(d.milk_today.value);
-  dGoods.textContent = fmt(d.goods_today);
-  dOnAcc.textContent = fmt(d.onaccount_today);
-  dReceived.textContent = fmt(d.received_today);
-  dFarmers.textContent = fmt(d.milk_today.farmers);
+  // ایستگاه شیر
+  dMilkKg.textContent = fmt(d.station.kg);
+  dMilkVal.textContent = fmt(d.station.value);
+  dFarmers.textContent = fmt(d.station.farmers);
+  // تولید امروز
+  dProdMilk.textContent = fmt(d.production.milk_in);
+  dProdBatches.textContent = fmt(d.production.batches);
+  dProdOut.textContent = d.production.outputs.length
+    ? d.production.outputs.map(o=>`${o.name}: ${fmt(o.qty)} ${o.unit||''}`).join(' · ') : 'امروز تولیدی ثبت نشده';
+  // فروشگاه / پخش
+  dStoreVal.textContent = fmt(d.store.value);
+  dStoreCount.textContent = fmt(d.store.count) + ' فاکتور';
+  dDistOrders.textContent = fmt(d.distribution.orders) + ' فاکتور';
+  dDistDelivered.textContent = fmt(d.distribution.delivered);
+  dDistRemaining.textContent = fmt(d.distribution.remaining);
+  // حساب‌ها / نقدینگی
+  dReceivable.textContent = fmt(d.accounts.receivable);
+  dPayable.textContent = fmt(d.accounts.payable);
+  dOnAcc.textContent = fmt(d.cash.onaccount);
+  dReceived.textContent = fmt(d.cash.received);
+  dGoods.textContent = fmt(d.cash.goods);
+  // روند فراوری این ماه
+  dProcMilk.textContent = fmt(d.processing.milk_in);
+  const milkIn = d.processing.milk_in || 0;
+  dProcTable.innerHTML = d.processing.outputs.map(o=>{
+    const pct = milkIn ? Math.round(o.qty/milkIn*100) : 0;
+    return `<tr><td>${o.name}</td><td><b>${fmt(o.qty)}</b> ${o.unit||''}</td><td>${pct}٪</td></tr>`;
+  }).join('') || '<tr><td colspan="3" class="muted">این ماه تولیدی ثبت نشده</td></tr>';
+  // شیر امروز به تفکیک دامدار
   dFarmerTable.innerHTML = d.by_farmer.map(f => `
-    <tr><td>${f.fullname}</td><td><b>${fmt(f.kg)}</b> kg</td>
-    <td class="credit">${fmt(f.value)}</td>
-    <td class="debit">${f.goods ? fmt(f.goods) : '—'}</td></tr>`).join('')
-    || '<tr><td colspan="4" class="muted">امروز شیری ثبت نشده</td></tr>';
+    <tr><td>${f.fullname}</td><td><b>${fmt(f.kg)}</b> kg</td><td class="credit">${fmt(f.value)}</td></tr>`).join('')
+    || '<tr><td colspan="3" class="muted">امروز شیری ثبت نشده</td></tr>';
+}
+
+/* ---------- تولید ---------- */
+async function loadProduction() {
+  prWh.innerHTML = '<option value="">— بدون انبار —</option>' +
+    (await api('/inventory/warehouses')).map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  prOutputs.innerHTML=''; prAddRow();
+  const rows = await api('/production');
+  prTable.innerHTML = rows.map(b=>`<tr><td>${b.batch_code}</td><td>${b.started_jalali}</td>
+    <td>${fmt(b.milk_kg)} kg</td><td class="muted">${b.outputs||'—'}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">بَچی ثبت نشده</td></tr>';
+}
+function prAddRow() {
+  const div=document.createElement('div'); div.className='item-row'; div.style.marginBottom='6px';
+  div.innerHTML = `<select class="pr-prod"><option value="">— محصول —</option>
+    ${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>
+    <input class="pr-qty" type="number" step="0.001" placeholder="مقدار">
+    <span></span>
+    <button class="x" onclick="this.parentElement.remove()">×</button>`;
+  prOutputs.appendChild(div);
+}
+async function prSubmit() {
+  prErr.textContent='';
+  const milk_kg = Number(prMilk.value);
+  const wh = prWh.value || null;
+  const outputs = [...prOutputs.querySelectorAll('.item-row')].map(r=>({
+    product_id:Number(r.querySelector('.pr-prod').value),
+    quantity:Number(r.querySelector('.pr-qty').value),
+    warehouse_id: wh ? Number(wh) : null,
+  })).filter(o=>o.product_id && o.quantity>0);
+  if (!milk_kg || !outputs.length) { prErr.textContent='شیر ورودی و حداقل یک محصول لازم است'; return; }
+  try {
+    await api('/production', { method:'POST', body:{ milk_kg, outputs }});
+    prMilk.value=''; loadProduction();
+  } catch(e){ prErr.textContent=e.message; }
 }
 
 /* ---------- انبار (کارمند) ---------- */
