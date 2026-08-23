@@ -10,18 +10,24 @@
   :root { --bg:#f4f6f8; --card:#fff; --line:#e3e8ee; --pri:#0d7a5f; --pri2:#0a6350;
           --txt:#1a2027; --muted:#6b7683; --red:#c0392b; --green:#1e8449; }
   * { box-sizing:border-box; font-family:Tahoma,"Segoe UI",sans-serif; }
-  body { margin:0; background:var(--bg); color:var(--txt); }
-  header { background:var(--pri); color:#fff; padding:12px 20px; display:flex;
-           justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
-  header h1 { font-size:17px; margin:0; }
-  nav { display:flex; gap:6px; }
-  nav button { background:rgba(255,255,255,.15); color:#fff; border:none; padding:7px 14px;
-               border-radius:8px; cursor:pointer; font-size:13px; }
+  html, body { max-width:100%; overflow-x:hidden; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-size:15px; line-height:1.6;
+         -webkit-text-size-adjust:100%; }
+  header { background:var(--pri); color:#fff; padding:12px 16px; display:flex;
+           justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
+           position:sticky; top:0; z-index:20; }
+  header h1 { font-size:16px; margin:0; }
+  /* نوار پیمایش: در موبایل قابل اسکرول افقی */
+  nav { display:flex; gap:6px; overflow-x:auto; max-width:100%; -webkit-overflow-scrolling:touch;
+        scrollbar-width:none; }
+  nav::-webkit-scrollbar { display:none; }
+  nav button { background:rgba(255,255,255,.15); color:#fff; border:none; padding:9px 14px;
+               border-radius:8px; cursor:pointer; font-size:14px; white-space:nowrap; min-height:40px; }
   nav button.active { background:#fff; color:var(--pri); font-weight:700; }
   .wrap { max-width:1100px; margin:18px auto; padding:0 16px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
-  input,select,button,textarea { font-size:14px; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; }
-  button { background:var(--pri); color:#fff; border:none; cursor:pointer; }
+  input,select,button,textarea { font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; min-height:44px; }
+  button { background:var(--pri); color:#fff; border:none; cursor:pointer; min-height:44px; }
   button:hover { background:var(--pri2); }
   button.ghost { background:#eef2f5; color:var(--txt); }
   button.red { background:var(--red); }
@@ -62,6 +68,26 @@
   .drow { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px solid var(--line); }
   .drow:last-child { border-bottom:none; }
   .drow span { color:var(--muted); }
+  /* چیدمان دو‌ستونهٔ عملیات + اسکرول جداول عریض داخل کارت (نه کل صفحه) */
+  .ops-grid { display:grid; grid-template-columns:320px 1fr; gap:16px; }
+  .card { overflow-x:auto; }
+  th, td { white-space:nowrap; }
+  /* ===== موبایل ===== */
+  @media (max-width:768px) {
+    .wrap { padding:0 10px; margin:12px auto; }
+    .ops-grid { grid-template-columns:1fr; }
+    header { padding:10px 12px; }
+    header h1 { font-size:15px; }
+    .card { padding:13px; border-radius:10px; }
+    .stat .val { font-size:18px; }
+    .item-row { grid-template-columns:1fr 72px 92px 40px; gap:5px; }
+    .modal { padding:16px; border-radius:12px 12px 0 0; }
+    .overlay { padding:0; align-items:flex-end; }   /* مودال از پایین بالا می‌آید */
+    .modal { width:100%; max-height:92vh; overflow-y:auto; }
+    h3 { font-size:15px; }
+    .row > input, .row > select { flex:1 1 100%; }   /* ورودی‌های فرم تمام‌عرض */
+    .row > button { flex:1 1 auto; }
+  }
 </style>
 </head>
 <body>
@@ -74,6 +100,7 @@
     <button data-view="inventory" class="staff-only" onclick="showView('inventory')">انبار</button>
     <button data-view="sites" class="admin-only" onclick="showView('sites')">سایت‌ها</button>
     <button data-view="users" class="admin-only" onclick="showView('users')">کاربران</button>
+    <button data-view="audit" class="admin-only" onclick="showView('audit')">لاگ‌ها</button>
   </nav>
   <div id="who" class="hidden"><span id="whoName"></span> · <a href="#" id="logout" style="color:#fff">خروج</a></div>
 </header>
@@ -155,7 +182,7 @@
 
 <!-- ===== نمای عملیات ===== -->
 <div id="view-ops" class="wrap hidden">
-  <div style="display:grid; grid-template-columns:320px 1fr; gap:16px">
+  <div class="ops-grid">
     <div class="card">
       <h3>اشخاص</h3>
       <div class="row">
@@ -276,6 +303,23 @@
     <table>
       <thead><tr><th>کالا</th><th>دسته</th><th>واحد</th><th>وارد شده</th><th>فروش/خروج</th><th>موجودی فعلی</th></tr></thead>
       <tbody id="invTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== نمای لاگ‌ها (ادمین) ===== -->
+<div id="view-audit" class="wrap hidden">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">📋 لاگ تغییرات سیستم</h3>
+      <input id="auditQ" placeholder="جستجو..." oninput="loadAudit()" style="width:200px">
+    </div>
+    <p class="muted" style="margin:8px 0 0">هر عملیات هر کاربری (ثبت، ویرایش، پرداخت، سفارش، ...) اینجا ثبت می‌شود.</p>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>زمان</th><th>کاربر</th><th>عملیات</th><th>بخش</th><th>مسیر</th><th>وضعیت</th><th>IP</th></tr></thead>
+      <tbody id="auditTable"></tbody>
     </table>
   </div>
 </div>
@@ -485,7 +529,7 @@ async function boot() {
 }
 
 function showView(v) {
-  ['dashboard','ops','production','inventory','sites','users','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
+  ['dashboard','ops','production','inventory','sites','users','audit','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
   document.getElementById('view-'+v).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view===v));
   if (v==='dashboard') loadDashboard();
@@ -493,6 +537,7 @@ function showView(v) {
   if (v==='users') loadUsers();
   if (v==='inventory') loadInventory();
   if (v==='production') loadProduction();
+  if (v==='audit') loadAudit();
 }
 
 /* ---------- عملیات / اشخاص ---------- */
@@ -710,6 +755,22 @@ async function loadDashboard() {
   dFarmerTable.innerHTML = d.by_farmer.map(f => `
     <tr><td>${f.fullname}</td><td><b>${fmt(f.kg)}</b> kg</td><td class="credit">${fmt(f.value)}</td></tr>`).join('')
     || '<tr><td colspan="3" class="muted">امروز شیری ثبت نشده</td></tr>';
+}
+
+/* ---------- لاگ‌ها ---------- */
+const ACTION_FA = { POST:'ثبت', PUT:'ویرایش', PATCH:'ویرایش', DELETE:'حذف' };
+async function loadAudit() {
+  const q = auditQ.value ? '?q='+encodeURIComponent(auditQ.value) : '';
+  const rows = await api('/audit'+q);
+  auditTable.innerHTML = rows.map(r=>`
+    <tr><td class="muted" style="white-space:nowrap">${r.when}</td>
+    <td>${r.actor}</td>
+    <td>${ACTION_FA[r.action]||r.action}</td>
+    <td>${r.resource||'—'}</td>
+    <td class="muted">${r.path||''}</td>
+    <td class="${r.status>=400?'debit':'credit'}">${r.status||''}</td>
+    <td class="muted">${r.ip||'—'}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">لاگی نیست</td></tr>';
 }
 
 /* ---------- تولید ---------- */

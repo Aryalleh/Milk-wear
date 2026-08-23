@@ -18,6 +18,8 @@ import meRoutes from './routes/me.js';
 import inventoryRoutes from './routes/inventory.js';
 import dashboardRoutes from './routes/dashboard.js';
 import productionRoutes from './routes/production.js';
+import auditRoutes from './routes/audit.js';
+import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -59,6 +61,9 @@ app.use(session({
   cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 12 * 60 * 60 * 1000 },
 }));
 
+// ثبت خودکار همهٔ عملیات تغییردهنده در لاگ (بعد از session تا کاربر مشخص باشد)
+app.use(auditLogger);
+
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // اپ تک‌صفحه‌ای است؛ /login (و /app) هم همان صفحهٔ اصلی را می‌دهد
@@ -85,6 +90,7 @@ app.use('/api/users', staffRequired, userRoutes);
 app.use('/api/inventory', staffRequired, inventoryRoutes);
 app.use('/api/dashboard', staffRequired, dashboardRoutes);
 app.use('/api/production', staffRequired, productionRoutes);
+app.use('/api/audit', staffRequired, auditRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {
