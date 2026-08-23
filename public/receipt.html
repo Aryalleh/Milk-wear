@@ -6,12 +6,19 @@
   <title>فاکتور</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
     body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; }
     .receipt-card { background:#fff; border-radius:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,.08); }
-    @media print { .no-print{display:none!important;} body{background:#fff;padding:0;} .receipt-card{box-shadow:none;border-radius:0;} @page{margin:6mm;} }
+    /* چاپ: سیاه‌سفید، بدون خاکستری و بدون پس‌زمینه */
+    @media print {
+      .no-print{ display:none!important; }
+      body{ background:#fff!important; padding:0; }
+      .receipt-card{ box-shadow:none!important; border-radius:0; }
+      .receipt-card *{ color:#000!important; background:transparent!important; border-color:#000!important; box-shadow:none!important; }
+      @page{ margin:6mm; }
+    }
   </style>
 </head>
 <body class="p-4 pb-28">
@@ -63,8 +70,11 @@
           <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بدهکار (خرید):</span><span class="font-bold">${fmt(rc.purchase_amount)}</span></div>
           <div class="flex justify-between items-center border-t border-slate-200 pt-3"><span class="font-black text-slate-800">خالص فاکتور:</span><span class="text-xl font-black text-green-700">${fmt(rc.net_amount)} <span class="text-[10px]">ریال</span></span></div>
         </div>
-        <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">اسکن برای مشاهدهٔ فاکتور · MILKWEAR</p></div>`;
-      if(window.QRCode) QRCode.toCanvas(document.getElementById('qr'), qrUrl, {width:110, margin:1, color:{dark:'#1b4332',light:'#ffffff'}});
+        <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">اسکن برای مشاهدهٔ فاکتور · MILKWEAR</p></div>`;
+      try {
+        if(window.QRious){ new QRious({ element:document.getElementById('qr'), value:qrUrl, size:120, foreground:'#000000', background:'#ffffff', level:'M' }); }
+        else { document.getElementById('qrLink').textContent = qrUrl; }
+      } catch(err){ document.getElementById('qrLink').textContent = qrUrl; }
       if(qid) fetch('/api/receipts/'+qid+'/printed',{method:'POST',credentials:'same-origin'}).catch(()=>{});
     }catch(e){ card.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
   })();

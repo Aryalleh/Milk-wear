@@ -17,14 +17,13 @@ export async function baleSendMessage(chatId, text, replyMarkup = null) {
   }
 }
 
-// دیپ‌لینک باز کردن فاکتور در مینی‌اپ بله
-export function receiptDeepLink(receiptId) {
-  const bot = process.env.BALE_BOT_USERNAME;
-  if (!bot) return null;
-  return `https://ble.ir/${bot}?startapp=receipt_${receiptId}`;
+// لینک رنگیِ فاکتور (نمایش با توکن هش‌شده) — قابل باز شدن داخل بله
+export function receiptColorLink(token) {
+  const base = (process.env.APP_PUBLIC_URL || '').replace(/\/$/, '');
+  return token && base ? `${base}/r/${token}` : null;
 }
 
-// اطلاع‌رسانی فاکتور به شخص در بله (متن خلاصه + لینک مشاهده/چاپ)
+// اطلاع‌رسانی فاکتور به شخص در بله + لینک فاکتور رنگی
 export async function notifyReceipt(person, receipt) {
   if (!person?.bale_user_id) return { ok: false, skipped: true };
   const fmt = (n) => Number(n || 0).toLocaleString('fa-IR');
@@ -36,8 +35,9 @@ export async function notifyReceipt(person, receipt) {
   if (Number(receipt.purchase_amount) > 0) lines.push(`بدهکار خرید: ${fmt(receipt.purchase_amount)} ریال`);
   lines.push(`مانده کل حساب: ${fmt(Math.abs(receipt.balance_after))} ${receipt.balance_after >= 0 ? '(بستانکار)' : '(بدهکار)'}`);
 
-  const link = receiptDeepLink(receipt.id);
-  const markup = link ? { inline_keyboard: [[{ text: '📄 مشاهده و چاپ فاکتور', web_app: { url: link } }]] } : null;
+  const link = receiptColorLink(receipt.public_token);
+  if (link) lines.push(`\n📄 مشاهدهٔ فاکتور رنگی:\n${link}`);
+  const markup = link ? { inline_keyboard: [[{ text: '📄 مشاهدهٔ فاکتور رنگی', url: link }]] } : null;
 
   return baleSendMessage(person.bale_user_id, lines.join('\n'), markup);
 }

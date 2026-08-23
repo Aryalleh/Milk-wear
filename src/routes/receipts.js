@@ -111,7 +111,7 @@ router.post('/', wrap(async (req, res) => {
       [branch_id || null, receiptNo, token, person_id, month, milkDeliveryId, orderId,
        milkAmount, purchaseAmount, netAmount, balanceAfter, note || null, uid]
     );
-    return { id: rc.insertId, receipt_no: receiptNo,
+    return { id: rc.insertId, receipt_no: receiptNo, public_token: token,
              milk_amount: milkAmount, purchase_amount: purchaseAmount,
              net_amount: netAmount, balance_after: balanceAfter };
   });
