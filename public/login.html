@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ورود — سامانه لبنیات</title>
+  <script src="https://tapi.bale.ai/miniapp.js?3"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="login-bg min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-20 h-20 bg-dairy-dark rounded-2xl shadow-lg mb-4 text-white"><i class="fa-solid fa-cow text-4xl"></i></div>
+      <h1 class="text-2xl font-black text-green-900">سامانه مدیریت لبنیات</h1>
+      <p class="text-green-700 mt-2">خوش آمدید، لطفاً وارد حساب خود شوید</p>
+    </div>
+    <div class="skeu-card p-8 md:p-10" style="border-radius:24px">
+      <div class="space-y-6">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">نام کاربری</label>
+          <div class="relative"><span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400"><i class="fa-solid fa-user"></i></span>
+            <input id="u" type="text" value="admin" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">رمز عبور</label>
+          <div class="relative"><span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400"><i class="fa-solid fa-lock"></i></span>
+            <input id="p" type="password" value="admin123" onkeydown="if(event.key==='Enter')doLogin()" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800"></div>
+          <p id="err" class="text-red-600 text-xs mt-2 font-medium"></p>
+        </div>
+        <button onclick="doLogin()" class="btn-skeu w-full py-4 rounded-xl text-white font-bold text-lg">ورود به سامانه</button>
+      </div>
+      <div class="mt-8 pt-8 border-t border-gray-100 text-center">
+        <p class="text-sm text-gray-500">ورود از طریق پیام‌رسان بله به‌صورت خودکار انجام می‌شود</p>
+      </div>
+    </div>
+    <p class="text-center text-gray-400 text-xs mt-8">سامانه یکپارچه مدیریت زنجیره لبنیات</p>
+  </div>
+
+<script>
+  function go(user){ location.href = user.kind==='person' ? '/panel' : '/dashboard'; }
+  async function doLogin(){
+    const username=document.getElementById('u').value.trim(), password=document.getElementById('p').value;
+    if(!username||!password){ document.getElementById('err').textContent='نام کاربری و رمز را وارد کنید'; return; }
+    try { const d=await api('/auth/login',{method:'POST',body:{username,password}}); go(d.user); }
+    catch(e){ document.getElementById('err').textContent=e.message; }
+  }
+  // اگر از قبل وارد است → مستقیم برو؛ داخل بله → لاگین خودکار
+  (async function(){
+    const wa = window.Bale && window.Bale.WebApp; if(wa){ try{ wa.ready(); wa.expand(); }catch{} }
+    if (wa && wa.initData){ try{ const d=await api('/auth/bale',{method:'POST',body:{initData:wa.initData}}); go(d.user); return; }catch(e){ document.getElementById('err').textContent = e.message==='unauthorized'?'':e.message; } }
+    const u = await currentUser(); if(u) go(u);
+  })();
+</script>
+</body>
+</html>

@@ -34,6 +34,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, '../public'), {
+  index: false,   // '/' توسط روت اختصاصی مدیریت شود، نه index.html
   setHeaders: (res, filePath) => {
     // HTML همیشه تازه بارگذاری شود تا نسخهٔ قدیمیِ کش‌شده باعث خطای ورود نشود
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
@@ -67,9 +68,15 @@ app.use(auditLogger);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
-// اپ تک‌صفحه‌ای است؛ /login (و /app) هم همان صفحهٔ اصلی را می‌دهد
-app.get(['/login', '/app'], (req, res) =>
-  res.sendFile(path.join(__dirname, '../public/index.html')));
+// ---- روت‌های چندصفحه‌ای (هر روت یک فایل) ----
+const pub = (f) => (req, res) => res.sendFile(path.join(__dirname, '../public/' + f));
+app.get('/', (req, res) => res.redirect('/dashboard'));
+app.get('/login', pub('login.html'));
+app.get('/dashboard', pub('dashboard.html'));
+app.get('/app', pub('index.html'));   // اپ تک‌صفحه‌ای قدیمی (موقتاً برای صفحات درحال‌بازسازی)
+// صفحاتی که هنوز به فایل جدا منتقل نشده‌اند → موقتاً اپ قدیمی
+['/operations', '/production', '/inventory', '/settings', '/panel'].forEach((r) =>
+  app.get(r, pub('index.html')));
 
 app.use('/api/auth', authRoutes);
 

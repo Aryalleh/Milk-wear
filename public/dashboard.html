@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>داشبورد مدیریت</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6">
+
+  <!-- ===== دسکتاپ (طرح ۰۱) ===== -->
+  <div class="hidden md:block">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">داشبورد مدیریت <span id="dToday" class="text-gray-500 text-base font-normal"></span></h2>
+      <span class="text-xs text-gray-400"><i class="fa-solid fa-circle text-green-500 text-[8px] ml-1 animate-pulse"></i> آپدیت زنده</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🥛 ایستگاه شیر</h3><i class="fa-solid fa-truck-ramp-box text-green-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">دریافت امروز</span><span class="font-bold text-green-700"><span id="dMilkKg">—</span> kg</span></div>
+        <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">ارزش امروز (ریال)</span><span class="font-bold" id="dMilkVal">—</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">دامدار امروز</span><span class="font-bold" id="dFarmers">—</span></div></div></div>
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🏭 سالن تولید</h3><i class="fa-solid fa-industry text-blue-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">شیر مصرفی امروز</span><span class="font-bold" id="dProdMilk">—</span></div>
+        <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">بَچ امروز</span><span class="font-bold" id="dProdBatches">—</span></div>
+        <div class="pt-1"><span class="text-gray-500 text-xs block mb-1">محصولات امروز:</span><div id="dProdOut" class="flex flex-wrap gap-1"></div></div></div></div>
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🏪 فروشگاه</h3><i class="fa-solid fa-cart-shopping text-amber-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">فروش امروز</span><span class="font-bold text-amber-700" id="dStoreVal">—</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">تعداد فاکتور</span><span class="font-bold" id="dStoreCount">—</span></div></div></div>
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🚚 پخش</h3><i class="fa-solid fa-box-open text-purple-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">سفارش امروز</span><span class="font-bold" id="dDistOrders">—</span></div>
+        <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">تحویل‌شده</span><span class="font-bold text-green-600" id="dDistDelivered">—</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">باقیمانده</span><span class="font-bold text-red-600" id="dDistRemaining">—</span></div></div></div>
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">💰 حساب‌ها</h3><i class="fa-solid fa-hand-holding-dollar text-red-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">طلب از مشتریان</span><span class="font-bold text-red-600" id="dReceivable">—</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">بدهی به دامداران</span><span class="font-bold text-green-600" id="dPayable">—</span></div></div></div>
+      <div class="skeu-card p-4"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🧪 کیفیت و مخزن</h3><i class="fa-solid fa-flask-vial text-cyan-600"></i></div>
+        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">سطح مخزن</span><span class="font-bold text-cyan-700"><span id="dSiloPct">—</span>٪</span></div>
+        <div class="flex justify-between"><span class="text-gray-500">ضایعات امروز</span><span class="font-bold text-red-600" id="dWaste">—</span></div></div>
+        <div class="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden"><div id="dSiloBar" class="h-full bg-cyan-500 transition-all" style="width:0%"></div></div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">روند فراوری این ماه (محصولات)</h3><div id="dProcChart" class="h-[280px]"></div></div>
+      <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">شیر امروز به تفکیک دامدار</h3><div id="dFarmerChart" class="h-[280px]"></div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">جریان شیر و ضایعات (۷ روز)</h3><div id="dWeekChart" class="h-[260px]"></div></div>
+      <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">میانگین چربی شیر امروز</h3>
+        <div class="flex justify-between text-xs text-gray-500 mb-2"><span>کم‌چرب</span><span class="font-bold text-gray-800">چربی: <span id="dFatVal">—</span>٪</span><span>پرچرب</span></div>
+        <div class="h-3 rounded-full bg-gradient-to-l from-emerald-400 via-amber-300 to-red-400 relative">
+          <div id="dFatThumb" class="absolute -top-1.5 w-6 h-6 rounded-full bg-white border-4 border-dairy-gold shadow -mr-3" style="right:50%"></div></div>
+        <p class="text-xs text-gray-400 mt-6 text-center">موقعیت نشانگر بر اساس میانگین چربی محموله‌های امروز</p></div>
+    </div>
+  </div>
+
+  <!-- ===== موبایل (طرح ۰۹) ===== -->
+  <div class="md:hidden space-y-6" style="background:#faf9f5">
+    <section class="rounded-[28px] bg-dairy-moss text-white p-6 shadow-lifted relative overflow-hidden">
+      <div class="absolute -left-10 -top-10 w-40 h-40 rounded-full bg-white/5 blur-2xl"></div>
+      <p class="text-xs text-emerald-200/80 mb-2">مجموع شیر دریافتی امروز</p>
+      <div class="flex items-end gap-2"><span id="mMilkKg" class="text-[46px] leading-none font-extrabold tracking-tighter">۰</span><span class="text-lg text-emerald-200/80 mb-1.5">کیلو</span></div>
+      <p id="mFarmersLine" class="text-xs text-emerald-200/70 mt-1"></p>
+      <div id="mSpark" class="mt-4 -mx-2"></div>
+    </section>
+    <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line">
+      <div class="flex items-center justify-between mb-4"><h2 class="text-base font-bold">فرآوری امروز (شیر → محصولات)</h2><span id="mBatches" class="text-xs text-dairy-muted"></span></div>
+      <div id="mProdList" class="grid grid-cols-3 gap-3"></div>
+    </section>
+    <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line">
+      <h2 class="text-base font-bold mb-4">شیر امروز به تفکیک دامدار</h2><div id="mFarmerList" class="space-y-3"></div>
+    </section>
+    <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line">
+      <div class="flex items-center justify-between mb-1"><h2 class="text-base font-bold">جریان شیر و ضایعات</h2><span class="text-xs text-dairy-muted">۷ روز</span></div>
+      <div class="flex gap-6 mb-2"><div><span class="inline-block w-2 h-2 rounded-full bg-dairy-leaf ml-1.5"></span><span class="text-xs text-dairy-muted">دریافت</span></div><div><span class="inline-block w-2 h-2 rounded-full bg-dairy-coral ml-1.5"></span><span class="text-xs text-dairy-muted">ضایعات</span></div></div>
+      <div id="mFlow" class="-mx-2"></div>
+    </section>
+    <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line">
+      <div class="flex items-center justify-between mb-4"><h2 class="text-base font-bold">سطح مخزن و چربی</h2><span class="text-xs text-dairy-muted">زنده</span></div>
+      <div class="wave-tank rounded-2xl bg-dairy-moss h-32 flex items-end justify-center pb-3"><span class="relative z-10 text-white text-2xl font-bold"><span id="mSiloPct">۰</span>٪ پر</span></div>
+      <div class="mt-4">
+        <div class="flex justify-between text-xs text-dairy-muted mb-2"><span>کم‌چرب</span><span class="font-semibold text-dairy-ink">چربی: <span id="mFat">—</span>٪</span><span>پرچرب</span></div>
+        <div class="h-3 rounded-full bg-gradient-to-l from-emerald-400 via-amber-300 to-red-400 relative">
+          <div id="mFatThumb" class="absolute -top-1.5 w-6 h-6 rounded-full bg-white border-4 border-dairy-gold shadow -mr-3" style="right:50%"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+let chP, chF, chW, chSpark, chFlow;
+function fatPos(v){ if(v==null) return 50; return Math.max(0, Math.min(100, (v-1.5)/(6-1.5)*100)); }
+async function loadDashboard(){
+  const d = await api('/dashboard');
+  const set=(id,val)=>{ const e=document.getElementById(id); if(e) e.textContent=val; };
+  set('dToday','| امروز '+d.date_jalali);
+  set('dMilkKg',fmt(d.station.kg)); set('dMilkVal',fmt(d.station.value)); set('dFarmers',fmt(d.station.farmers)+' نفر');
+  set('dProdMilk',fmt(d.production.milk_in)+' kg'); set('dProdBatches',fmt(d.production.batches)+' بَچ');
+  document.getElementById('dProdOut').innerHTML = d.production.outputs.length? d.production.outputs.map(o=>`<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">${o.name} ${fmt(o.qty)}</span>`).join(''):'<span class="text-gray-400 text-xs">—</span>';
+  set('dStoreVal',fmt(d.store.value)); set('dStoreCount',fmt(d.store.count)+' فاکتور');
+  set('dDistOrders',fmt(d.distribution.orders)+' فاکتور'); set('dDistDelivered',fmt(d.distribution.delivered)); set('dDistRemaining',fmt(d.distribution.remaining));
+  set('dReceivable',fmt(d.accounts.receivable)); set('dPayable',fmt(d.accounts.payable));
+  set('dSiloPct',fmt(d.silo.pct)); document.getElementById('dSiloBar').style.width=d.silo.pct+'%'; set('dWaste',fmt(d.waste_today));
+  set('dFatVal', d.avg_fat_today!=null?fmt(d.avg_fat_today):'—'); document.getElementById('dFatThumb').style.right=fatPos(d.avg_fat_today)+'%';
+  // موبایل
+  set('mMilkKg',fmt(d.station.kg)); set('mFarmersLine',fmt(d.station.farmers)+' دامدار امروز'); set('mBatches',fmt(d.production.batches)+' بَچ امروز');
+  document.getElementById('mProdList').innerHTML = d.production.outputs.length? d.production.outputs.map(o=>`<div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3"><p class="text-[11px] text-dairy-muted mb-1">${o.name}</p><p class="text-base font-bold">${fmt(o.qty)} ${o.unit||''}</p></div>`).join(''):'<p class="text-dairy-muted text-sm col-span-3">امروز تولیدی ثبت نشده</p>';
+  document.getElementById('mFarmerList').innerHTML = d.by_farmer.length? d.by_farmer.map(f=>`<div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-dairy-leaf/10 text-dairy-leaf flex items-center justify-center"><i class="fa-solid fa-user"></i></div><div class="flex-1"><p class="text-sm font-semibold">${f.fullname}</p></div><span class="text-sm font-bold">${fmt(f.kg)} kg</span></div>`).join(''):'<p class="text-dairy-muted text-sm">امروز شیری ثبت نشده</p>';
+  set('mSiloPct',fmt(d.silo.pct)); set('mFat', d.avg_fat_today!=null?fmt(d.avg_fat_today):'—'); document.getElementById('mFatThumb').style.right=fatPos(d.avg_fat_today)+'%';
+  drawCharts(d);
+}
+function bar(el, series, cats, colors, opts={}){ if(!el) return null;
+  return new ApexCharts(el, { chart:{type:'bar',height:opts.h||260,fontFamily:'Vazirmatn',toolbar:{show:false}}, series, colors,
+    plotOptions:{bar:{borderRadius:6,columnWidth:'55%'}}, dataLabels:{enabled:false}, legend:{show:opts.legend||false,position:'bottom'},
+    grid:{borderColor:'#f1f0ea',strokeDashArray:4}, xaxis:{categories:cats,axisBorder:{show:false},axisTicks:{show:false},labels:{style:{colors:'#94a3b8',fontSize:'10px'}}},
+    yaxis:{labels:{style:{colors:'#94a3b8',fontSize:'10px'},formatter:v=>Math.abs(Number(v)).toLocaleString('fa-IR')}}, tooltip:{y:{formatter:v=>Number(v).toLocaleString('fa-IR')}} }); }
+function drawCharts(d){
+  if(typeof ApexCharts==='undefined') return;
+  [chP,chF,chW,chSpark,chFlow].forEach(c=>{try{c&&c.destroy();}catch{}});
+  chP=bar(document.getElementById('dProcChart'), [{name:'تولید',data:d.processing.outputs.map(o=>o.qty)}], d.processing.outputs.map(o=>o.name), ['#2d6a4f'],{h:280}); chP&&chP.render();
+  chF=bar(document.getElementById('dFarmerChart'), [{name:'شیر',data:d.by_farmer.map(f=>f.kg)}], d.by_farmer.map(f=>f.fullname), ['#40916c'],{h:280}); chF&&chF.render();
+  chW=bar(document.getElementById('dWeekChart'), [{name:'دریافت',data:d.week.milk},{name:'ضایعات',data:d.week.waste}], d.week.labels.map(l=>l.slice(5)), ['#10b981','#f87171'],{h:260,legend:true}); chW&&chW.render();
+  const spEl=document.getElementById('mSpark');
+  if(spEl){ chSpark=new ApexCharts(spEl,{chart:{type:'area',height:56,sparkline:{enabled:true},fontFamily:'Vazirmatn'},series:[{name:'شیر',data:d.week.milk}],stroke:{curve:'smooth',width:2},colors:['#ffffff'],fill:{type:'gradient',gradient:{opacityFrom:.35,opacityTo:0}},tooltip:{theme:'dark',x:{show:false},y:{formatter:v=>Number(v).toLocaleString('fa-IR')+' kg'}}}); chSpark.render(); }
+  chFlow=bar(document.getElementById('mFlow'), [{name:'دریافت',data:d.week.milk},{name:'ضایعات',data:d.week.waste}], d.week.labels.map(l=>l.slice(5)), ['#10b981','#f87171'],{h:200}); chFlow&&chFlow.render();
+}
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('dashboard','داشبورد'); live(loadDashboard, 15000); })();
+</script>
+</body>
+</html>
