@@ -20,3 +20,13 @@ body { font-family:'Vazirmatn',sans-serif; }
 .wave-tank::after { background:rgba(255,255,255,0.08); animation-delay:-3s; }
 @keyframes wave { from{transform:rotate(0)} to{transform:rotate(360deg)} }
 [x-cloak] { display:none !important; }
+/* پاپ‌آپ جزئیات شخص روی موبایل (bottom-sheet) */
+@media (max-width:767px){
+  #detail.sheet { position:fixed; inset:auto 0 0 0; max-height:88vh; overflow-y:auto; z-index:50;
+    background:#f3f4f6; border-radius:18px 18px 0 0; box-shadow:0 -12px 30px rgba(0,0,0,.2); padding:12px 12px 90px; }
+  #sheetBackdrop.show { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:49; }
+}
+@media (min-width:768px){ #sheetClose, #sheetBackdrop { display:none; } }
+.acc-head { cursor:pointer; }
+.acc-head .chev { transition:transform .2s; }
+.acc-head.open .chev { transform:rotate(-180deg); }
