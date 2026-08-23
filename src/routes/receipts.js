@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { pool, withTx } from '../db.js';
 import { postTransaction, resolveMilkPrice, recomputeBalance } from '../ledger.js';
 import { notifyReceipt } from '../bale.js';
@@ -100,13 +101,14 @@ router.post('/', wrap(async (req, res) => {
     const balanceAfter = await recomputeBalance(conn, person_id);
     const netAmount = milkAmount - purchaseAmount;
     const receiptNo = `RC${Date.now().toString().slice(-10)}`;
+    const token = crypto.randomBytes(16).toString('hex');
 
     const [rc] = await conn.query(
       `INSERT INTO receipts
-         (branch_id, receipt_no, person_id, year_month_jalali, milk_delivery_id, order_id,
+         (branch_id, receipt_no, public_token, person_id, year_month_jalali, milk_delivery_id, order_id,
           milk_amount, purchase_amount, net_amount, balance_after, note, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [branch_id || null, receiptNo, person_id, month, milkDeliveryId, orderId,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [branch_id || null, receiptNo, token, person_id, month, milkDeliveryId, orderId,
        milkAmount, purchaseAmount, netAmount, balanceAfter, note || null, uid]
     );
     return { id: rc.insertId, receipt_no: receiptNo,
@@ -126,40 +128,35 @@ router.post('/', wrap(async (req, res) => {
   res.status(201).json(receipt);
 }));
 
-// دریافت کامل یک فاکتور برای نمایش/پرینت
+// ساخت نمای کامل فاکتور از روی رکورد (مشترک بین نمای کارمند و عمومی)
+export async function buildReceiptView(rc) {
+  if (!rc.public_token) {
+    rc.public_token = crypto.randomBytes(16).toString('hex');
+    await pool.query('UPDATE receipts SET public_token = ? WHERE id = ?', [rc.public_token, rc.id]);
+  }
+  const [[person]] = await pool.query(
+    'SELECT id, person_code, fullname, mobile, address FROM persons WHERE id = ?', [rc.person_id]);
+  const [[branch]] = await pool.query(
+    'SELECT id, name, code, address, phone FROM branches WHERE id = ?', [rc.branch_id]);
+  let milk = null;
+  if (rc.milk_delivery_id) { const [[m]] = await pool.query('SELECT * FROM milk_deliveries WHERE id = ?', [rc.milk_delivery_id]); milk = m; }
+  let items = [];
+  if (rc.order_id) {
+    const [rows] = await pool.query(
+      `SELECT oi.*, p.name AS product_name, u.symbol AS unit FROM order_items oi
+         JOIN products p ON p.id = oi.product_id LEFT JOIN units u ON u.id = p.unit_id WHERE oi.order_id = ?`, [rc.order_id]);
+    items = rows;
+  }
+  return { receipt: { ...rc, issued_at_jalali: toJalaliDate(rc.issued_at) }, person, branch, milk, items };
+}
+
+// دریافت کامل یک فاکتور برای نمایش/پرینت (کارمند یا صاحب)
 router.get('/:id', wrap(async (req, res) => {
   const [[rc]] = await pool.query('SELECT * FROM receipts WHERE id = ?', [req.params.id]);
   if (!rc) throw new AppError(404, 'فاکتور یافت نشد');
   if (req.user.kind !== 'staff' && rc.person_id !== req.user.person_id)
     throw new AppError(403, 'دسترسی مجاز نیست');
-
-  const [[person]] = await pool.query(
-    'SELECT id, person_code, fullname, mobile, address FROM persons WHERE id = ?', [rc.person_id]);
-  const [[branch]] = await pool.query(
-    'SELECT id, name, code, address, phone FROM branches WHERE id = ?', [rc.branch_id]);
-
-  let milk = null;
-  if (rc.milk_delivery_id) {
-    const [[m]] = await pool.query('SELECT * FROM milk_deliveries WHERE id = ?', [rc.milk_delivery_id]);
-    milk = m;
-  }
-  let items = [];
-  if (rc.order_id) {
-    const [rows] = await pool.query(
-      `SELECT oi.*, p.name AS product_name, u.symbol AS unit
-         FROM order_items oi JOIN products p ON p.id = oi.product_id
-         LEFT JOIN units u ON u.id = p.unit_id
-        WHERE oi.order_id = ?`, [rc.order_id]);
-    items = rows;
-  }
-
-  res.json({
-    receipt: {
-      ...rc,
-      issued_at_jalali: toJalaliDate(rc.issued_at),
-    },
-    person, branch, milk, items,
-  });
+  res.json(await buildReceiptView(rc));
 }));
 
 // لیست فاکتورهای یک شخص یا سایت (کارمند)

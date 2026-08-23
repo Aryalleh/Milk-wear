@@ -305,6 +305,7 @@ CREATE TABLE receipts (
   id                BIGINT AUTO_INCREMENT PRIMARY KEY,
   branch_id         BIGINT,
   receipt_no        VARCHAR(30) NOT NULL UNIQUE,
+  public_token      CHAR(32) NULL UNIQUE,
   person_id         BIGINT NOT NULL,
   issued_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   year_month_jalali CHAR(7) NOT NULL,

@@ -3,110 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بارنامه / حواله تحویل کالا</title>
+  <title>بارنامه</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
-    body { font-family: 'Vazirmatn', sans-serif; }
-    .page-a4 { width:210mm; min-height:297mm; padding:20mm; margin:0 auto; background:#fff; }
-    .page-thermal { width:80mm; padding:5mm; margin:0 auto; background:#fff; border:1px dashed #ccc; }
-    @media print {
-      .no-print { display:none !important; }
-      body { background:#fff !important; padding:0 !important; margin:0 !important; }
-      .page-a4 { width:100% !important; margin:0 !important; padding:10mm !important; box-shadow:none !important; }
-      .page-thermal { width:100% !important; margin:0 !important; padding:2mm !important; border:none !important; box-shadow:none !important; }
-    }
-    .active-size { outline:3px solid #1d4ed8; outline-offset:4px; }
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
+    body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; }
+    .receipt-card { background:#fff; border-radius:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,.08); }
+    @media print { .no-print{display:none!important;} body{background:#fff;padding:0;} .receipt-card{box-shadow:none;border-radius:0;} @page{margin:6mm;} }
   </style>
 </head>
-<body class="bg-slate-100 p-8">
-  <div class="no-print max-w-[800px] mx-auto mb-8 bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
-    <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-      <div class="flex items-center gap-3">
-        <div class="bg-blue-50 p-3 rounded-xl text-blue-600"><i class="fa-solid fa-print text-xl"></i></div>
-        <div><h3 class="font-black text-slate-800 leading-none">چاپ بارنامه</h3>
-          <p class="text-xs text-slate-500 mt-1">سایز خروجی را انتخاب کنید</p></div>
-      </div>
-      <div class="flex gap-4">
-        <button onclick="setSize('a4')" id="btn-a4" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl hover:bg-slate-50 active-size">
-          <i class="fa-solid fa-file-lines text-2xl text-slate-400"></i><span class="text-xs font-bold">A4</span></button>
-        <button onclick="setSize('thermal')" id="btn-thermal" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl hover:bg-slate-50">
-          <i class="fa-solid fa-receipt text-2xl text-slate-400"></i><span class="text-xs font-bold">فیش ۸۰mm</span></button>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="window.print()" class="bg-blue-700 text-white px-8 py-4 rounded-xl font-black hover:bg-blue-800 shadow-lg flex items-center gap-3"><i class="fa-solid fa-print"></i> چاپ نهایی</button>
-        <button onclick="window.close()" class="bg-slate-100 text-slate-700 px-4 rounded-xl font-bold">بستن</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="print-area" class="page-a4 shadow-2xl transition-all duration-300">
-    <div id="content" class="text-center text-slate-400 py-20">در حال بارگذاری…</div>
-  </div>
-
-  <script>
-    const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
-    const id = new URLSearchParams(location.search).get('id');
-    function setSize(size){
-      const a=document.getElementById('print-area');
-      document.getElementById('btn-a4').classList.toggle('active-size', size==='a4');
-      document.getElementById('btn-thermal').classList.toggle('active-size', size==='thermal');
-      a.className=(size==='a4'?'page-a4':'page-thermal')+' shadow-2xl transition-all duration-300';
-    }
-    (async () => {
-      const box = document.getElementById('content');
-      try {
-        const r = await fetch('/api/orders/'+id, { credentials:'same-origin' });
-        if (!r.ok) throw new Error('عدم دسترسی به بارنامه');
-        const d = await r.json();
-        const o = d.order;
-        const rows = (d.items||[]).map((i,idx)=>`<tr>
-          <td class="p-3 border-l border-black">${fmt(idx+1)}</td>
-          <td class="p-3 border-l border-black font-bold">${i.product_name}</td>
-          <td class="p-3 border-l border-black">${i.unit||'—'}</td>
-          <td class="p-3 border-l border-black font-bold text-center">${fmt(i.quantity)}</td></tr>`).join('');
-        box.innerHTML = `
-          <div class="flex justify-between items-start border-b-2 border-black pb-6 mb-8">
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 bg-slate-900 text-white rounded-lg flex items-center justify-center"><i class="fa-solid fa-cow text-3xl"></i></div>
-              <div><h1 class="text-xl font-black">${d.branch?.name || 'سامانه لبنیات'}</h1>
-                <p class="text-xs text-slate-500">واحد لجستیک و توزیع</p></div>
-            </div>
-            <div class="text-center">
-              <h2 class="text-2xl font-black border-2 border-black px-4 py-1 mb-2">بارنامه تحویل کالا</h2>
-              <p class="text-xs">شماره: <span class="font-bold">${o.waybill_no || o.order_no}</span></p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-8 mb-8 text-sm">
-            <div class="space-y-3">
-              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">تحویل‌گیرنده:</span><span class="font-bold">${d.person.fullname} (${d.person.person_code})</span></div>
-              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">شماره سفارش:</span><span class="font-bold">${o.order_no}</span></div>
-            </div>
-            <div class="space-y-3">
-              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">تلفن تماس:</span><span class="font-bold">${d.person.mobile||'—'}</span></div>
-              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">مقصد:</span><span class="font-bold">${o.destination || d.person.address || '—'}</span></div>
-            </div>
-          </div>
-          <table class="w-full border-2 border-black mb-8 text-sm text-right">
-            <thead class="bg-slate-100 border-b-2 border-black"><tr>
-              <th class="p-3 border-l border-black w-12">#</th><th class="p-3 border-l border-black">شرح کالا</th>
-              <th class="p-3 border-l border-black">واحد</th><th class="p-3 border-l border-black">مقدار</th>
-            </tr></thead>
-            <tbody class="divide-y divide-black">${rows}</tbody>
-          </table>
-          <div class="text-left text-sm font-bold mb-8">جمع کل: ${fmt(o.total_amount)} ریال</div>
-          <div class="grid grid-cols-3 gap-8 text-center text-xs mt-12 pt-12">
-            <div class="space-y-8"><p>امضاء انباردار</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
-            <div class="space-y-8"><p>امضاء راننده</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
-            <div class="space-y-8"><p>امضاء گیرنده</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
-          </div>
-          <div class="mt-16 pt-6 border-t-2 border-black flex justify-between items-center text-[10px] text-slate-400">
-            <p>این سند فاقد ارزش مالی است.</p><p>MilkWear Management System</p>
-          </div>`;
-        setTimeout(()=>window.print(), 500);
-      } catch(e){ box.innerHTML = '<div class="text-center text-red-500 py-20">'+e.message+'</div>'; }
-    })();
-  </script>
+<body class="p-4 pb-28">
+  <header class="no-print flex items-center justify-between mb-6 max-w-md mx-auto">
+    <button onclick="history.length>1?history.back():window.close()" class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-500 shadow-sm"><i class="fa-solid fa-chevron-right"></i></button>
+    <h1 class="font-black text-slate-800">بارنامه تحویل بار</h1>
+    <span class="w-10"></span>
+  </header>
+  <main id="card" class="receipt-card p-6 relative overflow-hidden max-w-md mx-auto"><div class="text-center text-slate-400 py-16">در حال بارگذاری…</div></main>
+  <footer class="no-print fixed bottom-0 left-0 right-0 p-4 bg-white/85 backdrop-blur-md flex gap-3 max-w-md mx-auto">
+    <button onclick="window.print()" class="flex-1 bg-blue-700 text-white py-4 rounded-2xl font-black shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> چاپ بارنامه</button>
+  </footer>
+<script>
+  const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  const id=new URLSearchParams(location.search).get('id');
+  (async()=>{ const card=document.getElementById('card');
+    try{ const r=await fetch('/api/orders/'+id,{credentials:'same-origin'}); if(!r.ok) throw new Error('عدم دسترسی به بارنامه'); const d=await r.json(); const o=d.order;
+      const rows=(d.items||[]).map(i=>`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">${fmt(i.quantity)} ${i.unit||''} × ${fmt(i.unit_price)}</p></div><span class="font-black text-slate-700 text-sm">${fmt(i.amount)}</span></div>`).join('');
+      card.innerHTML=`
+        <div class="absolute -top-3 left-0 right-0 flex justify-around">${'<div class="w-6 h-6 rounded-full bg-[#f1f5f9]"></div>'.repeat(5)}</div>
+        <div class="text-center mt-4 mb-6">
+          <div class="w-16 h-16 bg-blue-50 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-truck-fast"></i></div>
+          <h2 class="text-xl font-black text-slate-800">${d.branch?.name||'سامانه لبنیات'}</h2>
+          <span class="inline-block mt-2 bg-blue-600 text-white text-xs font-black px-4 py-1 rounded-full">بارنامه</span>
+          <p class="text-xs text-slate-400 mt-2">شماره: ${o.waybill_no||o.order_no}</p>
+        </div>
+        <div class="space-y-3 border-b border-dashed border-slate-200 pb-6 mb-6 text-sm">
+          <div class="flex justify-between"><span class="text-slate-400">تحویل‌گیرنده:</span><span class="font-bold text-slate-800">${d.person.fullname} (${d.person.person_code})</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">تلفن:</span><span class="font-bold text-slate-800">${d.person.mobile||'—'}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">مقصد تحویل:</span><span class="font-bold text-slate-800 text-left max-w-[60%]">${o.destination||d.person.address||'—'}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">شماره سفارش:</span><span class="font-bold text-slate-800">${o.order_no}</span></div>
+        </div>
+        <div class="space-y-4 mb-6">${rows||'<p class="text-center text-slate-400 text-sm">قلمی ثبت نشده</p>'}</div>
+        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">جمع کل:</span><span class="text-lg font-black text-blue-700">${fmt(o.total_amount)} <span class="text-[10px]">ریال</span></span></div>
+        <div class="grid grid-cols-2 gap-4 text-center text-[11px] text-slate-400 mt-8 pt-6 border-t border-dashed border-slate-200"><div>امضاء تحویل‌دهنده<div class="h-8"></div></div><div>امضاء تحویل‌گیرنده<div class="h-8"></div></div></div>`;
+    }catch(e){ card.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
+  })();
+</script>
 </body>
 </html>
