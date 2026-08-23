@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تنظیمات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-6">
+  <div class="flex gap-2 overflow-x-auto no-scrollbar">
+    <button data-tab="sites" onclick="tab('sites')" class="tabbtn nav-pill active bg-white px-4 py-2 rounded-full text-sm shadow-sm">سایت‌ها</button>
+    <button data-tab="users" onclick="tab('users')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">کاربران</button>
+    <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
+  </div>
+
+  <!-- SITES -->
+  <div id="t-sites" class="tabc space-y-6">
+    <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">تعریف سایت جدید</h3>
+      <div class="flex flex-wrap gap-3 items-end">
+        <div><label class="text-xs text-gray-500 block mb-1">کد</label><input id="siteCode" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+        <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">نام</label><input id="siteName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">نوع</label><select id="siteType" class="input-skeu rounded-lg px-3 py-2"><option value="station">ایستگاه شیر</option><option value="store">فروشگاه</option><option value="distribution">مرکز پخش</option></select></div>
+        <div><label class="text-xs text-gray-500 block mb-1">تلفن</label><input id="sitePhone" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+        <button onclick="addSite()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن</button>
+      </div></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">کد</th><th class="p-3">نام</th><th class="p-3">نوع</th><th class="p-3">تلفن</th><th class="p-3">انبار</th><th class="p-3">کاربر</th><th class="p-3">متصدی</th></tr></thead><tbody id="sitesTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+  </div>
+
+  <!-- USERS -->
+  <div id="t-users" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">افزودن کاربر</h3>
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[140px]"><label class="text-xs text-gray-500 block mb-1">نام کامل</label><input id="uName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">نام کاربری</label><input id="uUser" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">رمز</label><input id="uPass" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">نقش</label><select id="uRole" class="input-skeu rounded-lg px-3 py-2"></select></div>
+        <div><label class="text-xs text-gray-500 block mb-1">سایت</label><select id="uBranch" class="input-skeu rounded-lg px-3 py-2"></select></div>
+        <div><label class="text-xs text-gray-500 block mb-1">شناسه بله</label><input id="uBale" class="input-skeu rounded-lg px-3 py-2 w-28" placeholder="اختیاری"></div>
+        <button onclick="addUser()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن</button>
+      </div></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">نام</th><th class="p-3">نام کاربری</th><th class="p-3">نقش</th><th class="p-3">سایت</th><th class="p-3">وضعیت</th><th class="p-3">بله</th></tr></thead><tbody id="usersTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+  </div>
+
+  <!-- AUDIT -->
+  <div id="t-audit" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6"><div class="flex justify-between items-center flex-wrap gap-3"><h3 class="font-bold text-gray-800">لاگ تغییرات سیستم</h3><input id="auditQ" oninput="loadAudit()" placeholder="جستجو..." class="input-skeu rounded-lg px-3 py-2 w-56"></div></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">زمان</th><th class="p-3">کاربر</th><th class="p-3">عملیات</th><th class="p-3">بخش</th><th class="p-3">مسیر</th><th class="p-3">وضعیت</th><th class="p-3">IP</th></tr></thead><tbody id="auditTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+  </div>
+</main>
+<script>
+let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
+function tab(t){ ['sites','users','audit'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); }
+async function loadSites(){ branches=await api('/branches'); const T={station:'ایستگاه شیر',store:'فروشگاه',distribution:'مرکز پخش',head:'دفتر مرکزی'};
+  document.getElementById('sitesTable').innerHTML=branches.map(b=>`<tr><td class="p-3">${b.id}</td><td class="p-3">${b.code}</td><td class="p-3 font-bold">${b.name}</td><td class="p-3">${T[b.type]||b.type}</td><td class="p-3">${b.phone||'—'}</td><td class="p-3">${b.warehouse_count}</td><td class="p-3">${b.user_count}</td><td class="p-3"><button onclick="addOperator(${b.id},'${(b.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold">+ متصدی</button></td></tr>`).join(''); }
+async function addSite(){ try{ await api('/branches',{method:'POST',body:{code:document.getElementById('siteCode').value,name:document.getElementById('siteName').value,type:document.getElementById('siteType').value,phone:document.getElementById('sitePhone').value}}); document.getElementById('siteCode').value=document.getElementById('siteName').value=document.getElementById('sitePhone').value=''; loadSites(); }catch(e){alert(e.message);} }
+async function addOperator(id,name){ const f=prompt('نام متصدی «'+name+'»:'); if(!f)return; const un=prompt('نام کاربری:'); if(!un)return; const pw=prompt('رمز:'); if(!pw)return; try{ await api('/users',{method:'POST',body:{fullname:f,username:un,password:pw,role:'station',branch_id:id}}); alert('متصدی ساخته شد'); loadSites(); }catch(e){alert(e.message);} }
+async function loadUsers(){ const [list,roles]=await Promise.all([api('/users'),api('/users/roles')]); if(!branches.length) branches=await api('/branches');
+  document.getElementById('uRole').innerHTML=roles.map(r=>`<option value="${r.name}">${r.title}</option>`).join('');
+  document.getElementById('uBranch').innerHTML='<option value="">— بدون سایت —</option>'+branches.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  document.getElementById('usersTable').innerHTML=list.map(u=>`<tr><td class="p-3">${u.id}</td><td class="p-3 font-bold">${u.fullname}</td><td class="p-3">${u.username}</td><td class="p-3">${u.role_title}</td><td class="p-3">${u.branch_name||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${u.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.is_active?'فعال':'غیرفعال'}</span></td><td class="p-3">${u.bale_user_id?(u.bale_user_id+` <button onclick="linkBale(${u.id})" class="text-blue-600 text-xs">تغییر</button>`):`<button onclick="linkBale(${u.id})" class="text-green-700 text-xs font-bold">اتصال بله</button>`}</td></tr>`).join(''); }
+async function addUser(){ try{ await api('/users',{method:'POST',body:{fullname:document.getElementById('uName').value,username:document.getElementById('uUser').value,password:document.getElementById('uPass').value,role:document.getElementById('uRole').value,branch_id:document.getElementById('uBranch').value||null,bale_user_id:document.getElementById('uBale').value||null}}); document.getElementById('uName').value=document.getElementById('uUser').value=document.getElementById('uPass').value=document.getElementById('uBale').value=''; loadUsers(); }catch(e){alert(e.message);} }
+async function linkBale(id){ const v=prompt('شناسهٔ عددی بله (خالی=حذف):'); if(v===null)return; try{ await api('/users/'+id+'/bale',{method:'PUT',body:{bale_user_id:v.trim()||null}}); loadUsers(); }catch(e){alert(e.message);} }
+async function loadAudit(){ const q=document.getElementById('auditQ').value?'?q='+encodeURIComponent(document.getElementById('auditQ').value):''; const rows=await api('/audit'+q);
+  document.getElementById('auditTable').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500 whitespace-nowrap">${r.when}</td><td class="p-3">${r.actor}</td><td class="p-3">${ACTION_FA[r.action]||r.action}</td><td class="p-3">${r.resource||'—'}</td><td class="p-3 text-gray-500">${r.path||''}</td><td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }
+(async function(){ const u=await guard(['staff']); if(!u) return; if(u.role!=='admin'){ location.href='/dashboard'; return; } mountChrome('settings','تنظیمات'); loadSites(); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تولید</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1000px] mx-auto p-4 md:p-6 space-y-6">
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-industry text-blue-600 ml-1"></i> ثبت تولید (فراوری شیر خام به محصولات)</h3>
+    <div class="flex flex-wrap gap-3 items-end">
+      <div><label class="text-xs text-gray-500 block mb-1">شیر خام مصرفی (کیلو)</label><input id="prMilk" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-40"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">انبار مقصد</label><select id="prWh" class="input-skeu rounded-lg px-3 py-2"></select></div>
+    </div>
+    <h4 class="font-bold text-sm mt-5 mb-2">محصولات تولیدشده (کره، ماست، قره‌قروت، ...):</h4>
+    <div id="prOutputs" class="space-y-2"></div>
+    <button onclick="prAddRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن محصول</button>
+    <div class="flex justify-end mt-4"><button onclick="prSubmit()" class="btn-skeu text-white px-6 py-2.5 rounded-lg font-bold">ثبت بَچ تولید</button></div>
+    <p id="prErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-trash-can text-red-500 ml-1"></i> ثبت ضایعات شیر</h3>
+    <div class="flex flex-wrap gap-3 items-end">
+      <div><label class="text-xs text-gray-500 block mb-1">مقدار (کیلو)</label><input id="wsQty" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+      <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">دلیل</label><input id="wsReason" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً فاسد شدن"></div>
+      <button onclick="submitWaste()" class="bg-red-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-600">ثبت ضایعات</button>
+    </div>
+    <p id="wsErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+  <div class="skeu-card overflow-hidden">
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">بَچ‌های اخیر تولید</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کد بَچ</th><th class="p-3">تاریخ</th><th class="p-3">شیر مصرفی</th><th class="p-3">محصولات</th></tr></thead><tbody id="prTable" class="divide-y divide-gray-100"></tbody></table></div>
+  </div>
+</main>
+<script>
+let products=[], myBranch=null;
+async function loadProduction(){ document.getElementById('prWh').innerHTML='<option value="">— بدون انبار —</option>'+(await api('/inventory/warehouses')).map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  document.getElementById('prOutputs').innerHTML=''; prAddRow();
+  const rows=await api('/production');
+  document.getElementById('prTable').innerHTML=rows.map(b=>`<tr><td class="p-3 font-bold">${b.batch_code}</td><td class="p-3">${b.started_jalali}</td><td class="p-3">${fmt(b.milk_kg)} kg</td><td class="p-3 text-gray-500">${b.outputs||'—'}</td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">بَچی ثبت نشده</td></tr>'; }
+function prAddRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<select class="pr-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— محصول —</option>${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select><input class="pr-qty input-skeu rounded-lg px-2 py-2 w-28" type="number" step="0.001" placeholder="مقدار"><button class="text-red-500 px-2" onclick="this.parentElement.remove()">&times;</button>`;
+  document.getElementById('prOutputs').appendChild(div); }
+async function prSubmit(){ document.getElementById('prErr').textContent=''; const milk_kg=Number(document.getElementById('prMilk').value); const wh=document.getElementById('prWh').value||null;
+  const outputs=[...document.getElementById('prOutputs').children].map(r=>({product_id:Number(r.querySelector('.pr-prod').value),quantity:Number(r.querySelector('.pr-qty').value),warehouse_id:wh?Number(wh):null})).filter(o=>o.product_id&&o.quantity>0);
+  if(!milk_kg||!outputs.length){ document.getElementById('prErr').textContent='شیر ورودی و حداقل یک محصول لازم است'; return; }
+  try{ await api('/production',{method:'POST',body:{milk_kg,outputs}}); document.getElementById('prMilk').value=''; loadProduction(); }catch(e){ document.getElementById('prErr').textContent=e.message; } }
+async function submitWaste(){ document.getElementById('wsErr').textContent=''; const q=Number(document.getElementById('wsQty').value); if(!q||q<=0){document.getElementById('wsErr').textContent='مقدار ضایعات لازم است';return;}
+  try{ await api('/waste',{method:'POST',body:{kind:'milk',quantity:q,reason:document.getElementById('wsReason').value||null,branch_id:myBranch||null}}); document.getElementById('wsQty').value=document.getElementById('wsReason').value=''; alert('ضایعات ثبت شد'); }catch(e){ document.getElementById('wsErr').textContent=e.message; } }
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('production','تولید'); myBranch=u.branch_id||null; products=await api('/products'); loadProduction(); })();
+</script>
+</body>
+</html>

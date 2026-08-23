@@ -73,10 +73,11 @@ const pub = (f) => (req, res) => res.sendFile(path.join(__dirname, '../public/' 
 app.get('/', (req, res) => res.redirect('/dashboard'));
 app.get('/login', pub('login.html'));
 app.get('/dashboard', pub('dashboard.html'));
-app.get('/app', pub('index.html'));   // اپ تک‌صفحه‌ای قدیمی (موقتاً برای صفحات درحال‌بازسازی)
-// صفحاتی که هنوز به فایل جدا منتقل نشده‌اند → موقتاً اپ قدیمی
-['/operations', '/production', '/inventory', '/settings', '/panel'].forEach((r) =>
-  app.get(r, pub('index.html')));
+app.get('/operations', pub('operations.html'));
+app.get('/production', pub('production.html'));
+app.get('/inventory', pub('inventory.html'));
+app.get('/settings', pub('settings.html'));
+app.get('/panel', pub('panel.html'));
 
 app.use('/api/auth', authRoutes);
 

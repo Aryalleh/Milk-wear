@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>انبار</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-6">
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-square-plus text-green-600 ml-1"></i> تعریف کالای جدید</h3>
+    <div class="flex flex-wrap gap-3 items-end">
+      <div class="flex-1 min-w-[150px]"><label class="text-xs text-gray-500 block mb-1">نام کالا</label><input id="npName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">دسته</label><select id="npCat" class="input-skeu rounded-lg px-3 py-2"></select></div>
+      <div><label class="text-xs text-gray-500 block mb-1">واحد</label><select id="npUnit" class="input-skeu rounded-lg px-3 py-2"></select></div>
+      <div><label class="text-xs text-gray-500 block mb-1">قیمت پایه (ریال)</label><input id="npPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+      <label class="flex items-center gap-2 text-sm text-gray-600 mb-2"><input id="npTrack" type="checkbox" checked class="w-4 h-4"> ردیابی موجودی</label>
+      <button onclick="addProduct()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن کالا</button>
+    </div>
+    <p id="npErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-warehouse text-amber-600 ml-1"></i> ثبت ورود کالا (چیا اومده)</h3>
+    <div class="flex flex-wrap gap-3 items-end">
+      <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="invWh" class="input-skeu rounded-lg px-3 py-2"></select></div>
+      <div><label class="text-xs text-gray-500 block mb-1">کالا</label><select id="invProd" class="input-skeu rounded-lg px-3 py-2"></select></div>
+      <div><label class="text-xs text-gray-500 block mb-1">مقدار</label><input id="invQty" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">بهای واحد</label><input id="invCost" type="number" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+      <button onclick="receiveStock()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">ثبت ورود</button>
+    </div>
+  </div>
+  <div class="skeu-card overflow-hidden">
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">موجودی انبار</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">دسته</th><th class="p-3">واحد</th><th class="p-3">وارد شده</th><th class="p-3">فروش/خروج</th><th class="p-3">موجودی فعلی</th></tr></thead><tbody id="invTable" class="divide-y divide-gray-100"></tbody></table></div>
+  </div>
+</main>
+<script>
+let products=[];
+async function loadInventory(){ const [rows,whs,meta]=await Promise.all([api('/inventory'),api('/inventory/warehouses'),api('/products/meta')]);
+  document.getElementById('invTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3">${p.unit||''}</td><td class="p-3 text-green-600">${fmt(p.total_in)}</td><td class="p-3 text-red-600">${fmt(p.total_out)}</td><td class="p-3 font-bold">${fmt(p.on_hand)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">کالایی نیست</td></tr>';
+  document.getElementById('invWh').innerHTML=whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
+  document.getElementById('invProd').innerHTML=products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('npUnit').innerHTML=meta.units.map(u=>`<option value="${u.id}">${u.name}</option>`).join(''); }
+async function receiveStock(){ try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(document.getElementById('invWh').value),product_id:Number(document.getElementById('invProd').value),quantity:Number(document.getElementById('invQty').value),unit_cost:document.getElementById('invCost').value||null}}); document.getElementById('invQty').value=document.getElementById('invCost').value=''; loadInventory(); }catch(e){alert(e.message);} }
+async function addProduct(){ document.getElementById('npErr').textContent=''; if(!document.getElementById('npName').value.trim()){document.getElementById('npErr').textContent='نام کالا لازم است';return;}
+  try{ await api('/products',{method:'POST',body:{name:document.getElementById('npName').value.trim(),category_id:Number(document.getElementById('npCat').value)||null,unit_id:Number(document.getElementById('npUnit').value)||null,base_price:document.getElementById('npPrice').value||0,track_stock:document.getElementById('npTrack').checked}});
+    document.getElementById('npName').value=document.getElementById('npPrice').value=''; products=await api('/products'); loadInventory(); }catch(e){ document.getElementById('npErr').textContent=e.message; } }
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('inventory','انبار'); products=await api('/products'); live(loadInventory, 20000); })();
+</script>
+</body>
+</html>
