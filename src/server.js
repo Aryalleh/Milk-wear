@@ -18,6 +18,7 @@ import meRoutes from './routes/me.js';
 import inventoryRoutes from './routes/inventory.js';
 import dashboardRoutes from './routes/dashboard.js';
 import productionRoutes from './routes/production.js';
+import wasteRoutes from './routes/waste.js';
 import auditRoutes from './routes/audit.js';
 import { auditLogger } from './audit.js';
 
@@ -90,6 +91,7 @@ app.use('/api/users', staffRequired, userRoutes);
 app.use('/api/inventory', staffRequired, inventoryRoutes);
 app.use('/api/dashboard', staffRequired, dashboardRoutes);
 app.use('/api/production', staffRequired, productionRoutes);
+app.use('/api/waste', staffRequired, wasteRoutes);
 app.use('/api/audit', staffRequired, auditRoutes);
 
 // هندلر خطای مرکزی

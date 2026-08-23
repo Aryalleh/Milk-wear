@@ -37,6 +37,13 @@ async function run() {
   }
   console.log('✔ اشخاص نمونه ساخته شدند');
 
+  // قیمت شیر ماه جاری (تا ثبت شیرِ امروز بدون خطا باشد)
+  await pool.query(
+    `INSERT INTO milk_price_history (branch_id, year_month_jalali, person_id, price_per_kg)
+     VALUES (1, ?, NULL, 38000) ON DUPLICATE KEY UPDATE price_per_kg = VALUES(price_per_kg)`,
+    [currentJalaliMonth()]);
+  console.log('✔ قیمت شیر ماه جاری ثبت شد');
+
   // سناریوی نمونه برای «حسن دامدار» — دقیقاً مثل جدول سند
   const month = currentJalaliMonth();
   const hid = ids['F001'];

@@ -157,11 +157,21 @@
             <div class="flex justify-between"><span class="text-gray-500">کالای تحویلی</span><span class="font-bold text-emerald-700" id="dGoods">—</span></div>
           </div>
         </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🧪 کیفیت و مخزن</h3><i class="fa-solid fa-flask-vial text-cyan-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">سطح مخزن شیر خام</span><span class="font-bold text-cyan-700"><span id="dSiloPct">—</span>٪ پر</span></div>
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">میانگین چربی امروز</span><span class="font-bold" id="dFat">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">ضایعات امروز (kg)</span><span class="font-bold text-red-600" id="dWaste">—</span></div>
+          </div>
+          <div class="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden"><div id="dSiloBar" class="h-full bg-cyan-500 transition-all" style="width:0%"></div></div>
+        </div>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-simple text-green-700 ml-1"></i> روند فراوری این ماه (محصولات)</h3><div id="processingChart" class="h-[300px]"></div></div>
         <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-simple text-blue-700 ml-1"></i> شیر امروز به تفکیک دامدار</h3><div id="farmerChart" class="h-[300px]"></div></div>
       </div>
+      <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-column text-emerald-700 ml-1"></i> جریان شیر و ضایعات (۷ روز اخیر)</h3><div id="weekChart" class="h-[280px]"></div></div>
     </section>
 
     <!-- ===== OPERATIONS ===== -->
@@ -237,6 +247,15 @@
         <button onclick="prAddRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن محصول</button>
         <div class="flex justify-end mt-4"><button onclick="prSubmit()" class="btn-skeu text-white px-6 py-2.5 rounded-lg font-bold">ثبت بَچ تولید</button></div>
         <p id="prErr" class="text-red-600 text-xs mt-2"></p>
+      </div>
+      <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-trash-can text-red-500 ml-1"></i> ثبت ضایعات شیر</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div><label class="text-xs text-gray-500 block mb-1">مقدار (کیلو)</label><input id="wsQty" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+          <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">دلیل</label><input id="wsReason" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً فاسد شدن، ریختن"></div>
+          <button onclick="submitWaste()" class="bg-red-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-red-600">ثبت ضایعات</button>
+        </div>
+        <p id="wsErr" class="text-red-600 text-xs mt-2"></p>
       </div>
       <div class="skeu-card overflow-hidden">
         <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">بَچ‌های اخیر تولید</h3></div>
@@ -416,8 +435,9 @@
       <h4 class="font-bold text-sm mb-2">🥛 تحویل شیر (اختیاری)</h4>
       <div class="flex flex-wrap gap-2">
         <select id="invShift" class="input-skeu rounded-lg px-3 py-2"><option value="">— بدون شیر —</option><option value="morning">صبح</option><option value="evening">شب</option></select>
-        <input id="invWeight" type="number" step="0.001" oninput="calcInv()" placeholder="وزن (کیلو)" class="input-skeu rounded-lg px-3 py-2 w-32">
-        <input id="invPrice" type="number" oninput="calcInv()" placeholder="قیمت (خودکار)" class="input-skeu rounded-lg px-3 py-2 w-36">
+        <input id="invWeight" type="number" step="0.001" oninput="calcInv()" placeholder="وزن (کیلو)" class="input-skeu rounded-lg px-3 py-2 w-28">
+        <input id="invFat" type="number" step="0.1" placeholder="٪ چربی" class="input-skeu rounded-lg px-3 py-2 w-24">
+        <input id="invPrice" type="number" oninput="calcInv()" placeholder="قیمت (خودکار)" class="input-skeu rounded-lg px-3 py-2 w-32">
       </div>
     </div>
     <div class="border border-gray-200 rounded-xl p-3 mb-3">
@@ -510,6 +530,9 @@ async function loadDashboard(){
   el('dDistOrders').textContent=fmt(d.distribution.orders)+' فاکتور'; el('dDistDelivered').textContent=fmt(d.distribution.delivered); el('dDistRemaining').textContent=fmt(d.distribution.remaining);
   el('dReceivable').textContent=fmt(d.accounts.receivable); el('dPayable').textContent=fmt(d.accounts.payable);
   el('dOnAcc').textContent=fmt(d.cash.onaccount); el('dReceived').textContent=fmt(d.cash.received); el('dGoods').textContent=fmt(d.cash.goods);
+  if(d.silo){ el('dSiloPct').textContent=fmt(d.silo.pct); el('dSiloBar').style.width=d.silo.pct+'%'; }
+  el('dFat').textContent = d.avg_fat_today!=null ? (fmt(d.avg_fat_today)+'٪') : '—';
+  el('dWaste').textContent = fmt(d.waste_today);
   drawCharts(d);
 }
 function drawCharts(d){
@@ -520,6 +543,10 @@ function drawCharts(d){
       marker:{ color:['#1b4332','#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2'] } }], {...base, yaxis:{gridcolor:'#f3f4f6'}}, {responsive:true, displayModeBar:false});
     Plotly.newPlot('farmerChart', [{ type:'bar', x:d.by_farmer.map(f=>f.fullname), y:d.by_farmer.map(f=>f.kg),
       marker:{ color:'#2d6a4f' } }], {...base, yaxis:{gridcolor:'#f3f4f6'}}, {responsive:true, displayModeBar:false});
+    if (d.week) Plotly.newPlot('weekChart', [
+      { type:'bar', name:'دریافت', x:d.week.labels, y:d.week.milk, marker:{color:'#10b981'} },
+      { type:'bar', name:'ضایعات', x:d.week.labels, y:d.week.waste, marker:{color:'#f87171'} }
+    ], {...base, barmode:'group', legend:{orientation:'h',y:-0.2}, yaxis:{gridcolor:'#f3f4f6'}}, {responsive:true, displayModeBar:false});
   } catch(e){}
 }
 
@@ -576,7 +603,7 @@ function openInvoice(){ if(!currentPerson)return; el('invErr').textContent='';
   el('invPerson').textContent='برای: '+el('pName').textContent+' ('+el('pCode').textContent+')';
   el('invSite').innerHTML = branches.filter(b=>b.is_active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   if(myBranch) el('invSite').value=myBranch;
-  el('invShift').value=''; el('invWeight').value=''; el('invPrice').value=''; el('invNote').value='';
+  el('invShift').value=''; el('invWeight').value=''; el('invFat').value=''; el('invPrice').value=''; el('invNote').value='';
   el('invItems').innerHTML=''; addItemRow(); calcInv(); el('invoiceModal').classList.remove('hidden'); }
 function closeInvoice(){ el('invoiceModal').classList.add('hidden'); }
 function itemRowHTML(cls){ return `<select class="${cls}-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>
@@ -593,7 +620,7 @@ function calcInv(){ const w=Number(el('invWeight').value)||0, pr=Number(el('invP
   el('sumMilk').textContent=fmt(milk); el('sumBuy').textContent=fmt(buy); el('sumNet').textContent=fmt(milk-buy); }
 async function submitInvoice(){ el('invErr').textContent='';
   const body={ person_id:currentPerson, branch_id:Number(el('invSite').value), warehouse_id:null, items:readItems(), note:el('invNote').value||null };
-  if(el('invShift').value && Number(el('invWeight').value)>0) body.milk={ shift:el('invShift').value, weight_kg:Number(el('invWeight').value), price_per_kg:el('invPrice').value===''?null:Number(el('invPrice').value) };
+  if(el('invShift').value && Number(el('invWeight').value)>0) body.milk={ shift:el('invShift').value, weight_kg:Number(el('invWeight').value), fat_pct:el('invFat').value===''?null:Number(el('invFat').value), price_per_kg:el('invPrice').value===''?null:Number(el('invPrice').value) };
   if(!body.milk && body.items.length===0){ el('invErr').textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
   try{ const whs=await api('/branches/'+el('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null;
     const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); window.open('/receipt.html?id='+r.id,'_blank'); }
@@ -663,6 +690,9 @@ async function prSubmit(){ el('prErr').textContent=''; const milk_kg=Number(el('
   const outputs=[...el('prOutputs').children].map(r=>({product_id:Number(r.querySelector('.pr-prod').value),quantity:Number(r.querySelector('.pr-qty').value),warehouse_id:wh?Number(wh):null})).filter(o=>o.product_id&&o.quantity>0);
   if(!milk_kg||!outputs.length){ el('prErr').textContent='شیر ورودی و حداقل یک محصول لازم است'; return; }
   try{ await api('/production',{method:'POST',body:{milk_kg,outputs}}); el('prMilk').value=''; loadProduction(); }catch(e){ el('prErr').textContent=e.message; } }
+async function submitWaste(){ el('wsErr').textContent=''; const q=Number(el('wsQty').value);
+  if(!q||q<=0){ el('wsErr').textContent='مقدار ضایعات لازم است'; return; }
+  try{ await api('/waste',{method:'POST',body:{kind:'milk',quantity:q,reason:el('wsReason').value||null,branch_id:myBranch||null}}); el('wsQty').value=el('wsReason').value=''; alert('ضایعات ثبت شد'); }catch(e){ el('wsErr').textContent=e.message; } }
 
 /* ---------- PERSONAL PANEL ---------- */
 async function loadMe(){ const d=await api('/me/dashboard');

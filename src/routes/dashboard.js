@@ -64,6 +64,33 @@ router.get('/', wrap(async (req, res) => {
        JOIN products pr ON pr.id=po.product_id LEFT JOIN units u ON u.id=pr.unit_id
       WHERE pb.started_at >= DATE_FORMAT(NOW(),'%Y-%m-01') GROUP BY pr.id ORDER BY qty DESC`);
 
+  // سطح مخزن شیر خام = کل شیر دریافتی − کل شیر مصرف‌شده در تولید
+  const [[silo]] = await pool.query(
+    `SELECT
+       (SELECT COALESCE(SUM(weight_kg),0) FROM milk_deliveries WHERE deleted_at IS NULL) -
+       (SELECT COALESCE(SUM(pi.quantity),0) FROM production_inputs pi) AS on_hand`);
+  const [[cap]] = await pool.query("SELECT value_json FROM settings WHERE `key`='silo_capacity_kg'");
+  const capacity = Number(cap?.value_json || 20000) || 20000;
+  const siloOnHand = Math.max(0, Number(silo.on_hand));
+  const siloPct = Math.min(100, Math.round(siloOnHand / capacity * 100));
+
+  // ضایعات امروز و میانگین چربی امروز
+  const [[wasteToday]] = await pool.query(
+    `SELECT COALESCE(SUM(quantity),0) AS q FROM waste_log WHERE DATE(occurred_at)=CURDATE() AND kind='milk'`);
+  const [[fatToday]] = await pool.query(
+    `SELECT ROUND(AVG(fat_pct),2) AS avg_fat FROM milk_deliveries WHERE DATE(delivered_at)=CURDATE() AND fat_pct IS NOT NULL AND deleted_at IS NULL`);
+
+  // سری ۷ روز اخیر: شیر دریافتی و ضایعات
+  const [milkSeries] = await pool.query(
+    `SELECT DATE(delivered_at) d, COALESCE(SUM(weight_kg),0) kg FROM milk_deliveries
+      WHERE delivered_at >= CURDATE()-INTERVAL 6 DAY AND deleted_at IS NULL GROUP BY DATE(delivered_at)`);
+  const [wasteSeries] = await pool.query(
+    `SELECT DATE(occurred_at) d, COALESCE(SUM(quantity),0) q FROM waste_log
+      WHERE occurred_at >= CURDATE()-INTERVAL 6 DAY AND kind='milk' GROUP BY DATE(occurred_at)`);
+  const last7 = [...Array(7)].map((_, i) => { const dt = new Date(); dt.setDate(dt.getDate() - (6 - i)); return dt.toISOString().slice(0, 10); });
+  const milkMap = Object.fromEntries(milkSeries.map(r => [r.d instanceof Date ? r.d.toISOString().slice(0,10) : String(r.d).slice(0,10), Number(r.kg)]));
+  const wasteMap = Object.fromEntries(wasteSeries.map(r => [r.d instanceof Date ? r.d.toISOString().slice(0,10) : String(r.d).slice(0,10), Number(r.q)]));
+
   // شیر امروز به تفکیک دامدار
   const [byFarmer] = await pool.query(
     `SELECT p.fullname, SUM(md.weight_kg) AS kg, SUM(md.amount) AS value
@@ -91,6 +118,14 @@ router.get('/', wrap(async (req, res) => {
       outputs: procOut.map((o) => ({ name: o.name, qty: Number(o.qty), unit: o.unit })),
     },
     by_farmer: byFarmer.map((f) => ({ fullname: f.fullname, kg: Number(f.kg), value: Number(f.value) })),
+    silo: { on_hand: siloOnHand, capacity, pct: siloPct },
+    waste_today: Number(wasteToday.q),
+    avg_fat_today: fatToday.avg_fat != null ? Number(fatToday.avg_fat) : null,
+    week: {
+      labels: last7,
+      milk: last7.map(d => milkMap[d] || 0),
+      waste: last7.map(d => wasteMap[d] || 0),
+    },
   });
 }));
 

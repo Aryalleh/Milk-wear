@@ -5,7 +5,7 @@
 USE milk_wear;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS receipts, production_outputs, production_inputs, production_batches,
+DROP TABLE IF EXISTS waste_log, receipts, production_outputs, production_inputs, production_batches,
   audit_logs, account_balances, transactions, payments,
   order_items, orders, stock_movements, stock_balances, milk_deliveries,
   milk_price_history, warehouses, products, product_categories, units,
@@ -199,6 +199,7 @@ CREATE TABLE milk_deliveries (
   delivered_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   year_month_jalali CHAR(7) NOT NULL,
   weight_kg         DECIMAL(14,3) NOT NULL,
+  fat_pct           DECIMAL(4,2) NULL,          -- درصد چربی
   price_per_kg      DECIMAL(18,0) NOT NULL,     -- قیمت قفل‌شدهٔ لحظهٔ ثبت
   amount            DECIMAL(18,0) NOT NULL,     -- weight * price
   note              VARCHAR(255),
@@ -319,6 +320,19 @@ CREATE TABLE receipts (
   CONSTRAINT fk_rc_branch FOREIGN KEY (branch_id) REFERENCES branches(id),
   INDEX idx_rc_person (person_id),
   INDEX idx_rc_branch (branch_id, issued_at)
+) ENGINE=InnoDB;
+
+-- ============ ضایعات ============
+CREATE TABLE waste_log (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  branch_id   BIGINT,
+  kind        ENUM('milk','product') NOT NULL DEFAULT 'milk',
+  product_id  BIGINT NULL,
+  quantity    DECIMAL(14,3) NOT NULL,
+  reason      VARCHAR(255),
+  occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by  BIGINT,
+  INDEX idx_waste_date (occurred_at)
 ) ENGINE=InnoDB;
 
 -- ============ سیستمی ============

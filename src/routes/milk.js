@@ -7,7 +7,7 @@ const router = Router();
 
 // ثبت تحویل شیر → می‌سازد تراکنش MILK_DELIVERY (بستانکار دامدار)
 router.post('/deliveries', wrap(async (req, res) => {
-  const { person_id, shift, weight_kg, price_per_kg, note, branch_id } = req.body;
+  const { person_id, shift, weight_kg, price_per_kg, fat_pct, note, branch_id } = req.body;
   if (!person_id || !shift || !weight_kg) throw new AppError(400, 'دامدار، شیفت و وزن لازم است');
   const month = currentJalaliMonth();
 
@@ -20,9 +20,9 @@ router.post('/deliveries', wrap(async (req, res) => {
     const amount = Math.round(Number(weight_kg) * Number(price));
     const [r] = await conn.query(
       `INSERT INTO milk_deliveries
-         (branch_id, person_id, shift, year_month_jalali, weight_kg, price_per_kg, amount, note, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [branch_id || null, person_id, shift, month, weight_kg, price, amount, note || null, req.user?.uid || null]
+         (branch_id, person_id, shift, year_month_jalali, weight_kg, fat_pct, price_per_kg, amount, note, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [branch_id || null, person_id, shift, month, weight_kg, fat_pct || null, price, amount, note || null, req.user?.uid || null]
     );
     const label = shift === 'morning' ? 'شیر صبح' : 'شیر شب';
     await postTransaction(conn, {
