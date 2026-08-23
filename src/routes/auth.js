@@ -42,6 +42,7 @@ router.post('/login', wrap(async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) throw new AppError(400, 'نام کاربری و رمز لازم است');
 
+  // ۱) کاربر کارمند
   const [[user]] = await pool.query(
     `SELECT u.*, r.name AS role_name, b.name AS branch_name
        FROM users u
@@ -50,17 +51,34 @@ router.post('/login', wrap(async (req, res) => {
       WHERE u.username = ? AND u.is_active = 1`,
     [username]
   );
-  if (!user) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
+  if (user) {
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
+    await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
+    req.session.user = {
+      kind: 'staff', uid: user.id, role: user.role_name, branch: user.branch_id,
+      branch_name: user.branch_name, name: user.fullname,
+    };
+    return res.json({ user: userPayload(req.session.user) });
+  }
 
-  const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
+  // ۲) شخص (دامدار/مشتری) با لاگین اختصاصی
+  const [[person]] = await pool.query(
+    `SELECT p.*, GROUP_CONCAT(pt.\`key\`) AS role_keys
+       FROM persons p
+       LEFT JOIN person_roles pr ON pr.person_id = p.id
+       LEFT JOIN person_types pt ON pt.id = pr.person_type_id
+      WHERE p.username = ? AND p.deleted_at IS NULL GROUP BY p.id`,
+    [username]
+  );
+  if (!person || !person.password_hash) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
+  const okP = await bcrypt.compare(password, person.password_hash);
+  if (!okP) throw new AppError(401, 'نام کاربری یا رمز اشتباه است');
 
-  await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
-
-  // ذخیرهٔ کاربر در session سمت سرور
+  const roles = (person.role_keys || 'customer').split(',');
   req.session.user = {
-    kind: 'staff', uid: user.id, role: user.role_name, branch: user.branch_id,
-    branch_name: user.branch_name, name: user.fullname,
+    kind: 'person', person_id: person.id, role: roles.includes('farmer') ? 'farmer' : 'customer',
+    name: person.fullname, branch: null, branch_name: null,
   };
   res.json({ user: userPayload(req.session.user) });
 }));

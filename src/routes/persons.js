@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { pool, withTx } from '../db.js';
 import { recomputeBalance } from '../ledger.js';
 import { AppError, wrap, toJalaliDate } from '../util.js';
@@ -30,15 +31,20 @@ router.get('/', wrap(async (req, res) => {
 
 // ایجاد شخص (با نقش‌ها)
 router.post('/', wrap(async (req, res) => {
-  const { person_code, fullname, national_code, mobile, address, credit_limit, roles = [] } = req.body;
+  const { person_code, fullname, national_code, mobile, address, credit_limit, roles = [], username, password } = req.body;
   if (!fullname) throw new AppError(400, 'نام لازم است');
   const code = person_code || `P${Date.now().toString().slice(-8)}`;
+  const passHash = password ? await bcrypt.hash(password, 10) : null;
+  if (username) {
+    const [[dup]] = await pool.query('SELECT id FROM persons WHERE username = ?', [username]);
+    if (dup) throw new AppError(409, 'این نام کاربری قبلاً ثبت شده');
+  }
 
   const id = await withTx(async (conn) => {
     const [r] = await conn.query(
-      `INSERT INTO persons (person_code, fullname, national_code, mobile, address, credit_limit)
-       VALUES (?,?,?,?,?,?)`,
-      [code, fullname, national_code || null, mobile || null, address || null, credit_limit || null]
+      `INSERT INTO persons (person_code, username, password_hash, fullname, national_code, mobile, address, credit_limit)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [code, username || null, passHash, fullname, national_code || null, mobile || null, address || null, credit_limit || null]
     );
     const pid = r.insertId;
     for (const key of roles) {

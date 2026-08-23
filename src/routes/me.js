@@ -58,6 +58,19 @@ router.get('/receipts', wrap(async (req, res) => {
   res.json(rows);
 }));
 
+// شیرهای تحویلی من (دامدار) — هر دفعه با وزن/چربی/مبلغ
+router.get('/milk', wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT id, shift, delivered_at, weight_kg, fat_pct, price_per_kg, amount
+       FROM milk_deliveries WHERE person_id = ? AND deleted_at IS NULL
+      ORDER BY id DESC LIMIT 100`, [req.user.person_id]);
+  res.json(rows.map((r) => ({
+    id: r.id, shift: r.shift, date_jalali: toJalaliDate(r.delivered_at),
+    weight_kg: Number(r.weight_kg), fat_pct: r.fat_pct != null ? Number(r.fat_pct) : null,
+    price_per_kg: Number(r.price_per_kg), amount: Number(r.amount),
+  })));
+}));
+
 // سفارش‌های من
 router.get('/orders', wrap(async (req, res) => {
   const [rows] = await pool.query(

@@ -103,7 +103,10 @@ function printReceipt(id){ window.open('/receipt.html?id='+id,'_blank'); }
 function refresh(){ if(currentPerson) selectPerson(currentPerson); }
 async function doPay(dir){ const a=prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:dir,amount:Number(a),branch_id:myBranch||null}}); refresh(); }catch(e){alert(e.message);} }
 async function doSettle(){ if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟'))return; try{ const r=await api('/payments/settle',{method:'POST',body:{person_id:currentPerson,branch_id:myBranch||null}}); alert('تسویه شد: '+fmt(r.paid)); refresh(); }catch(e){alert(e.message);} }
-async function newPerson(){ const name=prompt('نام شخص:'); if(!name)return; const isF=confirm('دامدار است؟ (لغو = مشتری)'); try{ await api('/persons',{method:'POST',body:{fullname:name,roles:[isF?'farmer':'customer']}}); loadPersons(); }catch(e){alert(e.message);} }
+async function newPerson(){ const name=prompt('نام شخص:'); if(!name)return; const isF=confirm('دامدار است؟ (لغو = مشتری)');
+  const un=prompt('نام کاربری برای ورود شخص (اختیاری - خالی=بدون لاگین):')||null;
+  const pw=un?prompt('رمز عبور:')||null:null;
+  try{ await api('/persons',{method:'POST',body:{fullname:name,roles:[isF?'farmer':'customer'],username:un,password:pw}}); loadPersons(); }catch(e){alert(e.message);} }
 // modal
 function openInvoice(){ if(!currentPerson)return; document.getElementById('invErr').textContent='';
   document.getElementById('invPerson').textContent='برای: '+document.getElementById('pName').textContent;

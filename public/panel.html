@@ -32,7 +32,14 @@
     </div>
   </section>
 
-  <section class="bg-white rounded-[20px] p-4 border border-slate-100 shadow-sm">
+  <!-- شیرهای تحویلی (فقط دامدار) -->
+  <section id="milkSection" class="hidden bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-sm">
+    <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-glass-water text-green-600 ml-1"></i> شیرهای تحویلی من</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">شیفت</th><th class="p-3">وزن (kg)</th><th class="p-3">چربی</th><th class="p-3">قیمت</th><th class="p-3">مبلغ</th></tr></thead><tbody id="meMilk" class="divide-y divide-gray-100"></tbody></table></div>
+  </section>
+
+  <!-- ثبت سفارش (فقط مشتری) -->
+  <section id="orderSection" class="bg-white rounded-[20px] p-4 border border-slate-100 shadow-sm">
     <h3 class="font-bold text-green-900 mb-3"><i class="fa-solid fa-cart-plus text-green-600 ml-1"></i> ثبت سفارش جدید</h3>
     <div id="meItems" class="space-y-2"></div>
     <button onclick="meAddItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button>
@@ -61,7 +68,14 @@ async function loadMe(){ const d=await api('/me/dashboard');
   document.getElementById('meBalLbl').textContent = cb>=0?'قابل دریافت از شرکت':'بدهی شما به شرکت';
   document.getElementById('meBal').textContent=fmt(Math.abs(cb)); document.getElementById('meKg').textContent=fmt(d.balance.milk_kg_month);
   document.getElementById('meMilk').textContent=fmt(d.balance.milk_value_month); document.getElementById('meBuy').textContent=fmt(d.balance.purchases_total); document.getElementById('mePaid').textContent=fmt(d.balance.payments_total);
-  document.getElementById('meItems').innerHTML=''; meAddItemRow(); meCalc(); loadMeOrders(); loadMeLedger(); }
+  // تفکیک نقش: دامدار خرید آنلاین ندارد، شیرهای تحویلی را می‌بیند
+  const farmer = d.role==='farmer';
+  document.getElementById('orderSection').classList.toggle('hidden', farmer);
+  document.getElementById('milkSection').classList.toggle('hidden', !farmer);
+  if (farmer) loadMeMilk(); else { document.getElementById('meItems').innerHTML=''; meAddItemRow(); meCalc(); }
+  loadMeOrders(); loadMeLedger(); }
+async function loadMeMilk(){ const rows=await api('/me/milk');
+  document.getElementById('meMilk').innerHTML=rows.map(m=>`<tr><td class="p-3 text-gray-500">${m.date_jalali}</td><td class="p-3">${m.shift==='morning'?'صبح':'شب'}</td><td class="p-3 font-bold">${fmt(m.weight_kg)}</td><td class="p-3">${m.fat_pct!=null?fmt(m.fat_pct)+'٪':'—'}</td><td class="p-3">${fmt(m.price_per_kg)}</td><td class="p-3 text-green-600 font-bold">${fmt(m.amount)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">شیری ثبت نشده</td></tr>'; }
 async function loadMeLedger(){ const rows=await api('/me/ledger'); document.getElementById('meLedger').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date_jalali}</td><td class="p-3">${r.description||r.type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 font-bold">${fmt(r.balance)}</td></tr>`).join('')||'<tr><td colspan="5" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>'; }
 async function loadMeOrders(){ const rows=await api('/me/orders'); document.getElementById('meOrders').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3">${o.status}</td><td class="p-3">${o.receipt_id?`<button onclick="window.open('/receipt.html?id=${o.receipt_id}','_blank')" class="text-blue-600"><i class="fa-solid fa-print"></i></button>`:'—'}</td><td class="p-3"><button onclick="window.open('/waybill.html?id=${o.id}','_blank')" class="text-blue-600"><i class="fa-solid fa-truck"></i></button></td></tr>`).join('')||'<tr><td colspan="5" class="p-4 text-center text-gray-400">سفارشی نیست</td></tr>'; }
 function meAddItemRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';

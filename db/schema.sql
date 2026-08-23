@@ -54,6 +54,8 @@ CREATE TABLE users (
 CREATE TABLE persons (
   id           BIGINT AUTO_INCREMENT PRIMARY KEY,
   person_code  VARCHAR(20) NOT NULL UNIQUE,
+  username     VARCHAR(60) NULL UNIQUE,          -- لاگین اختیاری شخص (دامدار/مشتری)
+  password_hash VARCHAR(255) NULL,
   fullname     VARCHAR(120) NOT NULL,
   national_code VARCHAR(10),
   mobile       VARCHAR(15),
