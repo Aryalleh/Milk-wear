@@ -34,14 +34,20 @@
     </div>
   </div>
   <div class="skeu-card overflow-hidden">
-    <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">موجودی انبار</h3></div>
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center flex-wrap gap-2">
+      <h3 class="font-bold text-gray-700">موجودی فعلی انبار</h3>
+      <div class="flex gap-4">
+        <span class="flex items-center gap-2 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-green-500"></span> موجودی کافی</span>
+        <span class="flex items-center gap-2 text-xs text-gray-500"><span class="w-3 h-3 rounded-full bg-red-500"></span> نیاز به شارژ</span>
+      </div>
+    </div>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">دسته</th><th class="p-3">واحد</th><th class="p-3">وارد شده</th><th class="p-3">فروش/خروج</th><th class="p-3">موجودی فعلی</th></tr></thead><tbody id="invTable" class="divide-y divide-gray-100"></tbody></table></div>
   </div>
 </main>
 <script>
 let products=[];
 async function loadInventory(){ const [rows,whs,meta]=await Promise.all([api('/inventory'),api('/inventory/warehouses'),api('/products/meta')]);
-  document.getElementById('invTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3">${p.unit||''}</td><td class="p-3 text-green-600">${fmt(p.total_in)}</td><td class="p-3 text-red-600">${fmt(p.total_out)}</td><td class="p-3 font-bold">${fmt(p.on_hand)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">کالایی نیست</td></tr>';
+  document.getElementById('invTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3">${p.unit||''}</td><td class="p-3">${fmt(p.total_in)}</td><td class="p-3">${fmt(p.total_out)}</td><td class="p-3 font-black ${p.on_hand>10?'text-green-600':'text-red-600'}">${fmt(p.on_hand)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">کالایی نیست</td></tr>';
   document.getElementById('invWh').innerHTML=whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
   document.getElementById('invProd').innerHTML=products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   document.getElementById('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
