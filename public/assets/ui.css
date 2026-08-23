@@ -27,6 +27,7 @@ body { font-family:'Vazirmatn',sans-serif; }
   #sheetBackdrop.show { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:49; }
 }
 @media (min-width:768px){ #sheetClose, #sheetBackdrop { display:none; } }
+@media (max-width:767px){ .empty-hint { display:none !important; } }
 .acc-head { cursor:pointer; }
 .acc-head .chev { transition:transform .2s; }
 .acc-head.open .chev { transform:rotate(-180deg); }
