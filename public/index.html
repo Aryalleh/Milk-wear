@@ -31,6 +31,10 @@
     .login-bg { background-color:#f0fdf4; background-image:radial-gradient(#dcfce7 1px,transparent 1px); background-size:20px 20px; }
     .no-scrollbar::-webkit-scrollbar { display:none; } .no-scrollbar { scrollbar-width:none; }
     .hidden { display:none !important; }
+    .desktop-only { display:none; } @media (min-width:768px){ .desktop-only { display:flex; } }
+    .mobile-only { display:block; } @media (min-width:768px){ .mobile-only { display:none; } }
+    .bnav { color:#94a3b8; transition:all .15s; }
+    .bnav.active { color:#1b4332; background:#eef7f1; }
     input,select,button,textarea { font-family:inherit; }
     table td, table th { white-space:nowrap; }
   </style>
@@ -83,7 +87,7 @@
         <i class="fa-solid fa-cow text-2xl"></i>
         <h1 class="text-base md:text-lg font-bold">مدیریت یکپارچه لبنیات</h1>
       </div>
-      <nav id="nav" class="flex overflow-x-auto no-scrollbar gap-2 py-1 max-w-full">
+      <nav id="nav" class="desktop-only overflow-x-auto no-scrollbar gap-2 py-1 max-w-full">
         <button data-view="dashboard" class="nav-pill staff-only active px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('dashboard')">داشبورد</button>
         <button data-view="ops" class="nav-pill staff-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('ops')">عملیات</button>
         <button data-view="production" class="nav-pill staff-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('production')">تولید</button>
@@ -99,7 +103,7 @@
     </div>
   </header>
 
-  <main class="max-w-[1200px] mx-auto p-4 md:p-6">
+  <main class="max-w-[1200px] mx-auto p-4 pb-28 md:p-6 md:pb-6">
 
     <!-- ===== DASHBOARD ===== -->
     <section id="view-dashboard" class="view hidden">
@@ -372,6 +376,19 @@
     </section>
 
   </main>
+
+  <!-- Mobile docked bottom navigation (matches mobile designs 09-14) -->
+  <nav id="bottomNav" class="mobile-only fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-around overflow-x-auto no-scrollbar px-1 py-1">
+      <button data-view="dashboard" onclick="showView('dashboard')" class="bnav flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-house text-lg"></i><span class="text-[10px] font-bold">داشبورد</span></button>
+      <button data-view="ops" onclick="showView('ops')" class="bnav flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-list-check text-lg"></i><span class="text-[10px] font-bold">عملیات</span></button>
+      <button data-view="production" onclick="showView('production')" class="bnav flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-industry text-lg"></i><span class="text-[10px] font-bold">تولید</span></button>
+      <button data-view="inventory" onclick="showView('inventory')" class="bnav flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-warehouse text-lg"></i><span class="text-[10px] font-bold">انبار</span></button>
+      <button data-view="sites" onclick="showView('sites')" class="bnav admin-only flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-map-location-dot text-lg"></i><span class="text-[10px] font-bold">سایت‌ها</span></button>
+      <button data-view="users" onclick="showView('users')" class="bnav admin-only flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-users text-lg"></i><span class="text-[10px] font-bold">کاربران</span></button>
+      <button data-view="audit" onclick="showView('audit')" class="bnav admin-only flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[54px]"><i class="fa-solid fa-clipboard-list text-lg"></i><span class="text-[10px] font-bold">لاگ‌ها</span></button>
+    </div>
+  </nav>
 </div>
 
 <!-- ============ INVOICE MODAL ============ -->
@@ -442,14 +459,14 @@ async function boot(){
     el('login').classList.add('hidden'); el('app').classList.remove('hidden');
     el('whoName').textContent = myName + ' — ' + (ROLE_FA[role]||role) + (myBranchName?(' @ '+myBranchName):'');
     if (myKind==='person'){
-      el('nav').classList.add('hidden');
+      el('nav').classList.add('hidden'); el('bottomNav').classList.add('hidden');
       document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
       el('view-me').classList.remove('hidden');
       products = await api('/products'); await loadMe();
       if (pendingReceiptId){ printReceipt(pendingReceiptId); pendingReceiptId=null; }
       return;
     }
-    el('nav').classList.remove('hidden');
+    el('nav').classList.remove('hidden'); el('bottomNav').classList.remove('hidden');
     const isFin = role==='admin'||role==='accountant';
     document.querySelectorAll('.admin-only').forEach(x=>x.classList.toggle('hidden', role!=='admin'));
     document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
@@ -461,7 +478,7 @@ async function boot(){
 function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));
   el('view-'+v).classList.remove('hidden');
-  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
   if(v==='dashboard') loadDashboard();
   if(v==='sites') loadSites();
   if(v==='users') loadUsers();
