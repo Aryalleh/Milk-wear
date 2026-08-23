@@ -1,86 +1,92 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>فاکتور</title>
-<style>
-  * { box-sizing:border-box; font-family:Tahoma,sans-serif; }
-  body { margin:0; background:#eceff1; color:#1a2027; }
-  .sheet { background:#fff; max-width:420px; margin:20px auto; padding:20px 22px;
-           border:1px solid #ddd; border-radius:8px; }
-  .center { text-align:center; }
-  h2 { margin:0 0 2px; font-size:17px; }
-  .muted { color:#6b7683; font-size:12px; }
-  .hr { border-top:1px dashed #bbb; margin:12px 0; }
-  .row { display:flex; justify-content:space-between; font-size:13px; margin:4px 0; }
-  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
-  th,td { padding:5px 4px; border-bottom:1px solid #eee; text-align:right; }
-  th { color:#6b7683; }
-  .tot { font-weight:700; }
-  .credit { color:#1e8449; } .debit { color:#c0392b; }
-  .net { font-size:16px; font-weight:800; }
-  .bar { max-width:420px; margin:12px auto; text-align:center; }
-  button { padding:9px 22px; border:none; border-radius:8px; background:#0d7a5f; color:#fff; cursor:pointer; font-size:14px; }
-  @media print { .bar { display:none; } body { background:#fff; } .sheet { border:none; margin:0; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاکتور تحویل شیر و خرید</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+    body { font-family: 'Vazirmatn', sans-serif; color:#000; }
+    @media screen { body { background:#f1f5f9; padding:40px 0; } .print-container { background:#fff; box-shadow:0 0 20px rgba(0,0,0,.1); } }
+    .thermal-width { width:80mm; margin:0 auto; padding:12px; }
+    @media print { .no-print { display:none; } body { background:#fff; padding:0; margin:0; } @page { margin:8mm; } }
+  </style>
 </head>
 <body>
-<div class="bar">
-  <button onclick="window.print()">🖨 پرینت</button>
-  <button onclick="window.close()" style="background:#eef2f5;color:#1a2027">بستن</button>
-</div>
-<div class="sheet" id="sheet">در حال بارگذاری…</div>
-<script>
-const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
-const id = new URLSearchParams(location.search).get('id');
-const token = localStorage.getItem('token');
-
-(async () => {
-  const r = await fetch('/api/receipts/'+id, { headers:{ Authorization:'Bearer '+token }});
-  if (!r.ok) { sheet.innerHTML = 'خطا در دریافت فاکتور'; return; }
-  const d = await r.json();
-  const rc = d.receipt;
-  let milkRows = '';
-  if (d.milk) {
-    const label = d.milk.shift === 'morning' ? 'شیر صبح' : 'شیر شب';
-    milkRows = `<tr><td>${label}</td><td>${fmt(d.milk.weight_kg)} کیلو</td>
-      <td>${fmt(d.milk.price_per_kg)}</td><td class="credit">${fmt(d.milk.amount)}</td></tr>`;
-  }
-  const itemRows = (d.items||[]).map(i =>
-    `<tr><td>${i.product_name}</td><td>${fmt(i.quantity)} ${i.unit||''}</td>
-     <td>${fmt(i.unit_price)}</td><td class="debit">${fmt(i.amount)}</td></tr>`).join('');
-
-  sheet.innerHTML = `
-    <div class="center">
-      <h2>${d.branch?.name || 'سامانه لبنیات'}</h2>
-      <div class="muted">${d.branch?.phone || ''} ${d.branch?.address || ''}</div>
-      <div class="muted">فاکتور تحویل شیر و خرید</div>
+  <div class="no-print max-w-[380px] mx-auto mb-6 flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+    <span class="text-sm font-bold text-slate-600"><i class="fa-solid fa-print text-slate-400 ml-1"></i> پیش‌نمایش فاکتور</span>
+    <div class="flex gap-2">
+      <button onclick="window.print()" class="bg-green-700 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-800">چاپ</button>
+      <button onclick="window.close()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold hover:bg-slate-200">بستن</button>
     </div>
-    <div class="hr"></div>
-    <div class="row"><span>شماره فاکتور:</span><b>${rc.receipt_no}</b></div>
-    <div class="row"><span>تاریخ:</span><span>${rc.issued_at_jalali}</span></div>
-    <div class="row"><span>طرف حساب:</span><b>${d.person.fullname} (${d.person.person_code})</b></div>
-    <div class="hr"></div>
-    <table>
-      <thead><tr><th>شرح</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ</th></tr></thead>
-      <tbody>${milkRows}${itemRows}</tbody>
-    </table>
-    <div class="hr"></div>
-    <div class="row"><span>جمع بستانکار (شیر):</span><span class="credit tot">${fmt(rc.milk_amount)}</span></div>
-    <div class="row"><span>جمع بدهکار (خرید):</span><span class="debit tot">${fmt(rc.purchase_amount)}</span></div>
-    <div class="row"><span>خالص این فاکتور:</span><span class="net">${fmt(rc.net_amount)}</span></div>
-    <div class="hr"></div>
-    <div class="row"><span>مانده کل حساب پس از فاکتور:</span>
-      <b class="${rc.balance_after>=0?'credit':'debit'}">${fmt(Math.abs(rc.balance_after))} ${rc.balance_after>=0?'(بستانکار)':'(بدهکار)'}</b></div>
-    <div class="hr"></div>
-    <div class="center muted">با تشکر — این فاکتور سند رسمی حساب شماست</div>
-    <div class="row" style="margin-top:24px"><span>امضای تحویل‌دهنده</span><span>امضای تحویل‌گیرنده</span></div>
-  `;
-  // ثبت پرینت + چاپ خودکار
-  fetch('/api/receipts/'+id+'/printed', { method:'POST', headers:{ Authorization:'Bearer '+token }});
-  setTimeout(() => window.print(), 400);
-})();
-</script>
+  </div>
+
+  <div class="print-container thermal-width" id="sheet">
+    <div class="text-center text-slate-400 py-10">در حال بارگذاری…</div>
+  </div>
+
+  <script>
+    const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+    const id = new URLSearchParams(location.search).get('id');
+    (async () => {
+      const sheet = document.getElementById('sheet');
+      try {
+        const r = await fetch('/api/receipts/'+id, { credentials:'same-origin' });
+        if (!r.ok) throw new Error('عدم دسترسی به فاکتور');
+        const d = await r.json();
+        const rc = d.receipt;
+        let rows = '';
+        if (d.milk) {
+          const label = d.milk.shift === 'morning' ? 'شیر صبح' : 'شیر شب';
+          rows += `<tr><td class="py-2 font-bold">${label}</td><td class="py-2">${fmt(d.milk.weight_kg)} kg</td>
+            <td class="py-2 text-[8px]">${fmt(d.milk.price_per_kg)}</td>
+            <td class="py-2 font-bold text-green-700">${fmt(d.milk.amount)}</td></tr>`;
+        }
+        (d.items||[]).forEach(i => {
+          rows += `<tr><td class="py-2">${i.product_name}</td><td class="py-2">${fmt(i.quantity)} ${i.unit||''}</td>
+            <td class="py-2 text-[8px]">${fmt(i.unit_price)}</td>
+            <td class="py-2 text-red-700">${fmt(i.amount)}</td></tr>`;
+        });
+        const bal = Number(rc.balance_after);
+        sheet.innerHTML = `
+          <header class="text-center mb-6 border-b-2 border-black pb-4">
+            <div class="mb-2"><i class="fa-solid fa-cow text-2xl"></i></div>
+            <h1 class="text-lg font-black">${d.branch?.name || 'سامانه لبنیات'}</h1>
+            <p class="text-[10px]">${[d.branch?.phone, d.branch?.address].filter(Boolean).join(' | ') || ''}</p>
+            <h2 class="text-sm font-bold mt-2 border-t border-black pt-1">فاکتور تحویل شیر و خرید</h2>
+          </header>
+          <div class="text-[11px] space-y-1 mb-4">
+            <div class="flex justify-between"><span>طرف حساب:</span><span class="font-bold">${d.person.fullname} (${d.person.person_code})</span></div>
+            <div class="flex justify-between"><span>شماره فاکتور:</span><span class="font-bold">${rc.receipt_no}</span></div>
+            <div class="flex justify-between"><span>تاریخ:</span><span class="font-bold">${rc.issued_at_jalali}</span></div>
+          </div>
+          <table class="w-full text-[10px] text-right mb-6 border-y border-black">
+            <thead class="border-b border-black"><tr>
+              <th class="py-2">شرح</th><th class="py-2">مقدار</th><th class="py-2">قیمت</th><th class="py-2">مبلغ</th>
+            </tr></thead>
+            <tbody class="divide-y divide-gray-200">${rows}</tbody>
+          </table>
+          <div class="text-[11px] space-y-1 mb-6">
+            <div class="flex justify-between"><span>جمع بستانکار (شیر):</span><span class="font-bold text-green-700">${fmt(rc.milk_amount)}</span></div>
+            <div class="flex justify-between"><span>جمع بدهکار (خرید):</span><span class="font-bold text-red-700">${fmt(rc.purchase_amount)}</span></div>
+            <div class="flex justify-between border-t border-black pt-1 text-sm font-black"><span>خالص این فاکتور:</span><span>${fmt(rc.net_amount)}</span></div>
+          </div>
+          <div class="bg-gray-100 p-2 rounded text-[10px] mb-6 text-center border border-gray-300">
+            مانده کل حساب پس از فاکتور: <span class="font-bold">${fmt(Math.abs(bal))}</span> (${bal>=0?'بستانکار':'بدهکار'})
+          </div>
+          <footer class="text-center text-[10px] space-y-4">
+            <p>از همکاری شما سپاسگزاریم.</p>
+            <div class="grid grid-cols-2 gap-4 pt-4 border-t border-dotted border-gray-400">
+              <div class="h-14 border border-gray-200 rounded p-1">امضاء تحویل‌دهنده</div>
+              <div class="h-14 border border-gray-200 rounded p-1">امضاء تحویل‌گیرنده</div>
+            </div>
+          </footer>`;
+        fetch('/api/receipts/'+id+'/printed', { method:'POST', credentials:'same-origin' }).catch(()=>{});
+        setTimeout(()=>window.print(), 500);
+      } catch(e) { sheet.innerHTML = '<div class="text-center text-red-500 py-10">'+e.message+'</div>'; }
+    })();
+  </script>
 </body>
 </html>

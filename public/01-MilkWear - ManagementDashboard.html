@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت داشبورد</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-3.1.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .skeu-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 
+                inset 0 1px 1px rgba(255,255,255,0.8),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+        .skeu-header {
+            background: linear-gradient(to bottom, #2d6a4f, #1b4332);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+        }
+        .nav-pill {
+            transition: all 0.2s;
+        }
+        .nav-pill.active {
+            background-color: #ffffff;
+            color: #1b4332;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Sticky Header -->
+    <header id="header" class="skeu-header sticky top-0 z-50 text-white p-4">
+        <div class="max-w-[1100px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <i class="fa-solid fa-cow text-3xl"></i>
+                <h1 class="text-xl font-bold">سامانه مدیریت یکپارچه لبنیات</h1>
+            </div>
+            
+            <nav class="flex overflow-x-auto no-scrollbar gap-2 py-1">
+                <a href="#" class="nav-pill active px-4 py-2 rounded-full text-sm font-medium">داشبورد</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">عملیات</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">تولید</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">انبار</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">سایت‌ها</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">کاربران</a>
+                <a href="#" class="nav-pill hover:bg-white/10 px-4 py-2 rounded-full text-sm font-medium">لاگ‌ها</a>
+            </nav>
+
+            <div class="flex items-center gap-3 bg-white/10 px-3 py-1.5 rounded-lg text-sm">
+                <span>علیرضا حسینی — مدیر @ سایت مرکزی</span>
+                <button class="hover:text-red-300 transition-colors">
+                    <i class="fa-solid fa-right-from-bracket"></i> خروج
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1100px] mx-auto px-4 mt-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">داشبورد مدیریت <span class="text-gray-500 text-lg font-normal">| امروز ۲۴ شهریور ۱۴۰۳</span></h2>
+            <div class="flex gap-2">
+                <button class="bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm shadow-sm hover:bg-gray-50 transition-all">
+                    <i class="fa-solid fa-calendar-day ml-2 text-green-700"></i> تغییر تاریخ
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div id="metrics-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Receiving -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">دریافت امروز</h3>
+                    <i class="fa-solid fa-truck-ramp-box text-green-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">ارزش امروز (ریال)</span>
+                        <span class="font-bold text-lg">۱۲۴,۵۰۰,۰۰۰</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">دامدار امروز</span>
+                        <span class="font-bold">۱۲ نفر</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 text-sm">ایستگاه شیر (kg)</span>
+                        <span class="font-bold text-green-700">۱,۸۵۰</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consumption -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">شیر مصرفی امروز</h3>
+                    <i class="fa-solid fa-industry text-blue-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">سالن تولید (kg)</span>
+                        <span class="font-bold">۱,۲۰۰</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">بچ امروز (count)</span>
+                        <span class="font-bold">۴ بچ</span>
+                    </div>
+                    <div class="pt-1">
+                        <span class="text-gray-500 text-xs block mb-1">لیست محصولات امروز:</span>
+                        <div class="flex flex-wrap gap-1">
+                            <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">پنیر سفید</span>
+                            <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">ماست سون</span>
+                            <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">دوغ آبعلی</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">سفارش امروز</h3>
+                    <i class="fa-solid fa-cart-shopping text-amber-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">تعداد فاکتور</span>
+                        <span class="font-bold">۴۵</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">فروش امروز (ریال)</span>
+                        <span class="font-bold text-amber-700">۸۹,۳۰۰,۰۰۰</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 text-sm">فروشگاه</span>
+                        <span class="font-bold">فعال</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">تحویل‌شده</h3>
+                    <i class="fa-solid fa-box-open text-purple-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">سفارش امروز</span>
+                        <span class="font-bold">۳۸ مورد</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">پخش</span>
+                        <span class="font-bold text-green-600">۳۲ نهایی</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 text-sm">باقیمانده</span>
+                        <span class="font-bold text-red-600">۶ مورد</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debts -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">طلب از مشتریان</h3>
+                    <i class="fa-solid fa-hand-holding-dollar text-red-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">حساب‌ها</span>
+                        <span class="font-bold text-red-600">۴۱۲,۰۰۰,۰۰۰-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 text-sm">بدهی به دامداران</span>
+                        <span class="font-bold text-green-600">۱۵۶,۰۰۰,۰۰۰+</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cashflow -->
+            <div class="skeu-card p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-gray-700">کالای تحویلی</h3>
+                    <i class="fa-solid fa-wallet text-emerald-600"></i>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">دریافت از مشتری</span>
+                        <span class="font-bold">۴۵,۰۰۰,۰۰۰</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-500 text-sm">علی‌الحساب پرداختی</span>
+                        <span class="font-bold">۱۲,۵۰۰,۰۰۰</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 text-sm">نقدینگی امروز</span>
+                        <span class="font-bold text-emerald-700">۳۲,۵۰۰,۰۰۰</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div id="processing-chart-container" class="skeu-card p-6">
+                <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-green-700"></i>
+                    روند فرآوری شیر به محصولات (این ماه)
+                </h3>
+                <div id="processingChart" class="h-[350px]"></div>
+            </div>
+
+            <div id="farmer-chart-container" class="skeu-card p-6">
+                <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-simple text-blue-700"></i>
+                    شیر امروز به تفکیک دامدار
+                </h3>
+                <div id="farmerChart" class="h-[350px]"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer id="footer" class="border-t border-gray-200 mt-12 py-8 bg-gray-50">
+        <div class="max-w-[1100px] mx-auto px-4 flex justify-between items-center">
+            <p class="text-sm text-gray-500">تمامی حقوق برای سامانه لبنیات محفوظ است.</p>
+            <div class="flex gap-4">
+                <i class="fa-brands fa-whatsapp text-gray-400 hover:text-green-600 cursor-pointer"></i>
+                <i class="fa-brands fa-telegram text-gray-400 hover:text-blue-500 cursor-pointer"></i>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        window.addEventListener('load', function() {
+            try {
+                // Processing Chart
+                const processingData = [
+                    {
+                        x: ['۰۱', '۰۵', '۱۰', '۱۵', '۲۰', '۲۵', '۳۰'],
+                        y: [1200, 1500, 1100, 1800, 1600, 2100, 1900],
+                        name: 'شیر ورودی (kg)',
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        fill: 'tozeroy',
+                        line: { color: '#2d6a4f', width: 3 },
+                        fillcolor: 'rgba(45, 106, 79, 0.1)'
+                    },
+                    {
+                        x: ['۰۱', '۰۵', '۱۰', '۱۵', '۲۰', '۲۵', '۳۰'],
+                        y: [800, 1100, 750, 1400, 1200, 1700, 1500],
+                        name: 'محصول تولیدشده (kg)',
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: { color: '#fbbf24', width: 3 }
+                    }
+                ];
+
+                const processingLayout = {
+                    margin: { t: 20, r: 20, b: 40, l: 40 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    showlegend: true,
+                    legend: { orientation: 'h', y: -0.2 },
+                    xaxis: { gridcolor: '#f3f4f6' },
+                    yaxis: { gridcolor: '#f3f4f6' },
+                    font: { family: 'Vazirmatn', size: 12 }
+                };
+
+                Plotly.newPlot('processingChart', processingData, processingLayout, {responsive: true, displayModeBar: false});
+
+                // Farmer Chart
+                const farmerData = [{
+                    type: 'bar',
+                    x: ['احمدی', 'موسوی', 'نظری', 'صادقی', 'حسینی', 'کریمی'],
+                    y: [450, 320, 580, 210, 390, 510],
+                    marker: {
+                        color: ['#1b4332', '#2d6a4f', '#40916c', '#52b788', '#74c69d', '#95d5b2'],
+                        line: { width: 1, color: '#1b4332' }
+                    }
+                }];
+
+                const farmerLayout = {
+                    margin: { t: 20, r: 20, b: 40, l: 40 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    xaxis: { gridcolor: 'transparent' },
+                    yaxis: { gridcolor: '#f3f4f6' },
+                    font: { family: 'Vazirmatn', size: 12 }
+                };
+
+                Plotly.newPlot('farmerChart', farmerData, farmerLayout, {responsive: true, displayModeBar: false});
+
+            } catch(e) {
+                console.error("Plotly error:", e);
+                document.getElementById('processingChart').innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری نمودار</div>';
+            }
+        });
+    </script>
+</body>
+</html>

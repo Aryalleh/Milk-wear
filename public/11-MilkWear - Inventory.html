@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>موجودی انبار — موبایل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f8fafc; }
+        .skeu-card { background: #ffffff; border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="pb-28">
+
+    <header class="bg-white border-b border-slate-100 p-6 flex justify-between items-center sticky top-0 z-40">
+        <div>
+            <h1 class="text-xl font-black text-slate-800">موجودی انبار</h1>
+            <p class="text-[10px] text-slate-400">آخرین بروزرسانی: ۲ ساعت پیش</p>
+        </div>
+        <button class="bg-green-50 text-green-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> ثبت ورود
+        </button>
+    </header>
+
+    <main class="p-4 space-y-4">
+        <!-- Stock Item -->
+        <div class="skeu-card p-4">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-wheat-awn"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm">کنسانتره شیری ۵٪</h3>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">خوراک دام</span>
+                    </div>
+                </div>
+                <div class="text-left">
+                    <span class="text-xs text-slate-400">موجودی</span>
+                    <div class="text-lg font-black text-green-600">۳,۸۰۰ <span class="text-[10px]">kg</span></div>
+                </div>
+            </div>
+            <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-green-500 w-[75%] rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Stock Item (Critical) -->
+        <div class="skeu-card p-4">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-wheat-awn"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm">سبوس گندم</h3>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">خوراک دام</span>
+                    </div>
+                </div>
+                <div class="text-left">
+                    <span class="text-xs text-slate-400">موجودی</span>
+                    <div class="text-lg font-black text-red-600">۱۵ <span class="text-[10px]">کیسه</span></div>
+                </div>
+            </div>
+            <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-red-500 w-[15%] rounded-full"></div>
+            </div>
+            <p class="text-[10px] text-red-500 font-bold mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i> نیاز به شارژ فوری انبار</p>
+        </div>
+
+        <!-- Stock Item -->
+        <div class="skeu-card p-4">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-box"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm">ظروف پنیر ۴۰۰ گرمی</h3>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">ملزومات</span>
+                    </div>
+                </div>
+                <div class="text-left">
+                    <span class="text-xs text-slate-400">موجودی</span>
+                    <div class="text-lg font-black text-green-600">۱۲,۴۰۰ <span class="text-[10px]">عدد</span></div>
+                </div>
+            </div>
+            <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-green-500 w-[90%] rounded-full"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-100 p-3 flex justify-around items-center">
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-house text-xl"></i>
+            <span class="text-[10px] font-bold">داشبورد</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-clipboard-list text-xl"></i>
+            <span class="text-[10px] font-bold">عملیات</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-green-700">
+            <i class="fa-solid fa-boxes-stacked text-xl"></i>
+            <span class="text-[10px] font-bold">انبار</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-user-gear text-xl"></i>
+            <span class="text-[10px] font-bold">تنظیمات</span>
+        </a>
+    </nav>
+
+</body>
+</html>

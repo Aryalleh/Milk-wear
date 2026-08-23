@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MilkWear — داشبورد مدیریت</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Vazirmatn', 'sans-serif'] },
+      colors: {
+        dairy: {
+          bg: '#faf9f5',
+          card: '#ffffff',
+          ink: '#1e293b',
+          muted: '#64748b',
+          line: '#e8e6de',
+          moss: '#1b4332',
+          leaf: '#2d6a4f',
+          gold: '#f1c40f',
+          coral: '#f87171'
+        }
+      },
+      boxShadow: {
+        'lifted': '0 18px 40px -24px rgba(27,67,50,0.55)',
+        'soft': '0 1px 2px rgba(27,67,50,0.04), 0 8px 24px -14px rgba(27,67,50,0.18)',
+        'inset-soft': 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
+      }
+    }
+  }
+}
+</script>
+<style>
+  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  body { -webkit-font-smoothing: antialiased; }
+  .wave-tank { position: relative; overflow: hidden; }
+  .wave-tank::before, .wave-tank::after {
+    content: ''; position: absolute; left: -50%; width: 200%; height: 200%;
+    border-radius: 40%; background: rgba(255,255,255,0.14);
+    animation: wave 6s linear infinite;
+  }
+  .wave-tank::after { background: rgba(255,255,255,0.08); animation-delay: -3s; }
+  @keyframes wave { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .nav-active { box-shadow: inset 0 2px 6px -2px rgba(18,62,37,0.4); background: #eef7f1; }
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #f1c40f; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.18); cursor: pointer; margin-top: -10px; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: linear-gradient(to left,#10b981 0%,#e8e6de 0%); }
+</style>
+</head>
+<body class="bg-dairy-bg text-dairy-ink font-sans min-h-screen pb-28 selection:bg-dairy-leaf selection:text-white">
+
+<div class="max-w-md mx-auto px-5 pt-7">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-7">
+    <div class="flex items-center gap-3">
+      <img src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-2.jpg" alt="مدیر لبن" class="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-soft">
+      <div>
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-dairy-gold bg-dairy-gold/12 px-2.5 py-0.5 rounded-full mb-1"><span class="w-1.5 h-1.5 rounded-full bg-dairy-gold"></span>شیفت صبح</span>
+        <h1 class="text-[17px] font-bold leading-none tracking-tight">MilkWear</h1>
+      </div>
+    </div>
+    <button class="w-11 h-11 rounded-full bg-white shadow-soft flex items-center justify-center text-dairy-muted hover:text-dairy-ink transition-colors"><i class="fa-solid fa-bell text-xl"></i></button>
+  </header>
+
+  <!-- Lead section: hero balance banner -->
+  <section class="rounded-[28px] bg-dairy-moss text-white p-6 shadow-lifted relative overflow-hidden mb-6">
+    <div class="absolute -left-10 -top-10 w-40 h-40 rounded-full bg-white/5 blur-2xl"></div>
+    <p class="text-xs text-emerald-200/80 font-medium tracking-wide mb-2">مجموع شیر دریافتی امروز</p>
+    <div class="flex items-end gap-2">
+      <span class="text-[52px] leading-none font-extrabold tracking-tighter">۱۴,۸۲۰</span>
+      <span class="text-lg text-emerald-200/80 mb-1.5">لیتر</span>
+    </div>
+    <p class="text-xs text-emerald-200/70 mt-1">+۶.۲٪ نسبت به دیروز</p>
+    <div class="flex gap-3 mt-6">
+      <button class="flex-1 bg-dairy-leaf text-white text-xs font-semibold py-2.5 rounded-2xl shadow-inset-soft hover:brightness-105 transition">ثبت محموله <i class="ph-fill ph-plus-circle mr-1"></i></button>
+      <button class="flex-1 bg-white/10 backdrop-blur text-white text-xs font-semibold py-2.5 rounded-2xl border border-white/15 hover:bg-white/15 transition">آنالیز چربی</button>
+    </div>
+    <!-- dual-line micro sparkline -->
+    <div id="spark" class="mt-4 -mx-2"></div>
+  </section>
+
+  <!-- Detail panel section -->
+  <section class="bg-dairy-card rounded-[26px] p-5 shadow-soft border border-dairy-line mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-bold">فرآوری روزانه</h2>
+      <span class="text-xs text-dairy-muted">۳ خط فعال</span>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mb-5">
+      <div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3">
+        <p class="text-[11px] text-dairy-muted mb-1">پاستوریزه</p>
+        <p class="text-lg font-bold">۹۲٪</p>
+      </div>
+      <div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3">
+        <p class="text-[11px] text-dairy-muted mb-1">همگن‌سازی</p>
+        <p class="text-lg font-bold">۸۸٪</p>
+      </div>
+      <div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3">
+        <p class="text-[11px] text-dairy-muted mb-1">بسته‌بندی</p>
+        <p class="text-lg font-bold">۹۵٪</p>
+      </div>
+    </div>
+    <div class="space-y-3">
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/64?img=12" class="w-9 h-9 rounded-full object-cover" alt="">
+        <div class="flex-1"><p class="text-sm font-semibold">دهقان</p><p class="text-[11px] text-dairy-muted">محموله صبح</p></div>
+        <span class="text-sm font-bold">۴,۲۰۰ L</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/64?img=33" class="w-9 h-9 rounded-full object-cover" alt="">
+        <div class="flex-1"><p class="text-sm font-semibold">کریمی</p><p class="text-[11px] text-dairy-muted">محموله عصر</p></div>
+        <span class="text-sm font-bold">۳,۹۱۰ L</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/64?img=45" class="w-9 h-9 rounded-full object-cover" alt="">
+        <div class="flex-1"><p class="text-sm font-semibold">راد</p><p class="text-[11px] text-dairy-muted">محموله شب</p></div>
+        <span class="text-sm font-bold">۲,۶۸۰ L</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cash-flow chart section -->
+  <section class="bg-dairy-card rounded-[26px] p-5 shadow-soft border border-dairy-line mb-6">
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="text-base font-bold">جریان شیر و ضایعات</h2>
+      <button class="text-xs text-dairy-muted flex items-center gap-1 hover:text-dairy-ink">هفته <i class="ph ph-caret-down"></i></button>
+    </div>
+    <div class="flex gap-6 mb-4">
+      <div><span class="inline-block w-2 h-2 rounded-full bg-dairy-leaf ml-1.5 align-middle"></span><span class="text-xs text-dairy-muted">دریافت</span></div>
+      <div><span class="inline-block w-2 h-2 rounded-full bg-dairy-coral ml-1.5 align-middle"></span><span class="text-xs text-dairy-muted">ضایعات</span></div>
+    </div>
+    <div id="flowchart" class="-mx-2"></div>
+  </section>
+
+  <!-- Interactive waveform section -->
+  <section class="bg-dairy-card rounded-[26px] p-5 shadow-soft border border-dairy-line">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-bold">سطح مخزن و چربی</h2>
+      <span class="text-xs text-dairy-muted">زنده</span>
+    </div>
+    <div class="wave-tank rounded-2xl bg-dairy-moss h-32 flex items-end justify-center pb-3 shadow-inset-soft">
+      <span class="relative z-10 text-white text-2xl font-bold">۷۴٪ پر</span>
+    </div>
+    <div class="mt-4">
+      <div class="flex justify-between text-xs text-dairy-muted mb-2">
+        <span>کم‌چرب</span><span class="font-semibold text-dairy-ink">چربی: <span id="fatVal">۳.۶</span>٪</span><span>پرچرب</span>
+      </div>
+      <input id="fatSlider" type="range" min="0" max="100" value="60" class="w-full">
+    </div>
+  </section>
+
+</div>
+
+<!-- Docked bottom navigation -->
+<nav class="fixed bottom-0 inset-x-0 z-50">
+  <div class="max-w-md mx-auto px-5 pb-6 pt-2">
+    <div class="bg-dairy-card rounded-[28px] shadow-lifted border border-dairy-line/70 px-2 py-2 flex items-center justify-around">
+      <a href="#" class="nav-active flex flex-col items-center gap-1 w-14 py-2 rounded-2xl text-dairy-moss"><i class="fa-solid fa-house text-xl"></i><span class="text-[10px] font-semibold">داشبورد</span></a>
+      <a href="#" class="flex flex-col items-center gap-1 w-14 py-2 rounded-2xl text-dairy-muted hover:text-dairy-ink transition-colors"><i class="fa-solid fa-chart-pie text-xl"></i><span class="text-[10px] font-medium">گزارش</span></a>
+      <a href="#" class="flex flex-col items-center gap-1 w-14 py-2 rounded-2xl text-dairy-muted hover:text-dairy-ink transition-colors"><i class="fa-solid fa-users text-xl"></i><span class="text-[10px] font-medium">کشاورزان</span></a>
+      <a href="#" class="flex flex-col items-center gap-1 w-14 py-2 rounded-2xl text-dairy-muted hover:text-dairy-ink transition-colors"><i class="fa-solid fa-gear text-xl"></i><span class="text-[10px] font-medium">تنظیمات</span></a>
+    </div>
+  </div>
+</nav>
+
+<script>
+const days = ['شنبه','یک','دو','سه','چهار','پنج','جمعه'];
+new ApexCharts(document.querySelector('#spark'), {
+  chart:{ type:'area', height:56, sparkline:{enabled:true}, fontFamily:'Vazirmatn, sans-serif' },
+  series:[{name:'صبح',data:[1800,2100,1950,2400,2200,2600,2300]},{name:'عصر',data:[1200,1400,1300,1600,1500,1700,1450]}],
+  stroke:{ curve:'smooth', width:2 },
+  colors:['#ffffff','#f1c40f'],
+  fill:{ type:'gradient', gradient:{ opacityFrom:0.35, opacityTo:0 } },
+  tooltip:{ theme:'dark', x:{show:false}, y:{ formatter:v=>v.toLocaleString('fa-IR')+' L' } }
+}).render();
+
+new ApexCharts(document.querySelector('#flowchart'), {
+  chart:{ type:'bar', height:220, stacked:false, fontFamily:'Vazirmatn, sans-serif', toolbar:{show:false} },
+  series:[
+    {name:'دریافت', data:[4200,3900,4500,4100,4800,4300,3600]},
+    {name:'ضایعات', data:[-320,-280,-410,-350,-390,-310,-260]}
+  ],
+  plotOptions:{ bar:{ borderRadius:6, columnWidth:'48%' } },
+  colors:['#10b981','#f87171'],
+  dataLabels:{ enabled:false },
+  legend:{ show:false },
+  grid:{ borderColor:'#f1f0ea', strokeDashArray:4, padding:{left:0,right:0,top:0} },
+  xaxis:{ categories:days, axisBorder:{show:false}, axisTicks:{show:false}, labels:{ style:{colors:'#94a3b8', fontSize:'10px'} } },
+  yaxis:{ labels:{ style:{colors:'#94a3b8', fontSize:'10px'}, formatter:v=>Math.abs(v).toLocaleString('fa-IR') } },
+  tooltip:{ theme:'light', y:{ formatter:v=>Math.abs(v).toLocaleString('fa-IR')+' L' } }
+}).render();
+
+const fatSlider = document.getElementById('fatSlider');
+const fatVal = document.getElementById('fatVal');
+function updateFat(){
+  const v = (1.5 + (fatSlider.value/100)*4.5).toFixed(1);
+  fatVal.textContent = Number(v).toLocaleString('fa-IR');
+  fatSlider.style.background = `linear-gradient(to left,#10b981 ${fatSlider.value}%,#e8e6de ${fatSlider.value}%)`;
+}
+fatSlider.addEventListener('input', updateFat);
+updateFat();
+</script>
+</body>
+</html>

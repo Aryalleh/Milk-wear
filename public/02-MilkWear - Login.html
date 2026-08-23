@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود به سامانه</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; }
+        .login-bg {
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#dcfce7 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .skeu-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.04),
+                inset 0 -2px 0 rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+        }
+        .input-skeu {
+            background: #f9fafb;
+            border: 1px solid #d1d5db;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        .input-skeu:focus {
+            background: #ffffff;
+            border-color: #1b4332;
+            box-shadow: 0 0 0 4px rgba(27, 67, 50, 0.1), inset 0 2px 4px rgba(0,0,0,0.05);
+            outline: none;
+        }
+        .btn-skeu {
+            background: linear-gradient(to bottom, #2d6a4f, #1b4332);
+            box-shadow: 0 4px 6px -1px rgba(27, 67, 50, 0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-skeu:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px -1px rgba(27, 67, 50, 0.4);
+        }
+    </style>
+</head>
+<body class="login-bg h-[800px] flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md">
+        <!-- Logo/Branding -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-green-800 rounded-2xl shadow-lg mb-4 text-white">
+                <i class="fa-solid fa-cow text-4xl"></i>
+            </div>
+            <h1 class="text-2xl font-black text-green-900">سامانه مدیریت لبنیات</h1>
+            <p class="text-green-700 mt-2">خوش آمدید، لطفاً وارد حساب خود شوید</p>
+        </div>
+
+        <!-- Login Card -->
+        <div id="login" class="skeu-card p-8 md:p-10">
+            <form class="space-y-6" onsubmit="event.preventDefault();">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">نام کاربری</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" placeholder="مثلاً alireza_h" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">رمز عبور</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" placeholder="••••••••" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800">
+                    </div>
+                    <!-- Error State (Hidden by default) -->
+                    <p id="error-message" class="hidden text-red-600 text-xs mt-2 font-medium">
+                        «نام کاربری یا رمز اشتباه است»
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-between py-2">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-green-700 focus:ring-green-600">
+                        <span class="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">مرا به خاطر بسپار</span>
+                    </label>
+                    <a href="#" class="text-sm text-green-700 hover:underline font-medium">فراموشی رمز؟</a>
+                </div>
+
+                <button type="submit" class="btn-skeu w-full py-4 rounded-xl text-white font-bold text-lg">
+                    ورود به سامانه
+                </button>
+            </form>
+
+            <div class="mt-8 pt-8 border-t border-gray-100 text-center">
+                <p class="text-sm text-gray-500 mb-4">ورود از طریق پیام‌رسان بله (اتوماتیک)</p>
+                <button class="flex items-center justify-center gap-3 w-full border-2 border-green-100 hover:bg-green-50 py-3 rounded-xl transition-colors">
+                    <img class="w-6 h-6" src="https://storage.googleapis.com/uxpilot-auth.appspot.com/gen_a81139b794_2c0d6fd455c6c5c6.png" alt="Bale messenger logo, minimalist icon" />
+                    <span class="font-bold text-green-800">ورود با بله</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <p class="text-center text-gray-400 text-xs mt-8">
+            نسخه ۲.۴.۰ • پشتیبانی: ۰۲۱-۱۲۳۴۵۶۷۸
+        </p>
+    </div>
+
+</body>
+</html>

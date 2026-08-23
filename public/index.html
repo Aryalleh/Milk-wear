@@ -1,925 +1,669 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- SDK مینی‌اپ بله؛ باید قبل از هر اسکریپت دیگری باشد -->
-<script src="https://tapi.bale.ai/miniapp.js?3"></script>
-<title>سامانه مدیریت لبنیات</title>
-<style>
-  :root { --bg:#f4f6f8; --card:#fff; --line:#e3e8ee; --pri:#0d7a5f; --pri2:#0a6350;
-          --txt:#1a2027; --muted:#6b7683; --red:#c0392b; --green:#1e8449; }
-  * { box-sizing:border-box; font-family:Tahoma,"Segoe UI",sans-serif; }
-  html, body { max-width:100%; overflow-x:hidden; }
-  body { margin:0; background:var(--bg); color:var(--txt); font-size:15px; line-height:1.6;
-         -webkit-text-size-adjust:100%; }
-  header { background:var(--pri); color:#fff; padding:12px 16px; display:flex;
-           justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
-           position:sticky; top:0; z-index:20; }
-  header h1 { font-size:16px; margin:0; }
-  /* نوار پیمایش: در موبایل قابل اسکرول افقی */
-  nav { display:flex; gap:6px; overflow-x:auto; max-width:100%; -webkit-overflow-scrolling:touch;
-        scrollbar-width:none; }
-  nav::-webkit-scrollbar { display:none; }
-  nav button { background:rgba(255,255,255,.15); color:#fff; border:none; padding:9px 14px;
-               border-radius:8px; cursor:pointer; font-size:14px; white-space:nowrap; min-height:40px; }
-  nav button.active { background:#fff; color:var(--pri); font-weight:700; }
-  .wrap { max-width:1100px; margin:18px auto; padding:0 16px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
-  input,select,button,textarea { font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; min-height:44px; }
-  button { background:var(--pri); color:#fff; border:none; cursor:pointer; min-height:44px; }
-  button:hover { background:var(--pri2); }
-  button.ghost { background:#eef2f5; color:var(--txt); }
-  button.red { background:var(--red); }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th,td { padding:9px 10px; border-bottom:1px solid var(--line); text-align:right; }
-  th { color:var(--muted); font-weight:600; background:#fafbfc; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
-  .stat { background:#f8fafb; border:1px solid var(--line); border-radius:10px; padding:12px; }
-  .stat .lbl { color:var(--muted); font-size:12px; }
-  .stat .val { font-size:19px; font-weight:700; margin-top:4px; }
-  .payable { background:var(--pri); color:#fff; }
-  .payable .lbl { color:#d6efe6; }
-  .pill { padding:2px 10px; border-radius:20px; font-size:12px; }
-  .creditor { background:#e8f6ef; color:var(--green); }
-  .debtor { background:#fdeceb; color:var(--red); }
-  .settled { background:#eef2f5; color:var(--muted); }
-  .person-item { padding:10px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; }
-  .person-item:hover { background:#f8fafb; }
-  .hidden { display:none !important; }
-  .credit { color:var(--green); } .debit { color:var(--red); }
-  #login { max-width:340px; margin:80px auto; }
-  h3 { margin:0 0 12px; font-size:15px; }
-  .muted { color:var(--muted); font-size:13px; }
-  label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
-  .field { margin-bottom:10px; }
-  .field input, .field select { width:100%; }
-  /* modal */
-  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex;
-             align-items:flex-start; justify-content:center; padding:30px 12px; overflow:auto; z-index:50; }
-  .modal { background:#fff; border-radius:14px; padding:20px; width:560px; max-width:100%; }
-  .modal h3 { display:flex; justify-content:space-between; }
-  .x { cursor:pointer; color:var(--muted); background:none; padding:0; font-size:20px; }
-  .item-row { display:grid; grid-template-columns:1fr 90px 110px 34px; gap:6px; margin-bottom:6px; align-items:center; }
-  .section { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
-  .section h4 { margin:0 0 10px; font-size:14px; }
-  .sum { background:#f8fafb; border-radius:8px; padding:10px 12px; margin-top:6px; font-size:14px; }
-  .drow { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px solid var(--line); }
-  .drow:last-child { border-bottom:none; }
-  .drow span { color:var(--muted); }
-  /* چیدمان دو‌ستونهٔ عملیات + اسکرول جداول عریض داخل کارت (نه کل صفحه) */
-  .ops-grid { display:grid; grid-template-columns:320px 1fr; gap:16px; }
-  .card { overflow-x:auto; }
-  th, td { white-space:nowrap; }
-  /* ===== موبایل ===== */
-  @media (max-width:768px) {
-    .wrap { padding:0 10px; margin:12px auto; }
-    .ops-grid { grid-template-columns:1fr; }
-    header { padding:10px 12px; }
-    header h1 { font-size:15px; }
-    .card { padding:13px; border-radius:10px; }
-    .stat .val { font-size:18px; }
-    .item-row { grid-template-columns:1fr 72px 92px 40px; gap:5px; }
-    .modal { padding:16px; border-radius:12px 12px 0 0; }
-    .overlay { padding:0; align-items:flex-end; }   /* مودال از پایین بالا می‌آید */
-    .modal { width:100%; max-height:92vh; overflow-y:auto; }
-    h3 { font-size:15px; }
-    .row > input, .row > select { flex:1 1 100%; }   /* ورودی‌های فرم تمام‌عرض */
-    .row > button { flex:1 1 auto; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سامانه یکپارچه مدیریت لبنیات</title>
+  <script src="https://tapi.bale.ai/miniapp.js?3"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: {
+      dairy: { leaf:'#2d6a4f', dark:'#1b4332', bg:'#f3f4f6', ink:'#1f2937' }
+    }, fontFamily: { sans:['Vazirmatn','sans-serif'] } } } };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+    body { font-family:'Vazirmatn',sans-serif; background-color:#f3f4f6; color:#1f2937; }
+    .skeu-header { background:linear-gradient(to bottom,#2d6a4f,#1b4332); box-shadow:0 4px 6px -1px rgba(0,0,0,.2); }
+    .skeu-card { background:#fff; border-radius:12px; border:1px solid #e5e7eb;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,.8), 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); }
+    .nav-pill { transition:all .2s; }
+    .nav-pill.active { background:#fff; color:#1b4332; font-weight:700; box-shadow:inset 0 2px 4px rgba(0,0,0,.1); }
+    .sidebar-item { transition:all .15s; cursor:pointer; }
+    .sidebar-item:hover { background:#f9fafb; }
+    .sidebar-item.active { background:#ecfdf5; border-right:4px solid #059669; }
+    .input-skeu { background:#f9fafb; border:1px solid #d1d5db; box-shadow:inset 0 2px 4px rgba(0,0,0,.05); transition:all .2s; }
+    .input-skeu:focus { background:#fff; border-color:#1b4332; box-shadow:0 0 0 4px rgba(27,67,50,.1); outline:none; }
+    .btn-skeu { background:linear-gradient(to bottom,#2d6a4f,#1b4332); box-shadow:0 4px 6px -1px rgba(27,67,50,.4); transition:transform .1s; }
+    .btn-skeu:active { transform:translateY(1px); }
+    .login-bg { background-color:#f0fdf4; background-image:radial-gradient(#dcfce7 1px,transparent 1px); background-size:20px 20px; }
+    .no-scrollbar::-webkit-scrollbar { display:none; } .no-scrollbar { scrollbar-width:none; }
+    .hidden { display:none !important; }
+    input,select,button,textarea { font-family:inherit; }
+    table td, table th { white-space:nowrap; }
+  </style>
 </head>
-<body>
-<header>
-  <h1>🥛 سامانه یکپارچه مدیریت لبنیات</h1>
-  <nav id="nav" class="hidden">
-    <button data-view="dashboard" class="active staff-only" onclick="showView('dashboard')">داشبورد</button>
-    <button data-view="ops" class="staff-only" onclick="showView('ops')">عملیات</button>
-    <button data-view="production" class="staff-only" onclick="showView('production')">تولید</button>
-    <button data-view="inventory" class="staff-only" onclick="showView('inventory')">انبار</button>
-    <button data-view="sites" class="admin-only" onclick="showView('sites')">سایت‌ها</button>
-    <button data-view="users" class="admin-only" onclick="showView('users')">کاربران</button>
-    <button data-view="audit" class="admin-only" onclick="showView('audit')">لاگ‌ها</button>
-  </nav>
-  <div id="who" class="hidden"><span id="whoName"></span> · <a href="#" id="logout" style="color:#fff">خروج</a></div>
-</header>
+<body class="min-h-screen">
 
-<!-- ورود -->
-<div id="login" class="card">
-  <h3>ورود</h3>
-  <div class="row" style="flex-direction:column; align-items:stretch">
-    <input id="u" placeholder="نام کاربری" value="admin">
-    <input id="p" type="password" placeholder="رمز عبور" value="admin123">
-    <button onclick="login()">ورود</button>
-    <div id="loginErr" class="muted" style="color:var(--red)"></div>
+<!-- ============ LOGIN ============ -->
+<div id="login" class="login-bg min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-20 h-20 bg-dairy-dark rounded-2xl shadow-lg mb-4 text-white">
+        <i class="fa-solid fa-cow text-4xl"></i>
+      </div>
+      <h1 class="text-2xl font-black text-green-900">سامانه مدیریت لبنیات</h1>
+      <p class="text-green-700 mt-2">خوش آمدید، لطفاً وارد حساب خود شوید</p>
+    </div>
+    <div class="skeu-card p-8" style="border-radius:24px">
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">نام کاربری</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400"><i class="fa-solid fa-user"></i></span>
+            <input id="u" type="text" value="admin" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">رمز عبور</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400"><i class="fa-solid fa-lock"></i></span>
+            <input id="p" type="password" value="admin123" onkeydown="if(event.key==='Enter')login()" class="input-skeu w-full pr-11 pl-4 py-3 rounded-xl text-gray-800">
+          </div>
+          <p id="loginErr" class="text-red-600 text-xs mt-2 font-medium"></p>
+        </div>
+        <button onclick="login()" class="btn-skeu w-full py-4 rounded-xl text-white font-bold text-lg">ورود به سامانه</button>
+      </div>
+      <div class="mt-6 pt-6 border-t border-gray-100 text-center">
+        <p class="text-xs text-gray-500">ورود از طریق پیام‌رسان بله به‌صورت خودکار انجام می‌شود</p>
+      </div>
+    </div>
+    <p class="text-center text-gray-400 text-xs mt-6">سامانه یکپارچه مدیریت زنجیره لبنیات</p>
   </div>
 </div>
 
-<!-- ===== داشبورد مدیریت ===== -->
-<div id="view-dashboard" class="wrap hidden">
-  <div class="card">
-    <div class="row" style="justify-content:space-between; align-items:baseline">
-      <h3 style="margin:0">📊 داشبورد مدیریت</h3>
-      <span class="muted">امروز: <b id="dToday">—</b></span>
-    </div>
-  </div>
-
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); margin-bottom:16px">
-    <div class="card" style="margin:0">
-      <h3>🥛 ایستگاه شیر</h3>
-      <div class="drow"><span>دریافت امروز</span><b><span id="dMilkKg">—</span> kg</b></div>
-      <div class="drow"><span>ارزش امروز</span><b id="dMilkVal">—</b></div>
-      <div class="drow"><span>دامدار امروز</span><b id="dFarmers">—</b></div>
-    </div>
-    <div class="card" style="margin:0">
-      <h3>🏭 سالن تولید</h3>
-      <div class="drow"><span>شیر مصرفی امروز</span><b><span id="dProdMilk">—</span> kg</b></div>
-      <div class="drow"><span>بَچ امروز</span><b id="dProdBatches">—</b></div>
-      <div id="dProdOut" class="muted" style="margin-top:6px"></div>
-    </div>
-    <div class="card" style="margin:0">
-      <h3>🏪 فروشگاه</h3>
-      <div class="drow"><span>فروش امروز</span><b id="dStoreVal">—</b></div>
-      <div class="drow"><span>تعداد فاکتور</span><b id="dStoreCount">—</b></div>
-    </div>
-    <div class="card" style="margin:0">
-      <h3>🚚 پخش</h3>
-      <div class="drow"><span>سفارش امروز</span><b id="dDistOrders">—</b></div>
-      <div class="drow"><span>تحویل‌شده</span><b class="credit" id="dDistDelivered">—</b></div>
-      <div class="drow"><span>باقیمانده</span><b class="debit" id="dDistRemaining">—</b></div>
-    </div>
-    <div class="card" style="margin:0">
-      <h3>💰 حساب‌ها</h3>
-      <div class="drow"><span>طلب از مشتریان</span><b class="debit" id="dReceivable">—</b></div>
-      <div class="drow"><span>بدهی به دامداران</span><b class="credit" id="dPayable">—</b></div>
-    </div>
-    <div class="card" style="margin:0">
-      <h3>💵 نقدینگی امروز</h3>
-      <div class="drow"><span>علی‌الحساب پرداختی</span><b id="dOnAcc">—</b></div>
-      <div class="drow"><span>دریافت از مشتری</span><b id="dReceived">—</b></div>
-      <div class="drow"><span>کالای تحویلی</span><b id="dGoods">—</b></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>🧀 روند فراوری شیر به محصولات (این ماه)</h3>
-    <div class="drow"><span>شیر ورودی این ماه</span><b><span id="dProcMilk">—</span> kg</b></div>
-    <table style="margin-top:8px">
-      <thead><tr><th>محصول تولیدشده</th><th>مقدار این ماه</th><th>نسبت از شیر</th></tr></thead>
-      <tbody id="dProcTable"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3>شیر امروز به تفکیک دامدار</h3>
-    <table>
-      <thead><tr><th>دامدار</th><th>شیر امروز</th><th>ارزش شیر</th></tr></thead>
-      <tbody id="dFarmerTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== نمای عملیات ===== -->
-<div id="view-ops" class="wrap hidden">
-  <div class="ops-grid">
-    <div class="card">
-      <h3>اشخاص</h3>
-      <div class="row">
-        <input id="search" placeholder="جستجو..." oninput="loadPersons()" style="flex:1">
-        <button class="ghost" onclick="newPerson()">+</button>
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <!-- Header -->
+  <header class="skeu-header sticky top-0 z-40 text-white p-3">
+    <div class="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+      <div class="flex items-center gap-3 shrink-0">
+        <i class="fa-solid fa-cow text-2xl"></i>
+        <h1 class="text-base md:text-lg font-bold">مدیریت یکپارچه لبنیات</h1>
       </div>
-      <div id="persons" style="margin-top:10px"></div>
-    </div>
-
-    <div id="detail" class="hidden">
-      <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <div><h3 id="pName" style="margin:0"></h3><span id="pCode" class="muted"></span></div>
-          <span id="pStatus" class="pill"></span>
-        </div>
-        <div class="grid" style="margin-top:14px">
-          <div class="stat payable"><div class="lbl">قابل پرداخت تا این لحظه</div><div class="val" id="sPayable">—</div></div>
-          <div class="stat"><div class="lbl">شیر این ماه (کیلو)</div><div class="val" id="sKg">—</div></div>
-          <div class="stat"><div class="lbl">ارزش شیر این ماه</div><div class="val" id="sMilk">—</div></div>
-          <div class="stat"><div class="lbl">مجموع خرید</div><div class="val" id="sBuy">—</div></div>
-          <div class="stat"><div class="lbl">برداشت نقدی</div><div class="val" id="sCash">—</div></div>
-          <div class="stat"><div class="lbl">مجموع پرداخت‌ها</div><div class="val" id="sPaid">—</div></div>
-        </div>
+      <nav id="nav" class="flex overflow-x-auto no-scrollbar gap-2 py-1 max-w-full">
+        <button data-view="dashboard" class="nav-pill staff-only active px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('dashboard')">داشبورد</button>
+        <button data-view="ops" class="nav-pill staff-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('ops')">عملیات</button>
+        <button data-view="production" class="nav-pill staff-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('production')">تولید</button>
+        <button data-view="inventory" class="nav-pill staff-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('inventory')">انبار</button>
+        <button data-view="sites" class="nav-pill admin-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('sites')">سایت‌ها</button>
+        <button data-view="users" class="nav-pill admin-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('users')">کاربران</button>
+        <button data-view="audit" class="nav-pill admin-only px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-white/10" onclick="showView('audit')">لاگ‌ها</button>
+      </nav>
+      <div class="flex items-center gap-3 bg-white/10 px-3 py-1.5 rounded-lg text-xs shrink-0">
+        <span id="whoName"></span>
+        <a href="#" id="logout" class="hover:text-red-300"><i class="fa-solid fa-right-from-bracket"></i> خروج</a>
       </div>
+    </div>
+  </header>
 
-      <div class="card">
-        <h3>عملیات سریع</h3>
-        <div class="row">
-          <button onclick="openInvoice()">🧾 فاکتور تحویل شیر و خرید</button>
-          <button onclick="doPay('out')" class="ghost fin-only">💵 پرداخت به دامدار</button>
-          <button onclick="doPay('in')" class="ghost fin-only">📥 دریافت از مشتری</button>
-          <button onclick="doSettle()" class="red fin-only">تسویهٔ کامل</button>
+  <main class="max-w-[1200px] mx-auto p-4 md:p-6">
+
+    <!-- ===== DASHBOARD ===== -->
+    <section id="view-dashboard" class="view hidden">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl md:text-2xl font-bold text-gray-800">داشبورد مدیریت <span id="dToday" class="text-gray-500 text-base font-normal"></span></h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🥛 ایستگاه شیر</h3><i class="fa-solid fa-truck-ramp-box text-green-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">دریافت امروز</span><span class="font-bold text-green-700"><span id="dMilkKg">—</span> kg</span></div>
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">ارزش امروز (ریال)</span><span class="font-bold" id="dMilkVal">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">دامدار امروز</span><span class="font-bold" id="dFarmers">—</span></div>
+          </div>
+        </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🏭 سالن تولید</h3><i class="fa-solid fa-industry text-blue-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">شیر مصرفی امروز (kg)</span><span class="font-bold" id="dProdMilk">—</span></div>
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">بَچ امروز</span><span class="font-bold" id="dProdBatches">—</span></div>
+            <div class="pt-1"><span class="text-gray-500 text-xs block mb-1">محصولات امروز:</span><div id="dProdOut" class="flex flex-wrap gap-1"></div></div>
+          </div>
+        </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🏪 فروشگاه</h3><i class="fa-solid fa-cart-shopping text-amber-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">فروش امروز (ریال)</span><span class="font-bold text-amber-700" id="dStoreVal">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">تعداد فاکتور</span><span class="font-bold" id="dStoreCount">—</span></div>
+          </div>
+        </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🚚 پخش</h3><i class="fa-solid fa-box-open text-purple-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">سفارش امروز</span><span class="font-bold" id="dDistOrders">—</span></div>
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">تحویل‌شده</span><span class="font-bold text-green-600" id="dDistDelivered">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">باقیمانده</span><span class="font-bold text-red-600" id="dDistRemaining">—</span></div>
+          </div>
+        </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">💰 حساب‌ها</h3><i class="fa-solid fa-hand-holding-dollar text-red-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">طلب از مشتریان</span><span class="font-bold text-red-600" id="dReceivable">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">بدهی به دامداران</span><span class="font-bold text-green-600" id="dPayable">—</span></div>
+          </div>
+        </div>
+        <div class="skeu-card p-4">
+          <div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">💵 نقدینگی امروز</h3><i class="fa-solid fa-wallet text-emerald-600"></i></div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">علی‌الحساب پرداختی</span><span class="font-bold" id="dOnAcc">—</span></div>
+            <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">دریافت از مشتری</span><span class="font-bold" id="dReceived">—</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">کالای تحویلی</span><span class="font-bold text-emerald-700" id="dGoods">—</span></div>
+          </div>
         </div>
       </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-simple text-green-700 ml-1"></i> روند فراوری این ماه (محصولات)</h3><div id="processingChart" class="h-[300px]"></div></div>
+        <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-simple text-blue-700 ml-1"></i> شیر امروز به تفکیک دامدار</h3><div id="farmerChart" class="h-[300px]"></div></div>
+      </div>
+    </section>
 
-      <div class="card">
-        <h3>گردش حساب (دفتر)</h3>
-        <table>
-          <thead><tr><th>تاریخ</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead>
-          <tbody id="ledger"></tbody>
-        </table>
+    <!-- ===== OPERATIONS ===== -->
+    <section id="view-ops" class="view hidden grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div class="md:col-span-4 lg:col-span-3">
+        <div class="skeu-card p-4">
+          <div class="flex gap-2 mb-4">
+            <div class="relative flex-1">
+              <input id="search" oninput="loadPersons()" placeholder="جستجو..." class="w-full pr-10 pl-3 py-2 input-skeu rounded-lg text-sm">
+              <i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i>
+            </div>
+            <button onclick="newPerson()" class="bg-green-600 text-white w-10 h-10 rounded-lg flex items-center justify-center hover:bg-green-700"><i class="fa-solid fa-plus"></i></button>
+          </div>
+          <div id="persons" class="space-y-1 overflow-y-auto max-h-[70vh] no-scrollbar"></div>
+        </div>
+      </div>
+      <div class="md:col-span-8 lg:col-span-9 space-y-6">
+        <div id="empty" class="skeu-card p-10 text-center text-gray-400"><i class="fa-solid fa-hand-pointer text-3xl mb-3"></i><p>یک شخص را از فهرست انتخاب کنید</p></div>
+        <div id="detail" class="hidden space-y-6">
+          <div class="skeu-card p-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <div class="flex items-center gap-3 mb-1">
+                  <h2 id="pName" class="text-2xl font-black text-gray-800"></h2>
+                  <span id="pStatus" class="text-xs px-2 py-0.5 rounded-full font-bold"></span>
+                </div>
+                <p class="text-gray-500 text-sm">کد: <span id="pCode"></span></p>
+              </div>
+              <div class="flex gap-2 w-full md:w-auto flex-wrap">
+                <button onclick="openInvoice()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center gap-2"><i class="fa-solid fa-file-invoice"></i> فاکتور تحویل شیر و خرید</button>
+                <button onclick="doPay('out')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-gray-50">پرداخت به دامدار</button>
+                <button onclick="doPay('in')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-gray-50">دریافت از مشتری</button>
+                <button onclick="doSettle()" class="fin-only bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-red-100">تسویهٔ کامل</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+              <div class="bg-green-50 border border-green-100 p-3 rounded-xl text-center shadow-inner"><span class="block text-[10px] text-green-600 mb-1">قابل پرداخت تا این لحظه</span><span id="sPayable" class="text-base font-black text-green-800">—</span></div>
+              <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">شیر این ماه (کیلو)</span><span id="sKg" class="text-base font-black text-gray-700">—</span></div>
+              <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">ارزش شیر این ماه</span><span id="sMilk" class="text-base font-black text-gray-700">—</span></div>
+              <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">مجموع خرید</span><span id="sBuy" class="text-base font-black text-gray-700">—</span></div>
+              <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">برداشت نقدی</span><span id="sCash" class="text-base font-black text-gray-700">—</span></div>
+              <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">مجموع پرداخت‌ها</span><span id="sPaid" class="text-base font-black text-gray-700">—</span></div>
+            </div>
+          </div>
+          <div class="skeu-card overflow-hidden">
+            <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-list-check text-green-600 ml-1"></i> گردش حساب (دفتر)</h3></div>
+            <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+              <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">شرح</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">مانده</th></tr></thead>
+              <tbody id="ledger" class="divide-y divide-gray-100"></tbody>
+            </table></div>
+          </div>
+          <div class="skeu-card overflow-hidden">
+            <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">فاکتورهای این شخص</h3></div>
+            <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+              <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">شیر</th><th class="p-3">خرید</th><th class="p-3">خالص</th><th class="p-3">چاپ</th></tr></thead>
+              <tbody id="receipts" class="divide-y divide-gray-100"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTION ===== -->
+    <section id="view-production" class="view hidden space-y-6">
+      <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-industry text-blue-600 ml-1"></i> ثبت تولید (فراوری شیر خام به محصولات)</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div><label class="text-xs text-gray-500 block mb-1">شیر خام مصرفی (کیلو)</label><input id="prMilk" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-40"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="prWh" class="input-skeu rounded-lg px-3 py-2"></select></div>
+        </div>
+        <h4 class="font-bold text-sm mt-5 mb-2">محصولات تولیدشده:</h4>
+        <div id="prOutputs" class="space-y-2"></div>
+        <button onclick="prAddRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن محصول</button>
+        <div class="flex justify-end mt-4"><button onclick="prSubmit()" class="btn-skeu text-white px-6 py-2.5 rounded-lg font-bold">ثبت بَچ تولید</button></div>
+        <p id="prErr" class="text-red-600 text-xs mt-2"></p>
+      </div>
+      <div class="skeu-card overflow-hidden">
+        <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">بَچ‌های اخیر تولید</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کد بَچ</th><th class="p-3">تاریخ</th><th class="p-3">شیر مصرفی</th><th class="p-3">محصولات</th></tr></thead>
+          <tbody id="prTable" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ===== INVENTORY ===== -->
+    <section id="view-inventory" class="view hidden space-y-6">
+      <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-warehouse text-amber-600 ml-1"></i> ثبت ورود کالا به انبار (چیا اومده)</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="invWh" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">کالا</label><select id="invProd" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">مقدار</label><input id="invQty" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">بهای واحد (اختیاری)</label><input id="invCost" type="number" class="input-skeu rounded-lg px-3 py-2 w-40"></div>
+          <button onclick="receiveStock()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">ثبت ورود</button>
+        </div>
+      </div>
+      <div class="skeu-card overflow-hidden">
+        <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">موجودی انبار</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">دسته</th><th class="p-3">واحد</th><th class="p-3">وارد شده</th><th class="p-3">فروش/خروج</th><th class="p-3">موجودی فعلی</th></tr></thead>
+          <tbody id="invTable" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ===== SITES ===== -->
+    <section id="view-sites" class="view hidden space-y-6">
+      <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-map-location-dot text-green-600 ml-1"></i> تعریف سایت جمع‌آوری شیر جدید</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div><label class="text-xs text-gray-500 block mb-1">کد سایت</label><input id="siteCode" class="input-skeu rounded-lg px-3 py-2 w-32" placeholder="ST3"></div>
+          <div class="flex-1 min-w-[180px]"><label class="text-xs text-gray-500 block mb-1">نام سایت</label><input id="siteName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">نوع</label><select id="siteType" class="input-skeu rounded-lg px-3 py-2"><option value="station">ایستگاه جمع‌آوری شیر</option><option value="store">فروشگاه</option><option value="distribution">مرکز پخش</option></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">تلفن</label><input id="sitePhone" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+          <button onclick="addSite()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن سایت</button>
+        </div>
+      </div>
+      <div class="skeu-card overflow-hidden">
+        <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">سایت‌های تعریف‌شده</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">کد</th><th class="p-3">نام</th><th class="p-3">نوع</th><th class="p-3">تلفن</th><th class="p-3">انبار</th><th class="p-3">کاربر</th><th class="p-3">وضعیت</th><th class="p-3">متصدی</th></tr></thead>
+          <tbody id="sitesTable" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ===== USERS ===== -->
+    <section id="view-users" class="view hidden space-y-6">
+      <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-user-plus text-green-600 ml-1"></i> افزودن کاربر برای سایت</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-[140px]"><label class="text-xs text-gray-500 block mb-1">نام کامل</label><input id="uName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">نام کاربری</label><input id="uUser" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">رمز عبور</label><input id="uPass" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">نقش</label><select id="uRole" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">سایت</label><select id="uBranch" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">شناسه بله</label><input id="uBale" class="input-skeu rounded-lg px-3 py-2 w-32" placeholder="اختیاری"></div>
+          <button onclick="addUser()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن</button>
+        </div>
+      </div>
+      <div class="skeu-card overflow-hidden">
+        <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">کاربران سیستم</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">نام</th><th class="p-3">نام کاربری</th><th class="p-3">نقش</th><th class="p-3">سایت</th><th class="p-3">وضعیت</th><th class="p-3">بله (لاگین خودکار)</th></tr></thead>
+          <tbody id="usersTable" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ===== AUDIT ===== -->
+    <section id="view-audit" class="view hidden space-y-6">
+      <div class="skeu-card p-6">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <h3 class="font-bold text-gray-800"><i class="fa-solid fa-clipboard-list text-slate-600 ml-1"></i> لاگ تغییرات سیستم</h3>
+          <input id="auditQ" oninput="loadAudit()" placeholder="جستجو..." class="input-skeu rounded-lg px-3 py-2 w-56">
+        </div>
+        <p class="text-xs text-gray-500 mt-2">هر عملیات هر کاربری (ثبت، ویرایش، پرداخت، سفارش، ...) اینجا ثبت می‌شود.</p>
+      </div>
+      <div class="skeu-card overflow-hidden">
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">زمان</th><th class="p-3">کاربر</th><th class="p-3">عملیات</th><th class="p-3">بخش</th><th class="p-3">مسیر</th><th class="p-3">وضعیت</th><th class="p-3">IP</th></tr></thead>
+          <tbody id="auditTable" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ===== PERSONAL PANEL ===== -->
+    <section id="view-me" class="view hidden space-y-6 max-w-lg mx-auto">
+      <div class="p-6 rounded-[24px] text-white shadow-xl relative overflow-hidden" style="background:linear-gradient(135deg,#2d6a4f,#1b4332)">
+        <div class="absolute -right-8 -bottom-8 opacity-10 rotate-12"><i class="fa-solid fa-cow text-[140px]"></i></div>
+        <div class="relative z-10">
+          <div class="flex justify-between items-start mb-6">
+            <div><span id="meBalLbl" class="text-xs opacity-70 block mb-1">مانده حساب</span><div class="text-3xl font-black"><span id="meBal">—</span> <span class="text-sm font-medium">ریال</span></div></div>
+            <span id="meStatus" class="bg-white/20 backdrop-blur-md text-[10px] px-3 py-1 rounded-full border border-white/20"></span>
+          </div>
+          <div id="meName" class="text-sm opacity-80 mb-3"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">شیر این ماه (کیلو)</span><span id="meKg" class="text-lg font-bold">—</span></div>
+            <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">ارزش شیر ماه</span><span id="meMilk" class="text-lg font-bold text-green-300">—</span></div>
+            <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">مجموع خرید</span><span id="meBuy" class="text-lg font-bold">—</span></div>
+            <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">مجموع پرداخت‌ها</span><span id="mePaid" class="text-lg font-bold">—</span></div>
+          </div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>فاکتورهای این شخص</h3>
-        <table>
-          <thead><tr><th>شماره</th><th>شیر</th><th>خرید</th><th>خالص</th><th></th></tr></thead>
-          <tbody id="receipts"></tbody>
-        </table>
+      <div class="skeu-card p-4" style="border-radius:20px">
+        <h3 class="font-bold text-green-900 mb-3"><i class="fa-solid fa-cart-plus text-green-600 ml-1"></i> ثبت سفارش جدید</h3>
+        <div id="meItems" class="space-y-2"></div>
+        <button onclick="meAddItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button>
+        <div class="mt-3"><label class="text-xs text-gray-500 block mb-1">آدرس/محل تحویل</label><input id="meDest" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+        <div class="bg-gray-50 rounded-lg p-3 mt-3 text-sm">جمع سفارش: <b id="meSum">۰</b> ریال</div>
+        <div class="flex justify-end mt-3"><button onclick="mePlaceOrder()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ثبت سفارش و ساخت فاکتور/بارنامه</button></div>
+        <p id="meOrderErr" class="text-red-600 text-xs mt-2"></p>
+      </div>
+
+      <div class="skeu-card overflow-hidden" style="border-radius:20px">
+        <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-700">سفارش‌های من</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مبلغ</th><th class="p-3">وضعیت</th><th class="p-3">فاکتور</th><th class="p-3">بارنامه</th></tr></thead>
+          <tbody id="meOrders" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+
+      <div class="skeu-card overflow-hidden" style="border-radius:20px">
+        <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-700">گردش حساب من</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">شرح</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">مانده</th></tr></thead>
+          <tbody id="meLedger" class="divide-y divide-gray-100"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ INVOICE MODAL ============ -->
+<div id="invoiceModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+  <div class="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="font-black text-gray-800">فاکتور تحویل شیر و خرید</h3>
+      <button onclick="closeInvoice()" class="text-gray-400 text-2xl">&times;</button>
+    </div>
+    <p id="invPerson" class="text-sm text-gray-500 mb-3"></p>
+    <div class="mb-3"><label class="text-xs text-gray-500 block mb-1">سایت</label><select id="invSite" class="input-skeu rounded-lg px-3 py-2 w-full"></select></div>
+    <div class="border border-gray-200 rounded-xl p-3 mb-3">
+      <h4 class="font-bold text-sm mb-2">🥛 تحویل شیر (اختیاری)</h4>
+      <div class="flex flex-wrap gap-2">
+        <select id="invShift" class="input-skeu rounded-lg px-3 py-2"><option value="">— بدون شیر —</option><option value="morning">صبح</option><option value="evening">شب</option></select>
+        <input id="invWeight" type="number" step="0.001" oninput="calcInv()" placeholder="وزن (کیلو)" class="input-skeu rounded-lg px-3 py-2 w-32">
+        <input id="invPrice" type="number" oninput="calcInv()" placeholder="قیمت (خودکار)" class="input-skeu rounded-lg px-3 py-2 w-36">
       </div>
     </div>
-    <div id="empty" class="card muted">یک شخص را انتخاب کنید.</div>
-  </div>
-</div>
-
-<!-- ===== نمای سایت‌ها ===== -->
-<div id="view-sites" class="wrap hidden">
-  <div class="card">
-    <h3>تعریف سایت جمع‌آوری شیر جدید</h3>
-    <div class="row">
-      <input id="siteCode" placeholder="کد سایت (مثلاً ST3)" style="width:150px">
-      <input id="siteName" placeholder="نام سایت" style="flex:1">
-      <select id="siteType">
-        <option value="station">ایستگاه جمع‌آوری شیر</option>
-        <option value="store">فروشگاه</option>
-        <option value="distribution">مرکز پخش</option>
-      </select>
-      <input id="sitePhone" placeholder="تلفن" style="width:140px">
-      <button onclick="addSite()">افزودن سایت</button>
+    <div class="border border-gray-200 rounded-xl p-3 mb-3">
+      <h4 class="font-bold text-sm mb-2">🛒 خرید کالا / خوراک (اختیاری)</h4>
+      <div id="invItems" class="space-y-2"></div>
+      <button onclick="addItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button>
     </div>
-  </div>
-  <div class="card">
-    <h3>سایت‌های تعریف‌شده</h3>
-    <table>
-      <thead><tr><th>#</th><th>کد</th><th>نام</th><th>نوع</th><th>تلفن</th><th>انبار</th><th>کاربر</th><th>وضعیت</th><th>متصدی</th></tr></thead>
-      <tbody id="sitesTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== نمای کاربران ===== -->
-<div id="view-users" class="wrap hidden">
-  <div class="card">
-    <h3>افزودن کاربر برای سایت</h3>
-    <div class="row">
-      <input id="uName" placeholder="نام کامل" style="flex:1">
-      <input id="uUser" placeholder="نام کاربری" style="width:130px">
-      <input id="uPass" placeholder="رمز عبور" style="width:120px">
-      <select id="uRole"></select>
-      <select id="uBranch"></select>
-      <input id="uBale" placeholder="شناسه بله (اختیاری)" style="width:150px">
-      <button onclick="addUser()">افزودن کاربر</button>
+    <div class="mb-3"><label class="text-xs text-gray-500 block mb-1">توضیحات</label><input id="invNote" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+    <div class="bg-gray-50 rounded-lg p-3 text-sm flex flex-wrap gap-x-4 gap-y-1">
+      <span>بستانکار شیر: <b id="sumMilk" class="text-green-700">۰</b></span>
+      <span>بدهکار خرید: <b id="sumBuy" class="text-red-700">۰</b></span>
+      <span>خالص: <b id="sumNet">۰</b></span>
     </div>
-  </div>
-  <div class="card">
-    <h3>کاربران سیستم</h3>
-    <table>
-      <thead><tr><th>#</th><th>نام</th><th>نام کاربری</th><th>نقش</th><th>سایت</th><th>وضعیت</th><th>بله (لاگین خودکار)</th></tr></thead>
-      <tbody id="usersTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== نمای انبار (کارمند) ===== -->
-<div id="view-inventory" class="wrap hidden">
-  <div class="card">
-    <h3>ثبت ورود کالا به انبار (چیا اومده)</h3>
-    <div class="row">
-      <select id="invWh"></select>
-      <select id="invProd"></select>
-      <input id="invQty" type="number" step="0.001" placeholder="مقدار" style="width:120px">
-      <input id="invCost" type="number" placeholder="بهای واحد (اختیاری)" style="width:170px">
-      <button onclick="receiveStock()">ثبت ورود</button>
+    <div class="flex justify-end gap-2 mt-4">
+      <button onclick="closeInvoice()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold">انصراف</button>
+      <button onclick="submitInvoice()" class="btn-skeu text-white px-5 py-2 rounded-lg font-bold">ثبت و پرینت فاکتور</button>
     </div>
-  </div>
-  <div class="card">
-    <h3>موجودی انبار</h3>
-    <table>
-      <thead><tr><th>کالا</th><th>دسته</th><th>واحد</th><th>وارد شده</th><th>فروش/خروج</th><th>موجودی فعلی</th></tr></thead>
-      <tbody id="invTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== نمای لاگ‌ها (ادمین) ===== -->
-<div id="view-audit" class="wrap hidden">
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h3 style="margin:0">📋 لاگ تغییرات سیستم</h3>
-      <input id="auditQ" placeholder="جستجو..." oninput="loadAudit()" style="width:200px">
-    </div>
-    <p class="muted" style="margin:8px 0 0">هر عملیات هر کاربری (ثبت، ویرایش، پرداخت، سفارش، ...) اینجا ثبت می‌شود.</p>
-  </div>
-  <div class="card">
-    <table>
-      <thead><tr><th>زمان</th><th>کاربر</th><th>عملیات</th><th>بخش</th><th>مسیر</th><th>وضعیت</th><th>IP</th></tr></thead>
-      <tbody id="auditTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== نمای تولید (کارمند) ===== -->
-<div id="view-production" class="wrap hidden">
-  <div class="card">
-    <h3>🏭 ثبت تولید (فراوری شیر خام به محصولات)</h3>
-    <div class="row">
-      <label style="margin:0">شیر خام مصرفی (کیلو):</label>
-      <input id="prMilk" type="number" step="0.001" placeholder="مثلاً ۲۰۰۰" style="width:150px">
-      <select id="prWh"></select>
-    </div>
-    <h4 style="margin:12px 0 6px">محصولات تولیدشده:</h4>
-    <div id="prOutputs"></div>
-    <button class="ghost" onclick="prAddRow()">+ افزودن محصول</button>
-    <div class="row" style="justify-content:flex-end; margin-top:12px">
-      <button onclick="prSubmit()">ثبت بَچ تولید</button>
-    </div>
-    <div id="prErr" class="muted" style="color:var(--red)"></div>
-  </div>
-  <div class="card">
-    <h3>بَچ‌های اخیر تولید</h3>
-    <table>
-      <thead><tr><th>کد بَچ</th><th>تاریخ</th><th>شیر مصرفی</th><th>محصولات</th></tr></thead>
-      <tbody id="prTable"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== پنل شخصی دامدار/مشتری ===== -->
-<div id="view-me" class="wrap hidden">
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h3 id="meName" style="margin:0"></h3>
-      <span id="meStatus" class="pill"></span>
-    </div>
-    <div class="grid" style="margin-top:14px">
-      <div class="stat payable"><div class="lbl" id="meBalLbl">مانده حساب</div><div class="val" id="meBal">—</div></div>
-      <div class="stat"><div class="lbl">شیر این ماه (کیلو)</div><div class="val" id="meKg">—</div></div>
-      <div class="stat"><div class="lbl">ارزش شیر این ماه</div><div class="val" id="meMilk">—</div></div>
-      <div class="stat"><div class="lbl">مجموع خرید</div><div class="val" id="meBuy">—</div></div>
-      <div class="stat"><div class="lbl">مجموع پرداخت‌ها</div><div class="val" id="mePaid">—</div></div>
-    </div>
-  </div>
-
-  <!-- ثبت سفارش (مشتری) -->
-  <div id="meOrderCard" class="card">
-    <h3>🛒 ثبت سفارش جدید</h3>
-    <div id="meItems"></div>
-    <button class="ghost" onclick="meAddItemRow()">+ افزودن قلم</button>
-    <div class="field" style="margin-top:10px"><label>آدرس/محل تحویل</label><input id="meDest" placeholder="آدرس تحویل"></div>
-    <div class="sum">جمع سفارش: <b id="meSum">۰</b> ریال</div>
-    <div class="row" style="justify-content:flex-end; margin-top:10px">
-      <button onclick="mePlaceOrder()">ثبت سفارش و ساخت فاکتور/بارنامه</button>
-    </div>
-    <div id="meOrderErr" class="muted" style="color:var(--red)"></div>
-  </div>
-
-  <div class="card">
-    <h3>سفارش‌های من</h3>
-    <table>
-      <thead><tr><th>شماره</th><th>مبلغ</th><th>وضعیت</th><th>فاکتور</th><th>بارنامه</th></tr></thead>
-      <tbody id="meOrders"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h3>گردش حساب من</h3>
-    <table>
-      <thead><tr><th>تاریخ</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead>
-      <tbody id="meLedger"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ===== مودال فاکتور ===== -->
-<div id="invoiceModal" class="overlay hidden">
-  <div class="modal">
-    <h3>فاکتور تحویل شیر و خرید <button class="x" onclick="closeInvoice()">×</button></h3>
-    <div id="invPerson" class="muted" style="margin-bottom:10px"></div>
-    <div class="field">
-      <label>سایت</label>
-      <select id="invSite"></select>
-    </div>
-
-    <div class="section">
-      <h4>🥛 تحویل شیر (اختیاری)</h4>
-      <div class="row">
-        <select id="invShift" style="width:110px">
-          <option value="">— بدون شیر —</option>
-          <option value="morning">صبح</option>
-          <option value="evening">شب</option>
-        </select>
-        <input id="invWeight" type="number" step="0.001" placeholder="وزن (کیلو)" style="width:130px" oninput="calcInv()">
-        <input id="invPrice" type="number" placeholder="قیمت (خودکار)" style="width:150px" oninput="calcInv()">
-      </div>
-    </div>
-
-    <div class="section">
-      <h4>🛒 خرید کالا / خوراک (اختیاری)</h4>
-      <div id="invItems"></div>
-      <button class="ghost" onclick="addItemRow()">+ افزودن قلم</button>
-    </div>
-
-    <div class="field"><label>توضیحات</label><input id="invNote" placeholder="اختیاری"></div>
-
-    <div class="sum">
-      بستانکار شیر: <b id="sumMilk" class="credit">۰</b> ·
-      بدهکار خرید: <b id="sumBuy" class="debit">۰</b> ·
-      خالص فاکتور: <b id="sumNet">۰</b>
-    </div>
-    <div class="row" style="justify-content:flex-end; margin-top:14px">
-      <button class="ghost" onclick="closeInvoice()">انصراف</button>
-      <button onclick="submitInvoice()">ثبت و پرینت فاکتور</button>
-    </div>
-    <div id="invErr" class="muted" style="color:var(--red); margin-top:6px"></div>
+    <p id="invErr" class="text-red-600 text-xs mt-2"></p>
   </div>
 </div>
 
 <script>
-let myKind = null, role = null, myBranch = null, myBranchName = '', myName = '';
-let currentPerson = null;
-let products = [], branches = [];
+let myKind=null, role=null, myBranch=null, myBranchName='', myName='';
+let currentPerson=null, products=[], branches=[], pendingReceiptId=null;
 const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+const el = (id) => document.getElementById(id);
+const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت', store:'فروشگاه', distribution:'مدیر پخش', driver:'راننده', farmer:'دامدار', customer:'مشتری' };
+const ACTION_FA = { POST:'ثبت', PUT:'ویرایش', PATCH:'ویرایش', DELETE:'حذف' };
 
-// احراز هویت با session/کوکی؛ credentials لازم است تا کوکی ارسال/دریافت شود
 const api = async (path, opts={}) => {
-  const r = await fetch('/api'+path, { ...opts,
-    credentials: 'same-origin',
-    headers: { 'Content-Type':'application/json' },
-    body: opts.body ? JSON.stringify(opts.body) : undefined });
-  // نشست منقضی/نامعتبر → برگشت به لاگین
-  if (r.status === 401 && !['/auth/login','/auth/me','/auth/bale'].includes(path)) {
-    showLogin('نشست شما منقضی شده؛ دوباره وارد شوید');
-    throw new Error('unauthorized');
-  }
+  const r = await fetch('/api'+path, { ...opts, credentials:'same-origin',
+    headers:{ 'Content-Type':'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (r.status===401 && !['/auth/login','/auth/me','/auth/bale'].includes(path)) { showLogin('نشست شما منقضی شده؛ دوباره وارد شوید'); throw new Error('unauthorized'); }
   const d = await r.json().catch(()=>({}));
   if (!r.ok) throw new Error(d.error || 'خطا');
   return d;
 };
+function setUser(u){ myKind=u.kind; role=u.role; myBranch=u.branch_id||null; myBranchName=u.branch_name||''; myName=u.name||''; }
+function showLogin(msg){ el('login').classList.remove('hidden'); el('app').classList.add('hidden'); el('loginErr').textContent=msg||''; }
 
-function setUser(u) {
-  myKind = u.kind; role = u.role; myBranch = u.branch_id || null;
-  myBranchName = u.branch_name || ''; myName = u.name || '';
+async function login(){
+  const username = el('u').value.trim(), password = el('p').value;
+  if(!username||!password){ el('loginErr').textContent='نام کاربری و رمز را وارد کنید'; return; }
+  try { const d = await api('/auth/login',{method:'POST',body:{username,password}}); setUser(d.user); boot(); }
+  catch(e){ el('loginErr').textContent=e.message; }
 }
+async function logoutFn(e){ e&&e.preventDefault(); try{ await api('/auth/logout',{method:'POST'}); }catch{} showLogin(); }
 
-// نمایش صفحهٔ لاگین و پنهان‌کردن کل اپ (ری‌دایرکت به لاگین)
-function showLogin(msg) {
-  document.getElementById('login').classList.remove('hidden');
-  nav.classList.add('hidden'); who.classList.add('hidden');
-  ['ops','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
-  loginErr.textContent = msg || '';
-}
-
-async function login() {
-  const username = document.getElementById('u').value.trim();
-  const password = document.getElementById('p').value;
-  if (!username || !password) { loginErr.textContent = 'نام کاربری و رمز را وارد کنید'; return; }
-  try {
-    const d = await api('/auth/login', { method:'POST', body:{ username, password }});
-    setUser(d.user);
-    boot();
-  } catch(e) { loginErr.textContent = e.message; }
-}
-async function logoutFn(e){
-  e && e.preventDefault();
-  try { await api('/auth/logout', { method:'POST' }); } catch {}
-  showLogin();
-}
-
-const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت',
-                  store:'فروشگاه', distribution:'مدیر پخش', driver:'راننده',
-                  farmer:'دامدار', customer:'مشتری' };
-
-async function boot() {
-  try {
-    document.getElementById('login').classList.add('hidden');
-    who.classList.remove('hidden');
-    whoName.textContent = myName + ' — ' + (ROLE_FA[role]||role)
-                          + (myBranchName ? ' @ ' + myBranchName : '');
-
-    // --- پنل شخصی دامدار/مشتری ---
-    if (myKind === 'person') {
-      nav.classList.add('hidden');
-      ['ops','inventory','sites','users'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
-      document.getElementById('view-me').classList.remove('hidden');
-      products = await api('/products');
-      await loadMe();
-      // اگر از طریق دیپ‌لینک فاکتور آمده باشد، مستقیم چاپ
-      if (pendingReceiptId) { printReceipt(pendingReceiptId); pendingReceiptId = null; }
+async function boot(){
+  try{
+    el('login').classList.add('hidden'); el('app').classList.remove('hidden');
+    el('whoName').textContent = myName + ' — ' + (ROLE_FA[role]||role) + (myBranchName?(' @ '+myBranchName):'');
+    if (myKind==='person'){
+      el('nav').classList.add('hidden');
+      document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+      el('view-me').classList.remove('hidden');
+      products = await api('/products'); await loadMe();
+      if (pendingReceiptId){ printReceipt(pendingReceiptId); pendingReceiptId=null; }
       return;
     }
-
-    // --- کارمندان ---
-    nav.classList.remove('hidden');
-    const isFin = role==='admin' || role==='accountant';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = role==='admin' ? '' : 'none');
-    document.querySelectorAll('.fin-only').forEach(el => el.style.display = isFin ? '' : 'none');
-    products = await api('/products');
-    branches = await api('/branches');
-    showView('dashboard');     // صفحهٔ اول کارمندان = داشبورد امروز
-    loadPersons();
-  } catch(e) {
-    if (e.message !== 'unauthorized') showLogin('خطا در بارگذاری: ' + e.message);
-  }
+    el('nav').classList.remove('hidden');
+    const isFin = role==='admin'||role==='accountant';
+    document.querySelectorAll('.admin-only').forEach(x=>x.classList.toggle('hidden', role!=='admin'));
+    document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
+    products = await api('/products'); branches = await api('/branches');
+    showView('dashboard'); loadPersons();
+  } catch(e){ if(e.message!=='unauthorized') showLogin('خطا در بارگذاری: '+e.message); }
 }
 
-function showView(v) {
-  ['dashboard','ops','production','inventory','sites','users','audit','me'].forEach(x => document.getElementById('view-'+x).classList.add('hidden'));
-  document.getElementById('view-'+v).classList.remove('hidden');
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.view===v));
-  if (v==='dashboard') loadDashboard();
-  if (v==='sites') loadSites();
-  if (v==='users') loadUsers();
-  if (v==='inventory') loadInventory();
-  if (v==='production') loadProduction();
-  if (v==='audit') loadAudit();
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));
+  el('view-'+v).classList.remove('hidden');
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  if(v==='dashboard') loadDashboard();
+  if(v==='sites') loadSites();
+  if(v==='users') loadUsers();
+  if(v==='inventory') loadInventory();
+  if(v==='production') loadProduction();
+  if(v==='audit') loadAudit();
 }
 
-/* ---------- عملیات / اشخاص ---------- */
-async function loadPersons() {
-  const q = search.value ? '?q='+encodeURIComponent(search.value) : '';
+/* ---------- DASHBOARD ---------- */
+async function loadDashboard(){
+  const d = await api('/dashboard');
+  el('dToday').textContent = '| امروز '+d.date_jalali;
+  el('dMilkKg').textContent=fmt(d.station.kg); el('dMilkVal').textContent=fmt(d.station.value); el('dFarmers').textContent=fmt(d.station.farmers)+' نفر';
+  el('dProdMilk').textContent=fmt(d.production.milk_in); el('dProdBatches').textContent=fmt(d.production.batches)+' بَچ';
+  el('dProdOut').innerHTML = d.production.outputs.length ? d.production.outputs.map(o=>`<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">${o.name} ${fmt(o.qty)}</span>`).join('') : '<span class="text-gray-400 text-xs">—</span>';
+  el('dStoreVal').textContent=fmt(d.store.value); el('dStoreCount').textContent=fmt(d.store.count)+' فاکتور';
+  el('dDistOrders').textContent=fmt(d.distribution.orders)+' فاکتور'; el('dDistDelivered').textContent=fmt(d.distribution.delivered); el('dDistRemaining').textContent=fmt(d.distribution.remaining);
+  el('dReceivable').textContent=fmt(d.accounts.receivable); el('dPayable').textContent=fmt(d.accounts.payable);
+  el('dOnAcc').textContent=fmt(d.cash.onaccount); el('dReceived').textContent=fmt(d.cash.received); el('dGoods').textContent=fmt(d.cash.goods);
+  drawCharts(d);
+}
+function drawCharts(d){
+  if (typeof Plotly==='undefined') return;
+  const base = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{family:'Vazirmatn',size:12}, margin:{t:10,r:10,b:40,l:50} };
+  try {
+    Plotly.newPlot('processingChart', [{ type:'bar', x:d.processing.outputs.map(o=>o.name), y:d.processing.outputs.map(o=>o.qty),
+      marker:{ color:['#1b4332','#2d6a4f','#40916c','#52b788','#74c69d','#95d5b2'] } }], {...base, yaxis:{gridcolor:'#f3f4f6'}}, {responsive:true, displayModeBar:false});
+    Plotly.newPlot('farmerChart', [{ type:'bar', x:d.by_farmer.map(f=>f.fullname), y:d.by_farmer.map(f=>f.kg),
+      marker:{ color:'#2d6a4f' } }], {...base, yaxis:{gridcolor:'#f3f4f6'}}, {responsive:true, displayModeBar:false});
+  } catch(e){}
+}
+
+/* ---------- OPERATIONS ---------- */
+async function loadPersons(){
+  const q = el('search').value ? '?q='+encodeURIComponent(el('search').value) : '';
   const list = await api('/persons'+q);
-  persons.innerHTML = list.map(p => `
-    <div class="person-item" onclick="selectPerson(${p.id})">
-      <span>${p.fullname}<br><span class="muted">${p.person_code}</span></span>
-      <span class="${p.balance>0?'credit':p.balance<0?'debit':''}">${fmt(p.balance)}</span>
-    </div>`).join('') || '<div class="muted">موردی نیست</div>';
+  el('persons').innerHTML = list.map(p=>`
+    <div class="sidebar-item p-3 rounded-lg ${p.id===currentPerson?'active':''}" onclick="selectPerson(${p.id})">
+      <div class="flex justify-between items-center">
+        <div><span class="text-xs text-gray-500 block">کد: ${p.person_code}</span><span class="font-bold text-gray-800">${p.fullname}</span></div>
+        <span class="font-bold text-sm ${p.balance>0?'text-green-600':p.balance<0?'text-red-600':'text-gray-400'}">${fmt(p.balance)}</span>
+      </div></div>`).join('') || '<div class="text-gray-400 text-sm p-3">موردی نیست</div>';
 }
-async function selectPerson(id) {
-  currentPerson = id;
-  empty.classList.add('hidden'); detail.classList.remove('hidden');
+async function selectPerson(id){
+  currentPerson=id; el('empty').classList.add('hidden'); el('detail').classList.remove('hidden');
+  loadPersons();
   const d = await api('/persons/'+id+'/dashboard');
-  pName.textContent = d.person.fullname; pCode.textContent = d.person.code;
-  const st = d.balance.status;
-  pStatus.className = 'pill '+st;
-  pStatus.textContent = st==='creditor'?'بستانکار':st==='debtor'?'بدهکار':'تسویه';
-  sPayable.textContent = fmt(d.balance.payable_now)+' ریال';
-  sKg.textContent = fmt(d.balance.milk_kg_month);
-  sMilk.textContent = fmt(d.balance.milk_value_month);
-  sBuy.textContent = fmt(d.balance.purchases_total);
-  sCash.textContent = fmt(d.balance.cash_withdrawal_total);
-  sPaid.textContent = fmt(d.balance.payments_total);
+  el('pName').textContent=d.person.fullname; el('pCode').textContent=d.person.code;
+  const st=d.balance.status, map={creditor:['بستانکار','bg-green-100 text-green-700'],debtor:['بدهکار','bg-red-100 text-red-700'],settled:['تسویه','bg-gray-100 text-gray-500']};
+  el('pStatus').className='text-xs px-2 py-0.5 rounded-full font-bold '+map[st][1]; el('pStatus').textContent=map[st][0];
+  el('sPayable').textContent=fmt(d.balance.payable_now); el('sKg').textContent=fmt(d.balance.milk_kg_month);
+  el('sMilk').textContent=fmt(d.balance.milk_value_month); el('sBuy').textContent=fmt(d.balance.purchases_total);
+  el('sCash').textContent=fmt(d.balance.cash_withdrawal_total); el('sPaid').textContent=fmt(d.balance.payments_total);
   loadLedger(id); loadReceipts(id);
 }
-async function loadLedger(id) {
+async function loadLedger(id){
   const rows = await api('/persons/'+id+'/ledger');
-  ledger.innerHTML = rows.map(r => `
-    <tr><td>${r.date_jalali}</td><td>${r.description||r.type}</td>
-    <td class="debit">${r.debit?fmt(r.debit):'—'}</td>
-    <td class="credit">${r.credit?fmt(r.credit):'—'}</td>
-    <td><b>${fmt(r.balance)}</b></td></tr>`).join('')
-    || '<tr><td colspan="5" class="muted">تراکنشی نیست</td></tr>';
+  el('ledger').innerHTML = rows.map(r=>`<tr>
+    <td class="p-3 text-gray-500">${r.date_jalali}</td><td class="p-3 font-medium">${r.description||r.type}</td>
+    <td class="p-3 text-red-600 font-bold">${r.debit?fmt(r.debit):'-'}</td>
+    <td class="p-3 text-green-600 font-bold">${r.credit?fmt(r.credit):'-'}</td>
+    <td class="p-3 font-bold">${fmt(r.balance)}</td></tr>`).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>';
 }
-async function loadReceipts(id) {
+async function loadReceipts(id){
   const rows = await api('/receipts?person_id='+id);
-  receipts.innerHTML = rows.map(r => `
-    <tr><td>${r.receipt_no}</td><td class="credit">${fmt(r.milk_amount)}</td>
-    <td class="debit">${fmt(r.purchase_amount)}</td><td><b>${fmt(r.net_amount)}</b></td>
-    <td><button class="ghost" onclick="printReceipt(${r.id})">پرینت</button></td></tr>`).join('')
-    || '<tr><td colspan="5" class="muted">فاکتوری نیست</td></tr>';
+  el('receipts').innerHTML = rows.map(r=>`<tr>
+    <td class="p-3 font-bold">${r.receipt_no}</td><td class="p-3 text-green-600">${fmt(r.milk_amount)}</td>
+    <td class="p-3 text-red-600">${fmt(r.purchase_amount)}</td><td class="p-3 font-bold">${fmt(r.net_amount)}</td>
+    <td class="p-3"><button onclick="printReceipt(${r.id})" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-print"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400">فاکتوری نیست</td></tr>';
 }
-function printReceipt(id){ window.open('/receipt.html?id='+id, '_blank'); }
-async function refresh(){ if(currentPerson) selectPerson(currentPerson); loadPersons(); }
+function printReceipt(id){ window.open('/receipt.html?id='+id,'_blank'); }
+function printWaybill(id){ window.open('/waybill.html?id='+id,'_blank'); }
+async function refresh(){ if(currentPerson) selectPerson(currentPerson); }
+async function doPay(dir){ const a=prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a)return;
+  try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:dir,amount:Number(a),branch_id:myBranch||null}}); refresh(); }catch(e){alert(e.message);} }
+async function doSettle(){ if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟'))return;
+  try{ const r=await api('/payments/settle',{method:'POST',body:{person_id:currentPerson,branch_id:myBranch||null}}); alert('تسویه شد: '+fmt(r.paid)); refresh(); }catch(e){alert(e.message);} }
+async function newPerson(){ const name=prompt('نام شخص:'); if(!name)return; const isFarmer=confirm('دامدار است؟ (لغو = مشتری)');
+  try{ await api('/persons',{method:'POST',body:{fullname:name,roles:[isFarmer?'farmer':'customer']}}); loadPersons(); }catch(e){alert(e.message);} }
 
-async function doPay(dir) {
-  const a = prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a) return;
-  try { await api('/payments', { method:'POST', body:{ person_id:currentPerson, direction:dir, amount:Number(a), branch_id:myBranch||null }}); refresh(); }
-  catch(e){ alert(e.message); }
-}
-async function doSettle() {
-  if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟')) return;
-  try { const r = await api('/payments/settle', { method:'POST', body:{ person_id:currentPerson, branch_id:myBranch||null }});
-    alert('تسویه شد: '+fmt(r.paid)); refresh(); } catch(e){ alert(e.message); }
-}
-async function newPerson() {
-  const name = prompt('نام شخص:'); if(!name) return;
-  const isFarmer = confirm('دامدار است؟ (لغو = مشتری)');
-  try { await api('/persons', { method:'POST', body:{ fullname:name, roles:[isFarmer?'farmer':'customer'] }}); loadPersons(); }
-  catch(e){ alert(e.message); }
-}
+/* ---------- INVOICE MODAL ---------- */
+function openInvoice(){ if(!currentPerson)return; el('invErr').textContent='';
+  el('invPerson').textContent='برای: '+el('pName').textContent+' ('+el('pCode').textContent+')';
+  el('invSite').innerHTML = branches.filter(b=>b.is_active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  if(myBranch) el('invSite').value=myBranch;
+  el('invShift').value=''; el('invWeight').value=''; el('invPrice').value=''; el('invNote').value='';
+  el('invItems').innerHTML=''; addItemRow(); calcInv(); el('invoiceModal').classList.remove('hidden'); }
+function closeInvoice(){ el('invoiceModal').classList.add('hidden'); }
+function itemRowHTML(cls){ return `<select class="${cls}-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>
+  ${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+  <input class="${cls}-qty input-skeu rounded-lg px-2 py-2 w-20" type="number" step="0.001" placeholder="تعداد">
+  <input class="${cls}-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت">
+  <button class="text-red-500 px-2" onclick="this.parentElement.remove();calcInv()">&times;</button>`; }
+function addItemRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center'; div.innerHTML=itemRowHTML('it'); el('invItems').appendChild(div);
+  div.querySelector('.it-prod').onchange=(e)=>{ div.querySelector('.it-price').value=e.target.selectedOptions[0]?.dataset.price||''; calcInv(); };
+  div.querySelectorAll('input').forEach(i=>i.oninput=calcInv); }
+function readItems(){ return [...el('invItems').children].map(r=>({ product_id:Number(r.querySelector('.it-prod').value), quantity:Number(r.querySelector('.it-qty').value), unit_price:r.querySelector('.it-price').value===''?null:Number(r.querySelector('.it-price').value) })).filter(x=>x.product_id&&x.quantity>0); }
+function calcInv(){ const w=Number(el('invWeight').value)||0, pr=Number(el('invPrice').value)||0, milk=Math.round(w*pr);
+  const buy=readItems().reduce((s,i)=>s+Math.round((i.unit_price||0)*i.quantity),0);
+  el('sumMilk').textContent=fmt(milk); el('sumBuy').textContent=fmt(buy); el('sumNet').textContent=fmt(milk-buy); }
+async function submitInvoice(){ el('invErr').textContent='';
+  const body={ person_id:currentPerson, branch_id:Number(el('invSite').value), warehouse_id:null, items:readItems(), note:el('invNote').value||null };
+  if(el('invShift').value && Number(el('invWeight').value)>0) body.milk={ shift:el('invShift').value, weight_kg:Number(el('invWeight').value), price_per_kg:el('invPrice').value===''?null:Number(el('invPrice').value) };
+  if(!body.milk && body.items.length===0){ el('invErr').textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
+  try{ const whs=await api('/branches/'+el('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null;
+    const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); window.open('/receipt.html?id='+r.id,'_blank'); }
+  catch(e){ el('invErr').textContent=e.message; } }
 
-/* ---------- مودال فاکتور ---------- */
-function openInvoice() {
-  if(!currentPerson) return;
-  invErr.textContent='';
-  invPerson.textContent = 'برای: ' + pName.textContent + ' (' + pCode.textContent + ')';
-  invSite.innerHTML = branches.filter(b=>b.is_active).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
-  if (myBranch) invSite.value = myBranch;   // متصدی: سایت خودش پیش‌فرض
-  invShift.value=''; invWeight.value=''; invPrice.value=''; invNote.value='';
-  invItems.innerHTML=''; addItemRow(); calcInv();
-  invoiceModal.classList.remove('hidden');
-}
-function closeInvoice(){ invoiceModal.classList.add('hidden'); }
-function addItemRow() {
-  const div = document.createElement('div'); div.className='item-row';
-  div.innerHTML = `
-    <select class="it-prod" onchange="calcInv()"><option value="">— کالا —</option>
-      ${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name}</option>`).join('')}</select>
-    <input class="it-qty" type="number" step="0.001" placeholder="تعداد" oninput="calcInv()">
-    <input class="it-price" type="number" placeholder="قیمت" oninput="calcInv()">
-    <button class="x" onclick="this.parentElement.remove(); calcInv()">×</button>`;
-  invItems.appendChild(div);
-  div.querySelector('.it-prod').onchange = (e)=>{
-    const opt=e.target.selectedOptions[0];
-    div.querySelector('.it-price').value = opt?.dataset.price||''; calcInv();
-  };
-}
-function readItems() {
-  return [...invItems.querySelectorAll('.item-row')].map(r=>({
-    product_id: Number(r.querySelector('.it-prod').value),
-    quantity: Number(r.querySelector('.it-qty').value),
-    unit_price: r.querySelector('.it-price').value===''?null:Number(r.querySelector('.it-price').value),
-  })).filter(x=>x.product_id && x.quantity>0);
-}
-function calcInv() {
-  const w=Number(invWeight.value)||0, pr=Number(invPrice.value)||0;
-  const milk = Math.round(w*pr);
-  const buy = readItems().reduce((s,i)=> s + Math.round((i.unit_price||0)*i.quantity), 0);
-  sumMilk.textContent=fmt(milk); sumBuy.textContent=fmt(buy); sumNet.textContent=fmt(milk-buy);
-}
-async function submitInvoice() {
-  invErr.textContent='';
-  const body = { person_id:currentPerson, branch_id:Number(invSite.value), warehouse_id:null,
-                 items:readItems(), note:invNote.value||null };
-  if (invShift.value && Number(invWeight.value)>0)
-    body.milk = { shift:invShift.value, weight_kg:Number(invWeight.value),
-                  price_per_kg: invPrice.value===''?null:Number(invPrice.value) };
-  if (!body.milk && body.items.length===0) { invErr.textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
-  try {
-    // انبار سایت انتخابی را می‌گیریم تا خروج کالا ثبت شود
-    const whs = await api('/branches/'+invSite.value+'/warehouses');
-    body.warehouse_id = whs[0]?.id || null;
-    const r = await api('/receipts', { method:'POST', body });
-    closeInvoice(); refresh();
-    window.open('/receipt.html?id='+r.id, '_blank');
-  } catch(e){ invErr.textContent = e.message; }
-}
+/* ---------- SITES ---------- */
+async function loadSites(){ branches=await api('/branches');
+  const t={station:'ایستگاه شیر',store:'فروشگاه',distribution:'مرکز پخش',head:'دفتر مرکزی'};
+  el('sitesTable').innerHTML = branches.map(b=>`<tr>
+    <td class="p-3">${b.id}</td><td class="p-3">${b.code}</td><td class="p-3 font-bold">${b.name}</td><td class="p-3">${t[b.type]||b.type}</td>
+    <td class="p-3">${b.phone||'—'}</td><td class="p-3">${b.warehouse_count}</td><td class="p-3">${b.user_count}</td>
+    <td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${b.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${b.is_active?'فعال':'غیرفعال'}</span></td>
+    <td class="p-3"><button onclick="addOperator(${b.id},'${b.name.replace(/'/g,'')}')" class="text-green-700 font-bold text-xs">+ متصدی</button></td></tr>`).join(''); }
+async function addSite(){ try{ await api('/branches',{method:'POST',body:{code:el('siteCode').value,name:el('siteName').value,type:el('siteType').value,phone:el('sitePhone').value}}); el('siteCode').value=el('siteName').value=el('sitePhone').value=''; loadSites(); }catch(e){alert(e.message);} }
+async function addOperator(id,name){ const f=prompt('نام متصدی سایت «'+name+'»:'); if(!f)return; const un=prompt('نام کاربری:'); if(!un)return; const pw=prompt('رمز عبور:'); if(!pw)return;
+  try{ await api('/users',{method:'POST',body:{fullname:f,username:un,password:pw,role:'station',branch_id:id}}); alert('متصدی ساخته شد: '+un); loadSites(); }catch(e){alert(e.message);} }
 
-/* ---------- سایت‌ها ---------- */
-async function loadSites() {
-  branches = await api('/branches');
-  const typeFa = {station:'ایستگاه شیر', store:'فروشگاه', distribution:'مرکز پخش', head:'دفتر مرکزی'};
-  sitesTable.innerHTML = branches.map(b=>`
-    <tr><td>${b.id}</td><td>${b.code}</td><td>${b.name}</td><td>${typeFa[b.type]||b.type}</td>
-    <td>${b.phone||'—'}</td><td>${b.warehouse_count}</td><td>${b.user_count}</td>
-    <td><span class="pill ${b.is_active?'creditor':'debtor'}">${b.is_active?'فعال':'غیرفعال'}</span></td>
-    <td><button class="ghost" onclick="addOperator(${b.id}, '${b.name.replace(/'/g,"")}')">+ متصدی</button></td></tr>`).join('');
-}
-// ساخت متصدی سایت: کاربری با نقش «متصدی سایت» که به همان سایت وصل است
-async function addOperator(branchId, branchName) {
-  const fullname = prompt('نام متصدی سایت «'+branchName+'»:'); if(!fullname) return;
-  const username = prompt('نام کاربری برای ورود:'); if(!username) return;
-  const password = prompt('رمز عبور:'); if(!password) return;
-  try {
-    await api('/users', { method:'POST', body:{ fullname, username, password, role:'station', branch_id:branchId }});
-    alert('متصدی سایت ساخته شد: '+username);
-    loadSites();
-  } catch(e){ alert(e.message); }
-}
-async function addSite() {
-  try {
-    await api('/branches', { method:'POST', body:{
-      code:siteCode.value, name:siteName.value, type:siteType.value, phone:sitePhone.value }});
-    siteCode.value=siteName.value=sitePhone.value=''; loadSites();
-  } catch(e){ alert(e.message); }
-}
+/* ---------- USERS ---------- */
+async function loadUsers(){ const [list,roles]=await Promise.all([api('/users'),api('/users/roles')]);
+  el('uRole').innerHTML=roles.map(r=>`<option value="${r.name}">${r.title}</option>`).join('');
+  el('uBranch').innerHTML='<option value="">— بدون سایت —</option>'+branches.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  el('usersTable').innerHTML=list.map(u=>`<tr>
+    <td class="p-3">${u.id}</td><td class="p-3 font-bold">${u.fullname}</td><td class="p-3">${u.username}</td><td class="p-3">${u.role_title}</td>
+    <td class="p-3">${u.branch_name||'—'}</td>
+    <td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${u.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.is_active?'فعال':'غیرفعال'}</span></td>
+    <td class="p-3">${u.bale_user_id?(u.bale_user_id+(u.bale_username?(' (@'+u.bale_username+')'):'')+` <button onclick="linkBale(${u.id})" class="text-blue-600 text-xs">تغییر</button>`):`<button onclick="linkBale(${u.id})" class="text-green-700 text-xs font-bold">اتصال بله</button>`}</td></tr>`).join(''); }
+async function addUser(){ try{ await api('/users',{method:'POST',body:{fullname:el('uName').value,username:el('uUser').value,password:el('uPass').value,role:el('uRole').value,branch_id:el('uBranch').value||null,bale_user_id:el('uBale').value||null}}); el('uName').value=el('uUser').value=el('uPass').value=el('uBale').value=''; loadUsers(); }catch(e){alert(e.message);} }
+async function linkBale(id){ const v=prompt('شناسهٔ عددی کاربر بله (برای حذف خالی بگذارید):'); if(v===null)return;
+  try{ await api('/users/'+id+'/bale',{method:'PUT',body:{bale_user_id:v.trim()||null}}); loadUsers(); }catch(e){alert(e.message);} }
 
-/* ---------- کاربران ---------- */
-async function loadUsers() {
-  const [list, roles] = await Promise.all([api('/users'), api('/users/roles')]);
-  uRole.innerHTML = roles.map(r=>`<option value="${r.name}">${r.title}</option>`).join('');
-  uBranch.innerHTML = '<option value="">— بدون سایت —</option>' +
-    branches.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
-  usersTable.innerHTML = list.map(u=>`
-    <tr><td>${u.id}</td><td>${u.fullname}</td><td>${u.username}</td><td>${u.role_title}</td>
-    <td>${u.branch_name||'—'}</td>
-    <td><span class="pill ${u.is_active?'creditor':'debtor'}">${u.is_active?'فعال':'غیرفعال'}</span></td>
-    <td>${u.bale_user_id
-        ? (u.bale_user_id + (u.bale_username?(' (@'+u.bale_username+')'):'') + ` <button class="ghost" onclick="linkBale(${u.id})">تغییر</button>`)
-        : `<button class="ghost" onclick="linkBale(${u.id})">اتصال بله</button>`}</td></tr>`).join('');
-}
-async function addUser() {
-  try {
-    await api('/users', { method:'POST', body:{
-      fullname:uName.value, username:uUser.value, password:uPass.value,
-      role:uRole.value, branch_id:uBranch.value||null, bale_user_id:uBale.value||null }});
-    uName.value=uUser.value=uPass.value=uBale.value=''; loadUsers();
-  } catch(e){ alert(e.message); }
-}
-// اتصال/تغییر شناسهٔ بله یک کاربر موجود
-async function linkBale(id) {
-  const v = prompt('شناسهٔ عددی کاربر بله (برای حذف اتصال خالی بگذارید):');
-  if (v === null) return;
-  try { await api('/users/'+id+'/bale', { method:'PUT', body:{ bale_user_id: v.trim()||null }}); loadUsers(); }
-  catch(e){ alert(e.message); }
-}
+/* ---------- AUDIT ---------- */
+async function loadAudit(){ const q=el('auditQ').value?'?q='+encodeURIComponent(el('auditQ').value):'';
+  const rows=await api('/audit'+q);
+  el('auditTable').innerHTML=rows.map(r=>`<tr>
+    <td class="p-3 text-gray-500 whitespace-nowrap">${r.when}</td><td class="p-3">${r.actor}</td><td class="p-3">${ACTION_FA[r.action]||r.action}</td>
+    <td class="p-3">${r.resource||'—'}</td><td class="p-3 text-gray-500">${r.path||''}</td>
+    <td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }
 
-/* ---------- داشبورد مدیریت ---------- */
-async function loadDashboard() {
-  const d = await api('/dashboard');
-  dToday.textContent = d.date_jalali;
-  // ایستگاه شیر
-  dMilkKg.textContent = fmt(d.station.kg);
-  dMilkVal.textContent = fmt(d.station.value);
-  dFarmers.textContent = fmt(d.station.farmers);
-  // تولید امروز
-  dProdMilk.textContent = fmt(d.production.milk_in);
-  dProdBatches.textContent = fmt(d.production.batches);
-  dProdOut.textContent = d.production.outputs.length
-    ? d.production.outputs.map(o=>`${o.name}: ${fmt(o.qty)} ${o.unit||''}`).join(' · ') : 'امروز تولیدی ثبت نشده';
-  // فروشگاه / پخش
-  dStoreVal.textContent = fmt(d.store.value);
-  dStoreCount.textContent = fmt(d.store.count) + ' فاکتور';
-  dDistOrders.textContent = fmt(d.distribution.orders) + ' فاکتور';
-  dDistDelivered.textContent = fmt(d.distribution.delivered);
-  dDistRemaining.textContent = fmt(d.distribution.remaining);
-  // حساب‌ها / نقدینگی
-  dReceivable.textContent = fmt(d.accounts.receivable);
-  dPayable.textContent = fmt(d.accounts.payable);
-  dOnAcc.textContent = fmt(d.cash.onaccount);
-  dReceived.textContent = fmt(d.cash.received);
-  dGoods.textContent = fmt(d.cash.goods);
-  // روند فراوری این ماه
-  dProcMilk.textContent = fmt(d.processing.milk_in);
-  const milkIn = d.processing.milk_in || 0;
-  dProcTable.innerHTML = d.processing.outputs.map(o=>{
-    const pct = milkIn ? Math.round(o.qty/milkIn*100) : 0;
-    return `<tr><td>${o.name}</td><td><b>${fmt(o.qty)}</b> ${o.unit||''}</td><td>${pct}٪</td></tr>`;
-  }).join('') || '<tr><td colspan="3" class="muted">این ماه تولیدی ثبت نشده</td></tr>';
-  // شیر امروز به تفکیک دامدار
-  dFarmerTable.innerHTML = d.by_farmer.map(f => `
-    <tr><td>${f.fullname}</td><td><b>${fmt(f.kg)}</b> kg</td><td class="credit">${fmt(f.value)}</td></tr>`).join('')
-    || '<tr><td colspan="3" class="muted">امروز شیری ثبت نشده</td></tr>';
-}
+/* ---------- INVENTORY ---------- */
+async function loadInventory(){ const [rows,whs]=await Promise.all([api('/inventory'),api('/inventory/warehouses')]);
+  el('invTable').innerHTML=rows.map(p=>`<tr>
+    <td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3">${p.unit||''}</td>
+    <td class="p-3 text-green-600">${fmt(p.total_in)}</td><td class="p-3 text-red-600">${fmt(p.total_out)}</td><td class="p-3 font-bold">${fmt(p.on_hand)}</td></tr>`).join('') || '<tr><td colspan="6" class="p-4 text-center text-gray-400">کالایی نیست</td></tr>';
+  el('invWh').innerHTML=whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
+  el('invProd').innerHTML=products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); }
+async function receiveStock(){ try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(el('invWh').value),product_id:Number(el('invProd').value),quantity:Number(el('invQty').value),unit_cost:el('invCost').value||null}}); el('invQty').value=el('invCost').value=''; loadInventory(); }catch(e){alert(e.message);} }
 
-/* ---------- لاگ‌ها ---------- */
-const ACTION_FA = { POST:'ثبت', PUT:'ویرایش', PATCH:'ویرایش', DELETE:'حذف' };
-async function loadAudit() {
-  const q = auditQ.value ? '?q='+encodeURIComponent(auditQ.value) : '';
-  const rows = await api('/audit'+q);
-  auditTable.innerHTML = rows.map(r=>`
-    <tr><td class="muted" style="white-space:nowrap">${r.when}</td>
-    <td>${r.actor}</td>
-    <td>${ACTION_FA[r.action]||r.action}</td>
-    <td>${r.resource||'—'}</td>
-    <td class="muted">${r.path||''}</td>
-    <td class="${r.status>=400?'debit':'credit'}">${r.status||''}</td>
-    <td class="muted">${r.ip||'—'}</td></tr>`).join('')
-    || '<tr><td colspan="7" class="muted">لاگی نیست</td></tr>';
-}
+/* ---------- PRODUCTION ---------- */
+async function loadProduction(){ el('prWh').innerHTML='<option value="">— بدون انبار —</option>'+(await api('/inventory/warehouses')).map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  el('prOutputs').innerHTML=''; prAddRow();
+  const rows=await api('/production');
+  el('prTable').innerHTML=rows.map(b=>`<tr><td class="p-3 font-bold">${b.batch_code}</td><td class="p-3">${b.started_jalali}</td><td class="p-3">${fmt(b.milk_kg)} kg</td><td class="p-3 text-gray-500">${b.outputs||'—'}</td></tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">بَچی ثبت نشده</td></tr>'; }
+function prAddRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<select class="pr-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— محصول —</option>${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>
+    <input class="pr-qty input-skeu rounded-lg px-2 py-2 w-28" type="number" step="0.001" placeholder="مقدار">
+    <button class="text-red-500 px-2" onclick="this.parentElement.remove()">&times;</button>`;
+  el('prOutputs').appendChild(div); }
+async function prSubmit(){ el('prErr').textContent=''; const milk_kg=Number(el('prMilk').value); const wh=el('prWh').value||null;
+  const outputs=[...el('prOutputs').children].map(r=>({product_id:Number(r.querySelector('.pr-prod').value),quantity:Number(r.querySelector('.pr-qty').value),warehouse_id:wh?Number(wh):null})).filter(o=>o.product_id&&o.quantity>0);
+  if(!milk_kg||!outputs.length){ el('prErr').textContent='شیر ورودی و حداقل یک محصول لازم است'; return; }
+  try{ await api('/production',{method:'POST',body:{milk_kg,outputs}}); el('prMilk').value=''; loadProduction(); }catch(e){ el('prErr').textContent=e.message; } }
 
-/* ---------- تولید ---------- */
-async function loadProduction() {
-  prWh.innerHTML = '<option value="">— بدون انبار —</option>' +
-    (await api('/inventory/warehouses')).map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-  prOutputs.innerHTML=''; prAddRow();
-  const rows = await api('/production');
-  prTable.innerHTML = rows.map(b=>`<tr><td>${b.batch_code}</td><td>${b.started_jalali}</td>
-    <td>${fmt(b.milk_kg)} kg</td><td class="muted">${b.outputs||'—'}</td></tr>`).join('')
-    || '<tr><td colspan="4" class="muted">بَچی ثبت نشده</td></tr>';
-}
-function prAddRow() {
-  const div=document.createElement('div'); div.className='item-row'; div.style.marginBottom='6px';
-  div.innerHTML = `<select class="pr-prod"><option value="">— محصول —</option>
-    ${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>
-    <input class="pr-qty" type="number" step="0.001" placeholder="مقدار">
-    <span></span>
-    <button class="x" onclick="this.parentElement.remove()">×</button>`;
-  prOutputs.appendChild(div);
-}
-async function prSubmit() {
-  prErr.textContent='';
-  const milk_kg = Number(prMilk.value);
-  const wh = prWh.value || null;
-  const outputs = [...prOutputs.querySelectorAll('.item-row')].map(r=>({
-    product_id:Number(r.querySelector('.pr-prod').value),
-    quantity:Number(r.querySelector('.pr-qty').value),
-    warehouse_id: wh ? Number(wh) : null,
-  })).filter(o=>o.product_id && o.quantity>0);
-  if (!milk_kg || !outputs.length) { prErr.textContent='شیر ورودی و حداقل یک محصول لازم است'; return; }
-  try {
-    await api('/production', { method:'POST', body:{ milk_kg, outputs }});
-    prMilk.value=''; loadProduction();
-  } catch(e){ prErr.textContent=e.message; }
-}
+/* ---------- PERSONAL PANEL ---------- */
+async function loadMe(){ const d=await api('/me/dashboard');
+  el('meName').textContent=d.person.fullname+' ('+d.person.code+')';
+  const cb=d.balance.current_balance, map={creditor:'بستانکار',debtor:'بدهکار',settled:'تسویه'};
+  el('meStatus').textContent=map[d.balance.status]||'';
+  el('meBalLbl').textContent = cb>=0?'قابل دریافت از شرکت':'بدهی شما به شرکت';
+  el('meBal').textContent=fmt(Math.abs(cb)); el('meKg').textContent=fmt(d.balance.milk_kg_month);
+  el('meMilk').textContent=fmt(d.balance.milk_value_month); el('meBuy').textContent=fmt(d.balance.purchases_total); el('mePaid').textContent=fmt(d.balance.payments_total);
+  el('meItems').innerHTML=''; meAddItemRow(); meCalc(); await Promise.all([loadMeOrders(),loadMeLedger()]); }
+async function loadMeLedger(){ const rows=await api('/me/ledger');
+  el('meLedger').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date_jalali}</td><td class="p-3">${r.description||r.type}</td>
+    <td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 font-bold">${fmt(r.balance)}</td></tr>`).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>'; }
+async function loadMeOrders(){ const rows=await api('/me/orders');
+  el('meOrders').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3">${o.status}</td>
+    <td class="p-3">${o.receipt_id?`<button onclick="printReceipt(${o.receipt_id})" class="text-blue-600"><i class="fa-solid fa-print"></i></button>`:'—'}</td>
+    <td class="p-3"><button onclick="printWaybill(${o.id})" class="text-blue-600"><i class="fa-solid fa-truck"></i></button></td></tr>`).join('') || '<tr><td colspan="5" class="p-4 text-center text-gray-400">سفارشی نیست</td></tr>'; }
+function meAddItemRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<select class="mi-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+    <input class="mi-qty input-skeu rounded-lg px-2 py-2 w-20" type="number" step="0.001" placeholder="تعداد" oninput="meCalc()">
+    <input class="mi-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت" disabled>
+    <button class="text-red-500 px-2" onclick="this.parentElement.remove();meCalc()">&times;</button>`;
+  el('meItems').appendChild(div);
+  div.querySelector('.mi-prod').onchange=(e)=>{ div.querySelector('.mi-price').value=e.target.selectedOptions[0]?.dataset.price||''; meCalc(); }; }
+function meReadItems(){ return [...el('meItems').children].map(r=>({product_id:Number(r.querySelector('.mi-prod').value),quantity:Number(r.querySelector('.mi-qty').value)})).filter(x=>x.product_id&&x.quantity>0); }
+function meCalc(){ const total=[...el('meItems').children].reduce((s,r)=>{ const price=Number(r.querySelector('.mi-price').value)||0,q=Number(r.querySelector('.mi-qty').value)||0; return s+Math.round(price*q); },0); el('meSum').textContent=fmt(total); }
+async function mePlaceOrder(){ el('meOrderErr').textContent=''; const items=meReadItems(); if(!items.length){ el('meOrderErr').textContent='حداقل یک قلم کالا لازم است'; return; }
+  try{ const r=await api('/me/orders',{method:'POST',body:{items,destination:el('meDest').value||null}}); el('meDest').value=''; await loadMe();
+    window.open('/receipt.html?id='+r.receipt_id,'_blank'); window.open('/waybill.html?id='+r.order_id,'_blank'); }catch(e){ el('meOrderErr').textContent=e.message; } }
 
-/* ---------- انبار (کارمند) ---------- */
-async function loadInventory() {
-  const [rows, whs] = await Promise.all([api('/inventory'), api('/inventory/warehouses')]);
-  invTable.innerHTML = rows.map(p=>`
-    <tr><td>${p.name}</td><td>${p.category||'—'}</td><td>${p.unit||''}</td>
-    <td class="credit">${fmt(p.total_in)}</td><td class="debit">${fmt(p.total_out)}</td>
-    <td><b>${fmt(p.on_hand)}</b></td></tr>`).join('') || '<tr><td colspan="6" class="muted">کالایی نیست</td></tr>';
-  invWh.innerHTML = whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
-  invProd.innerHTML = products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-}
-async function receiveStock() {
-  try {
-    await api('/inventory/receive', { method:'POST', body:{
-      warehouse_id:Number(invWh.value), product_id:Number(invProd.value),
-      quantity:Number(invQty.value), unit_cost:invCost.value||null }});
-    invQty.value=invCost.value=''; loadInventory();
-  } catch(e){ alert(e.message); }
-}
-
-/* ---------- پنل شخصی دامدار/مشتری ---------- */
-async function loadMe() {
-  const d = await api('/me/dashboard');
-  meName.textContent = d.person.fullname + ' (' + d.person.code + ')';
-  const cb = d.balance.current_balance;
-  meStatus.className = 'pill ' + d.balance.status;
-  meStatus.textContent = d.balance.status==='creditor'?'بستانکار':d.balance.status==='debtor'?'بدهکار':'تسویه';
-  meBalLbl.textContent = cb>=0 ? 'قابل دریافت از شرکت' : 'بدهی شما به شرکت';
-  meBal.textContent = fmt(Math.abs(cb)) + ' ریال';
-  meKg.textContent = fmt(d.balance.milk_kg_month);
-  meMilk.textContent = fmt(d.balance.milk_value_month);
-  meBuy.textContent = fmt(d.balance.purchases_total);
-  mePaid.textContent = fmt(d.balance.payments_total);
-  meItems.innerHTML=''; meAddItemRow(); meCalc();
-  await Promise.all([loadMeOrders(), loadMeLedger()]);
-}
-async function loadMeLedger() {
-  const rows = await api('/me/ledger');
-  meLedger.innerHTML = rows.map(r=>`<tr><td>${r.date_jalali}</td><td>${r.description||r.type}</td>
-    <td class="debit">${r.debit?fmt(r.debit):'—'}</td><td class="credit">${r.credit?fmt(r.credit):'—'}</td>
-    <td><b>${fmt(r.balance)}</b></td></tr>`).join('') || '<tr><td colspan="5" class="muted">تراکنشی نیست</td></tr>';
-}
-async function loadMeOrders() {
-  const rows = await api('/me/orders');
-  meOrders.innerHTML = rows.map(o=>`<tr><td>${o.order_no}</td><td>${fmt(o.total_amount)}</td>
-    <td>${o.status}</td>
-    <td>${o.receipt_id?`<button class="ghost" onclick="printReceipt(${o.receipt_id})">فاکتور</button>`:'—'}</td>
-    <td><button class="ghost" onclick="printWaybill(${o.id})">بارنامه</button></td></tr>`).join('')
-    || '<tr><td colspan="5" class="muted">سفارشی نیست</td></tr>';
-}
-function printWaybill(orderId){ window.open('/waybill.html?id='+orderId, '_blank'); }
-function meAddItemRow() {
-  const div=document.createElement('div'); div.className='item-row';
-  div.innerHTML = `<select class="mi-prod"><option value="">— کالا —</option>
-    ${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
-    <input class="mi-qty" type="number" step="0.001" placeholder="تعداد" oninput="meCalc()">
-    <input class="mi-price" type="number" placeholder="قیمت" disabled>
-    <button class="x" onclick="this.parentElement.remove(); meCalc()">×</button>`;
-  meItems.appendChild(div);
-  div.querySelector('.mi-prod').onchange=(e)=>{ div.querySelector('.mi-price').value=e.target.selectedOptions[0]?.dataset.price||''; meCalc(); };
-}
-function meReadItems(){
-  return [...meItems.querySelectorAll('.item-row')].map(r=>({
-    product_id:Number(r.querySelector('.mi-prod').value), quantity:Number(r.querySelector('.mi-qty').value)
-  })).filter(x=>x.product_id && x.quantity>0);
-}
-function meCalc(){
-  const total = [...meItems.querySelectorAll('.item-row')].reduce((s,r)=>{
-    const price=Number(r.querySelector('.mi-price').value)||0, q=Number(r.querySelector('.mi-qty').value)||0;
-    return s+Math.round(price*q); },0);
-  meSum.textContent=fmt(total);
-}
-async function mePlaceOrder(){
-  meOrderErr.textContent='';
-  const items=meReadItems();
-  if(!items.length){ meOrderErr.textContent='حداقل یک قلم کالا لازم است'; return; }
-  try {
-    const r = await api('/me/orders', { method:'POST', body:{ items, destination:meDest.value||null }});
-    meDest.value=''; await loadMe();
-    window.open('/receipt.html?id='+r.receipt_id,'_blank');  // فاکتور
-    window.open('/waybill.html?id='+r.order_id,'_blank');    // بارنامه
-  } catch(e){ meOrderErr.textContent=e.message; }
-}
-
-document.getElementById('logout').onclick = logoutFn;
-
-// دیپ‌لینک بله: startapp=receipt_<id> → بعد از ورود، فاکتور را چاپ کن
-let pendingReceiptId = null;
-(function parseStartParam(){
-  const sp = new URLSearchParams(location.search).get('tgWebAppStartParam') || '';
-  const m = sp.match(/^receipt_(\d+)$/);
-  if (m) pendingReceiptId = Number(m[1]);
-})();
-
-// بارگذاری اولیه
-(async function init() {
-  const wa = window.Bale && window.Bale.WebApp;
-  if (wa) { try { wa.ready(); wa.expand(); } catch {} }
-
-  // ۱) داخل بله باز شده و initData دارد → لاگین خودکار مینی‌اپ
-  if (wa && wa.initData) {
-    try {
-      const d = await api('/auth/bale', { method:'POST', body:{ initData: wa.initData }});
-      setUser(d.user); boot(); return;
-    } catch(e) {
-      // اتصال حساب برقرار نبود یا اعتبارسنجی ناموفق → فرم لاگین با پیام
-      showLogin(e.message === 'unauthorized' ? '' : e.message); return;
-    }
-  }
-
-  // ۲) مرورگر عادی: نشست فعال؟ وارد شو، وگرنه لاگین
-  try { const d = await api('/auth/me'); setUser(d.user); boot(); }
-  catch { showLogin(); }
+/* ---------- INIT ---------- */
+el('logout').onclick=logoutFn;
+(function(){ const sp=new URLSearchParams(location.search).get('tgWebAppStartParam')||''; const m=sp.match(/^receipt_(\d+)$/); if(m) pendingReceiptId=Number(m[1]); })();
+(async function init(){
+  const wa=window.Bale && window.Bale.WebApp;
+  if(wa){ try{ wa.ready(); wa.expand(); }catch{} }
+  if(wa && wa.initData){ try{ const d=await api('/auth/bale',{method:'POST',body:{initData:wa.initData}}); setUser(d.user); boot(); return; }catch(e){ showLogin(e.message==='unauthorized'?'':e.message); return; } }
+  try{ const d=await api('/auth/me'); setUser(d.user); boot(); }catch{ showLogin(); }
 })();
 </script>
 </body>

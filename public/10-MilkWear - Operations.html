@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>عملیات روزانه — موبایل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f8fafc; }
+        .skeu-card { background: #ffffff; border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .tab-active { background-color: #1b4332; color: white; }
+    </style>
+</head>
+<body class="pb-28">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4">
+        <div class="flex items-center justify-between">
+            <h1 class="text-lg font-black text-slate-800">عملیات روزانه</h1>
+            <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+                <button class="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white shadow-lg shadow-green-100">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Search/Filter Toggles -->
+        <div class="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+            <button class="tab-active px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap">همه اشخاص</button>
+            <button class="bg-slate-100 text-slate-500 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap">بستانکاران</button>
+            <button class="bg-slate-100 text-slate-500 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap">بدهکاران</button>
+        </div>
+    </header>
+
+    <main class="p-4 space-y-4">
+        <!-- Person List Item -->
+        <div class="skeu-card p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-green-50 text-green-700 rounded-2xl flex items-center justify-center text-xl font-black">
+                    ح
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">حسین احمدی</h3>
+                    <p class="text-[10px] text-slate-400">کد: ۱۰۲۴ | دامدار</p>
+                </div>
+            </div>
+            <div class="text-left">
+                <div class="text-sm font-black text-green-600">+۴۵,۰۰۰</div>
+                <button class="text-[10px] font-bold text-blue-600">مشاهده دفتر <i class="fa-solid fa-chevron-left ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Person List Item -->
+        <div class="skeu-card p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-red-50 text-red-700 rounded-2xl flex items-center justify-center text-xl font-black">
+                    م
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">محمد موسوی</h3>
+                    <p class="text-[10px] text-slate-400">کد: ۱۰۲۵ | مشتری</p>
+                </div>
+            </div>
+            <div class="text-left">
+                <div class="text-sm font-black text-red-600">-۱۲,۸۰۰</div>
+                <button class="text-[10px] font-bold text-blue-600">مشاهده دفتر <i class="fa-solid fa-chevron-left ml-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Float Action Button Context -->
+        <div class="fixed bottom-24 left-6 z-50">
+            <button class="w-14 h-14 bg-green-700 rounded-full flex items-center justify-center text-white shadow-2xl">
+                <i class="fa-solid fa-file-invoice text-xl"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-100 p-3 flex justify-around items-center">
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-house text-xl"></i>
+            <span class="text-[10px] font-bold">داشبورد</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-green-700">
+            <i class="fa-solid fa-clipboard-list text-xl"></i>
+            <span class="text-[10px] font-bold">عملیات</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-boxes-stacked text-xl"></i>
+            <span class="text-[10px] font-bold">انبار</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-user-gear text-xl"></i>
+            <span class="text-[10px] font-bold">تنظیمات</span>
+        </a>
+    </nav>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت سیستم (ادمین)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f3f4f6; }
+        .skeu-header { background: linear-gradient(to bottom, #1b4332, #081c15); }
+        .skeu-card { background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-btn.active { border-bottom: 3px solid #2d6a4f; color: #1b4332; font-weight: bold; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <header id="header" class="skeu-header text-white p-4 sticky top-0 z-50">
+        <div class="max-w-[1100px] mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <i class="fa-solid fa-cow text-2xl"></i>
+                <h1 class="font-bold">پنل مدیریت عالی</h1>
+            </div>
+            <nav class="hidden md:flex gap-4">
+                <a href="#" class="px-3 py-1.5 rounded-lg text-sm hover:bg-white/10">داشبورد</a>
+                <a href="#" class="px-3 py-1.5 rounded-lg text-sm bg-white text-green-900 font-bold">مدیریت</a>
+                <a href="#" class="px-3 py-1.5 rounded-lg text-sm hover:bg-white/10">لاگ‌ها</a>
+            </nav>
+            <div class="text-xs opacity-80">مدیر سیستم — ادمین کل</div>
+        </div>
+    </header>
+
+    <main class="max-w-[1100px] mx-auto p-6 space-y-8">
+        
+        <div class="flex border-b border-gray-200 mb-6">
+            <button class="tab-btn active px-6 py-3 text-sm">سایت‌های جمع‌آوری</button>
+            <button class="tab-btn px-6 py-3 text-sm text-gray-500 hover:text-gray-700">کاربران سیستم</button>
+            <button class="tab-btn px-6 py-3 text-sm text-gray-500 hover:text-gray-700">تنظیمات کلی</button>
+        </div>
+
+        <!-- Section: Sites -->
+        <section id="view-sites" class="space-y-6">
+            <div class="skeu-card p-6 bg-green-50/30">
+                <h3 class="font-bold text-gray-700 mb-4">تعریف سایت جمع‌آوری شیر جدید</h3>
+                <form class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">نام سایت</label>
+                        <input type="text" placeholder="مثلاً ایستگاه مرکزی" class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">نوع</label>
+                        <select class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm">
+                            <option>ایستگاه جمع‌آوری</option>
+                            <option>فروشگاه</option>
+                            <option>مرکز پخش</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2">تلفن</label>
+                        <input type="text" placeholder="۰۲۱-..." class="w-full p-2.5 bg-white border border-gray-200 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full bg-green-700 text-white py-2.5 rounded-lg font-bold hover:bg-green-800 shadow-sm transition-colors">
+                            افزودن سایت
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="skeu-card overflow-hidden">
+                <div class="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <h3 class="font-bold text-gray-700">سایت‌های تعریف‌شده</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-gray-50 text-gray-500 font-medium">
+                            <tr>
+                                <th class="p-4">کد</th>
+                                <th class="p-4">نام</th>
+                                <th class="p-4">نوع</th>
+                                <th class="p-4">تلفن</th>
+                                <th class="p-4">انبارها</th>
+                                <th class="p-4">وضعیت</th>
+                                <th class="p-4">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr>
+                                <td class="p-4 font-bold text-gray-400">۱۰۱</td>
+                                <td class="p-4 font-bold">ایستگاه مرکزی البرز</td>
+                                <td class="p-4">جمع‌آوری شیر</td>
+                                <td class="p-4">۰۲۶۳۲۴۵۶</td>
+                                <td class="p-4">۲ انبار</td>
+                                <td class="p-4">
+                                    <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold">فعال</span>
+                                </td>
+                                <td class="p-4">
+                                    <button class="text-green-600 font-bold hover:underline">+ متصدی</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-gray-400">۱۰۲</td>
+                                <td class="p-4 font-bold">فروشگاه مریم</td>
+                                <td class="p-4">فروشگاه</td>
+                                <td class="p-4">۰۲۱۷۷۸۸</td>
+                                <td class="p-4">۱ انبار</td>
+                                <td class="p-4">
+                                    <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold">فعال</span>
+                                </td>
+                                <td class="p-4">
+                                    <button class="text-green-600 font-bold hover:underline">+ متصدی</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Users (Compact view for brevity) -->
+        <section id="view-users" class="space-y-6 pt-12 border-t border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-black text-gray-800">مدیریت کاربران سیستم</h3>
+                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-blue-700 transition-all">
+                    افزودن کاربر جدید
+                </button>
+            </div>
+            <div class="skeu-card overflow-hidden">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-gray-50 text-gray-500 font-medium">
+                        <tr>
+                            <th class="p-4">نام کامل</th>
+                            <th class="p-4">نام کاربری</th>
+                            <th class="p-4">نقش</th>
+                            <th class="p-4">سایت</th>
+                            <th class="p-4">اتصال بله</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr>
+                            <td class="p-4 font-bold">علیرضا حسینی</td>
+                            <td class="p-4">alireza_h</td>
+                            <td class="p-4"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">ادمین</span></td>
+                            <td class="p-4">سایت مرکزی</td>
+                            <td class="p-4">
+                                <span class="text-green-600 font-bold">متصل (خودکار)</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</body>
+</html>

@@ -1,64 +1,112 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>بارنامه</title>
-<style>
-  * { box-sizing:border-box; font-family:Tahoma,sans-serif; }
-  body { margin:0; background:#eceff1; color:#1a2027; }
-  .sheet { background:#fff; max-width:640px; margin:20px auto; padding:22px 26px; border:1px solid #ddd; border-radius:8px; }
-  .center { text-align:center; }
-  h2 { margin:0 0 2px; font-size:18px; }
-  .muted { color:#6b7683; font-size:12px; }
-  .hr { border-top:1px dashed #bbb; margin:12px 0; }
-  .row { display:flex; justify-content:space-between; font-size:13px; margin:5px 0; }
-  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:6px; }
-  th,td { padding:6px 8px; border:1px solid #e3e8ee; text-align:right; }
-  th { background:#f7f9fb; color:#374; }
-  .bar { max-width:640px; margin:12px auto; text-align:center; }
-  button { padding:9px 22px; border:none; border-radius:8px; background:#0d7a5f; color:#fff; cursor:pointer; font-size:14px; }
-  .sign { display:flex; justify-content:space-between; margin-top:34px; font-size:13px; }
-  @media print { .bar { display:none; } body { background:#fff; } .sheet { border:none; margin:0; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بارنامه / حواله تحویل کالا</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+    body { font-family: 'Vazirmatn', sans-serif; }
+    .page-a4 { width:210mm; min-height:297mm; padding:20mm; margin:0 auto; background:#fff; }
+    .page-thermal { width:80mm; padding:5mm; margin:0 auto; background:#fff; border:1px dashed #ccc; }
+    @media print {
+      .no-print { display:none !important; }
+      body { background:#fff !important; padding:0 !important; margin:0 !important; }
+      .page-a4 { width:100% !important; margin:0 !important; padding:10mm !important; box-shadow:none !important; }
+      .page-thermal { width:100% !important; margin:0 !important; padding:2mm !important; border:none !important; box-shadow:none !important; }
+    }
+    .active-size { outline:3px solid #1d4ed8; outline-offset:4px; }
+  </style>
 </head>
-<body>
-<div class="bar">
-  <button onclick="window.print()">🖨 چاپ بارنامه</button>
-  <button onclick="window.close()" style="background:#eef2f5;color:#1a2027">بستن</button>
-</div>
-<div class="sheet" id="sheet">در حال بارگذاری…</div>
-<script>
-const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
-const id = new URLSearchParams(location.search).get('id');
-const token = localStorage.getItem('token'); // در مرورگر عادی؛ در بله با کوکی
-(async () => {
-  const r = await fetch('/api/orders/'+id, { credentials:'same-origin',
-    headers: token ? { Authorization:'Bearer '+token } : {} });
-  if (!r.ok) { sheet.innerHTML='خطا در دریافت بارنامه'; return; }
-  const d = await r.json();
-  const o = d.order;
-  const items = (d.items||[]).map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.product_name}</td>
-    <td>${fmt(i.quantity)} ${i.unit||''}</td><td>${fmt(i.unit_price)}</td><td>${fmt(i.amount)}</td></tr>`).join('');
-  sheet.innerHTML = `
-    <div class="center"><h2>${d.branch?.name || 'سامانه لبنیات'}</h2>
-      <div class="muted">بارنامه / حواله تحویل کالا</div></div>
-    <div class="hr"></div>
-    <div class="row"><span>شماره بارنامه:</span><b>${o.waybill_no||'—'}</b></div>
-    <div class="row"><span>شماره سفارش:</span><span>${o.order_no}</span></div>
-    <div class="row"><span>تحویل‌گیرنده:</span><b>${d.person.fullname} (${d.person.person_code})</b></div>
-    <div class="row"><span>تلفن:</span><span>${d.person.mobile||'—'}</span></div>
-    <div class="row"><span>مقصد تحویل:</span><span>${o.destination || d.person.address || '—'}</span></div>
-    <div class="hr"></div>
-    <table>
-      <thead><tr><th>#</th><th>کالا</th><th>مقدار</th><th>قیمت واحد</th><th>مبلغ</th></tr></thead>
-      <tbody>${items}</tbody>
-    </table>
-    <div class="row" style="margin-top:8px"><span>جمع کل:</span><b>${fmt(o.total_amount)} ریال</b></div>
-    <div class="sign"><span>امضای راننده / تحویل‌دهنده</span><span>امضای تحویل‌گیرنده</span></div>
-  `;
-  setTimeout(()=>window.print(), 400);
-})();
-</script>
+<body class="bg-slate-100 p-8">
+  <div class="no-print max-w-[800px] mx-auto mb-8 bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-50 p-3 rounded-xl text-blue-600"><i class="fa-solid fa-print text-xl"></i></div>
+        <div><h3 class="font-black text-slate-800 leading-none">چاپ بارنامه</h3>
+          <p class="text-xs text-slate-500 mt-1">سایز خروجی را انتخاب کنید</p></div>
+      </div>
+      <div class="flex gap-4">
+        <button onclick="setSize('a4')" id="btn-a4" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl hover:bg-slate-50 active-size">
+          <i class="fa-solid fa-file-lines text-2xl text-slate-400"></i><span class="text-xs font-bold">A4</span></button>
+        <button onclick="setSize('thermal')" id="btn-thermal" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl hover:bg-slate-50">
+          <i class="fa-solid fa-receipt text-2xl text-slate-400"></i><span class="text-xs font-bold">فیش ۸۰mm</span></button>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="window.print()" class="bg-blue-700 text-white px-8 py-4 rounded-xl font-black hover:bg-blue-800 shadow-lg flex items-center gap-3"><i class="fa-solid fa-print"></i> چاپ نهایی</button>
+        <button onclick="window.close()" class="bg-slate-100 text-slate-700 px-4 rounded-xl font-bold">بستن</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="print-area" class="page-a4 shadow-2xl transition-all duration-300">
+    <div id="content" class="text-center text-slate-400 py-20">در حال بارگذاری…</div>
+  </div>
+
+  <script>
+    const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+    const id = new URLSearchParams(location.search).get('id');
+    function setSize(size){
+      const a=document.getElementById('print-area');
+      document.getElementById('btn-a4').classList.toggle('active-size', size==='a4');
+      document.getElementById('btn-thermal').classList.toggle('active-size', size==='thermal');
+      a.className=(size==='a4'?'page-a4':'page-thermal')+' shadow-2xl transition-all duration-300';
+    }
+    (async () => {
+      const box = document.getElementById('content');
+      try {
+        const r = await fetch('/api/orders/'+id, { credentials:'same-origin' });
+        if (!r.ok) throw new Error('عدم دسترسی به بارنامه');
+        const d = await r.json();
+        const o = d.order;
+        const rows = (d.items||[]).map((i,idx)=>`<tr>
+          <td class="p-3 border-l border-black">${fmt(idx+1)}</td>
+          <td class="p-3 border-l border-black font-bold">${i.product_name}</td>
+          <td class="p-3 border-l border-black">${i.unit||'—'}</td>
+          <td class="p-3 border-l border-black font-bold text-center">${fmt(i.quantity)}</td></tr>`).join('');
+        box.innerHTML = `
+          <div class="flex justify-between items-start border-b-2 border-black pb-6 mb-8">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 bg-slate-900 text-white rounded-lg flex items-center justify-center"><i class="fa-solid fa-cow text-3xl"></i></div>
+              <div><h1 class="text-xl font-black">${d.branch?.name || 'سامانه لبنیات'}</h1>
+                <p class="text-xs text-slate-500">واحد لجستیک و توزیع</p></div>
+            </div>
+            <div class="text-center">
+              <h2 class="text-2xl font-black border-2 border-black px-4 py-1 mb-2">بارنامه تحویل کالا</h2>
+              <p class="text-xs">شماره: <span class="font-bold">${o.waybill_no || o.order_no}</span></p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-8 mb-8 text-sm">
+            <div class="space-y-3">
+              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">تحویل‌گیرنده:</span><span class="font-bold">${d.person.fullname} (${d.person.person_code})</span></div>
+              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">شماره سفارش:</span><span class="font-bold">${o.order_no}</span></div>
+            </div>
+            <div class="space-y-3">
+              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">تلفن تماس:</span><span class="font-bold">${d.person.mobile||'—'}</span></div>
+              <div class="flex border-b border-dotted border-slate-300 pb-1"><span class="w-24 text-slate-500">مقصد:</span><span class="font-bold">${o.destination || d.person.address || '—'}</span></div>
+            </div>
+          </div>
+          <table class="w-full border-2 border-black mb-8 text-sm text-right">
+            <thead class="bg-slate-100 border-b-2 border-black"><tr>
+              <th class="p-3 border-l border-black w-12">#</th><th class="p-3 border-l border-black">شرح کالا</th>
+              <th class="p-3 border-l border-black">واحد</th><th class="p-3 border-l border-black">مقدار</th>
+            </tr></thead>
+            <tbody class="divide-y divide-black">${rows}</tbody>
+          </table>
+          <div class="text-left text-sm font-bold mb-8">جمع کل: ${fmt(o.total_amount)} ریال</div>
+          <div class="grid grid-cols-3 gap-8 text-center text-xs mt-12 pt-12">
+            <div class="space-y-8"><p>امضاء انباردار</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
+            <div class="space-y-8"><p>امضاء راننده</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
+            <div class="space-y-8"><p>امضاء گیرنده</p><div class="border-t border-slate-300 pt-2 opacity-50">..........</div></div>
+          </div>
+          <div class="mt-16 pt-6 border-t-2 border-black flex justify-between items-center text-[10px] text-slate-400">
+            <p>این سند فاقد ارزش مالی است.</p><p>MilkWear Management System</p>
+          </div>`;
+        setTimeout(()=>window.print(), 500);
+      } catch(e){ box.innerHTML = '<div class="text-center text-red-500 py-20">'+e.message+'</div>'; }
+    })();
+  </script>
 </body>
 </html>

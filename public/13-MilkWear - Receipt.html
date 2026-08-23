@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مشاهده فاکتور — موبایل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f1f5f9; }
+        .receipt-card { background: #ffffff; border-radius: 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="p-4 pb-24">
+
+    <header class="flex items-center justify-between mb-6">
+        <button class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-500 shadow-sm">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        <h1 class="font-black text-slate-800">جزئیات فاکتور</h1>
+        <button class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm">
+            <i class="fa-solid fa-share-nodes"></i>
+        </button>
+    </header>
+
+    <main class="receipt-card p-6 relative overflow-hidden">
+        <!-- Decorative Cut -->
+        <div class="absolute -top-3 left-0 right-0 flex justify-around">
+            <div class="w-6 h-6 bg-f1f5f9 rounded-full bg-[#f1f5f9]"></div>
+            <div class="w-6 h-6 bg-f1f5f9 rounded-full bg-[#f1f5f9]"></div>
+            <div class="w-6 h-6 bg-f1f5f9 rounded-full bg-[#f1f5f9]"></div>
+            <div class="w-6 h-6 bg-f1f5f9 rounded-full bg-[#f1f5f9]"></div>
+            <div class="w-6 h-6 bg-f1f5f9 rounded-full bg-[#f1f5f9]"></div>
+        </div>
+
+        <div class="text-center mt-4 mb-8">
+            <div class="w-16 h-16 bg-green-50 text-green-700 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-800">سایت مرکزی البرز</h2>
+            <p class="text-xs text-slate-400 mt-1">شماره فاکتور: ۵۶۷۸</p>
+        </div>
+
+        <div class="space-y-4 border-b border-dashed border-slate-200 pb-6 mb-6 text-sm">
+            <div class="flex justify-between">
+                <span class="text-slate-400">تاریخ ثبت:</span>
+                <span class="font-bold text-slate-800">۱۴۰۳/۰۶/۲۴</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">طرف حساب:</span>
+                <span class="font-bold text-slate-800">حسین احمدی</span>
+            </div>
+        </div>
+
+        <div class="space-y-4 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm">شیر صبح (دامدار)</h3>
+                    <p class="text-[10px] text-slate-400">۸۵ کیلوگرم × ۱۰,۰۰۰</p>
+                </div>
+                <span class="font-black text-green-600 text-sm">+۸۵۰,۰۰۰</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm">کنسانتره شیری ۵٪</h3>
+                    <p class="text-[10px] text-slate-400">۲ کیسه × ۱۵۰,۰۰۰</p>
+                </div>
+                <span class="font-black text-red-600 text-sm">-۳۰۰,۰۰۰</span>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-500">جمع بستانکار:</span>
+                <span class="font-bold">۸۵۰,۰۰۰</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-500">جمع بدهکار:</span>
+                <span class="font-bold">۳۰۰,۰۰۰</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-slate-200 pt-3">
+                <span class="font-black text-slate-800">خالص فاکتور:</span>
+                <span class="text-xl font-black text-green-700">۵۵۰,۰۰۰ <span class="text-[10px]">ریال</span></span>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <img class="w-24 h-24 mx-auto opacity-20" src="https://storage.googleapis.com/uxpilot-auth.appspot.com/gen_fe7ede87f7_620e1b84c41014ef.png" alt="Generic QR code for receipt validation" />
+            <p class="text-[10px] text-slate-300 mt-2 font-bold tracking-widest">VALIDATED BY MILKWEAR</p>
+        </div>
+    </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md flex gap-3">
+        <button onclick="window.print()" class="flex-1 bg-green-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-green-100 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-print"></i>
+            چاپ فاکتور
+        </button>
+        <button class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-500">
+            <i class="fa-solid fa-download"></i>
+        </button>
+    </footer>
+
+</body>
+</html>

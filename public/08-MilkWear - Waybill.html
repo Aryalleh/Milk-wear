@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <title>بارنامه / حواله تحویل کالا</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; transition: background-color 0.3s; }
+
+        /* Print sizing */
+        .page-a4 { width: 210mm; min-height: 297mm; padding: 20mm; margin: 0 auto; background: white; }
+        .page-thermal { width: 80mm; padding: 5mm; margin: 0 auto; background: white; border: 1px dashed #ccc; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            .page-a4 { width: 100% !important; height: auto !important; margin: 0 !important; padding: 10mm !important; box-shadow: none !important; border: none !important; }
+            .page-thermal { width: 100% !important; margin: 0 !important; padding: 2mm !important; border: none !important; box-shadow: none !important; }
+        }
+
+        .active-size { outline: 3px solid #1d4ed8; outline-offset: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 p-8" id="body-root">
+
+    <!-- Controls -->
+    <div class="no-print max-w-[800px] mx-auto mb-8 bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-50 p-3 rounded-xl text-blue-600">
+                    <i class="fa-solid fa-print text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-black text-slate-800 leading-none">تنظیمات چاپ بارنامه</h3>
+                    <p class="text-xs text-slate-500 mt-1">سایز خروجی را انتخاب کنید</p>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="setSize('a4')" id="btn-a4" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl transition-all hover:bg-slate-50 active-size">
+                    <i class="fa-solid fa-file-lines text-2xl text-slate-400"></i>
+                    <span class="text-xs font-bold">سایز A4</span>
+                </button>
+                <button onclick="setSize('thermal')" id="btn-thermal" class="flex flex-col items-center gap-2 p-3 border-2 rounded-xl transition-all hover:bg-slate-50">
+                    <i class="fa-solid fa-receipt text-2xl text-slate-400"></i>
+                    <span class="text-xs font-bold">فیش (۸۰mm)</span>
+                </button>
+            </div>
+
+            <button onclick="window.print()" class="bg-blue-700 text-white px-8 py-4 rounded-xl font-black hover:bg-blue-800 shadow-lg shadow-blue-200 transition-all flex items-center gap-3">
+                <i class="fa-solid fa-print"></i>
+                چاپ نهایی
+            </button>
+        </div>
+    </div>
+
+    <!-- Waybill Document -->
+    <div id="print-area" class="page-a4 shadow-2xl transition-all duration-500">
+        <!-- Content Container -->
+        <div id="content-container">
+            <!-- Header -->
+            <div class="flex justify-between items-start border-b-2 border-black pb-6 mb-8" id="header-section">
+                <div class="flex items-center gap-4">
+                    <div id="logo-box" class="w-16 h-16 bg-slate-900 text-white rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-cow text-3xl"></i>
+                    </div>
+                    <div>
+                        <h1 id="brand-name" class="text-xl font-black">شرکت لبنیات پاک‌دشت</h1>
+                        <p class="text-xs text-slate-500">واحد لجستیک و توزیع</p>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 id="doc-title" class="text-2xl font-black border-2 border-black px-4 py-1 mb-2">بارنامه تحویل کالا</h2>
+                    <p class="text-xs">شماره: <span class="font-bold">۹۸۷۶۵</span></p>
+                </div>
+            </div>
+
+            <!-- Meta Grid -->
+            <div id="info-grid" class="grid grid-cols-2 gap-8 mb-8 text-sm">
+                <div class="space-y-3">
+                    <div class="flex border-b border-dotted border-slate-300 pb-1">
+                        <span class="w-24 text-slate-500">تحویل‌گیرنده:</span>
+                        <span class="font-bold">حسین احمدی (۱۰۲۴)</span>
+                    </div>
+                    <div class="flex border-b border-dotted border-slate-300 pb-1">
+                        <span class="w-24 text-slate-500">تاریخ صدور:</span>
+                        <span class="font-bold">۱۴۰۳/۰۶/۲۴</span>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex border-b border-dotted border-slate-300 pb-1">
+                        <span class="w-24 text-slate-500">تلفن تماس:</span>
+                        <span class="font-bold">۰۹۱۲۳۴۵۶۷۸۹</span>
+                    </div>
+                    <div class="flex border-b border-dotted border-slate-300 pb-1">
+                        <span class="w-24 text-slate-500">مقصد:</span>
+                        <span class="font-bold">دامداری بخش ۴</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table class="w-full border-2 border-black mb-8 text-sm text-right">
+                <thead class="bg-slate-100 border-b-2 border-black">
+                    <tr>
+                        <th class="p-3 border-l border-black w-12">#</th>
+                        <th class="p-3 border-l border-black">شرح کالا</th>
+                        <th class="p-3 border-l border-black">واحد</th>
+                        <th class="p-3 border-l border-black">مقدار</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-black">
+                    <tr>
+                        <td class="p-3 border-l border-black">۱</td>
+                        <td class="p-3 border-l border-black font-bold">کنسانتره شیری ۵%</td>
+                        <td class="p-3 border-l border-black">کیسه</td>
+                        <td class="p-3 border-l border-black font-bold text-center">۲</td>
+                    </tr>
+                    <tr>
+                        <td class="p-3 border-l border-black">۲</td>
+                        <td class="p-3 border-l border-black font-bold">مکمل پلاس</td>
+                        <td class="p-3 border-l border-black">گالن</td>
+                        <td class="p-3 border-l border-black font-bold text-center">۱</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Signatures -->
+            <div id="signatures" class="grid grid-cols-3 gap-8 text-center text-xs mt-12 pt-12">
+                <div class="space-y-8">
+                    <p>امضاء انباردار</p>
+                    <div class="border-t border-slate-300 pt-2 opacity-50">..............</div>
+                </div>
+                <div class="space-y-8">
+                    <p>امضاء راننده</p>
+                    <div class="border-t border-slate-300 pt-2 opacity-50">..............</div>
+                </div>
+                <div class="space-y-8">
+                    <p>امضاء گیرنده</p>
+                    <div class="border-t border-slate-300 pt-2 opacity-50">..............</div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div id="footer-text" class="mt-16 pt-6 border-t-2 border-black flex justify-between items-center text-[10px] text-slate-400">
+                <p>این سند فاقد ارزش مالی است.</p>
+                <p>MilkWear Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setSize(size) {
+            const area = document.getElementById('print-area');
+            const btnA4 = document.getElementById('btn-a4');
+            const btnThermal = document.getElementById('btn-thermal');
+            const headerSection = document.getElementById('header-section');
+            const infoGrid = document.getElementById('info-grid');
+            const signatures = document.getElementById('signatures');
+            const logoBox = document.getElementById('logo-box');
+            const brandName = document.getElementById('brand-name');
+            const docTitle = document.getElementById('doc-title');
+
+            if (size === 'a4') {
+                area.className = 'page-a4 shadow-2xl transition-all duration-500';
+                btnA4.classList.add('active-size');
+                btnThermal.classList.remove('active-size');
+
+                // Restore A4 layout details
+                headerSection.classList.remove('flex-col', 'items-center', 'gap-4', 'text-center');
+                headerSection.classList.add('flex', 'justify-between', 'items-start');
+                infoGrid.classList.remove('grid-cols-1');
+                infoGrid.classList.add('grid-cols-2');
+                signatures.classList.remove('grid-cols-1', 'gap-4', 'mt-4');
+                signatures.classList.add('grid-cols-3', 'gap-8', 'mt-12');
+                logoBox.classList.remove('hidden');
+                brandName.classList.remove('text-center', 'text-sm');
+                docTitle.classList.remove('text-lg');
+            } else {
+                area.className = 'page-thermal shadow-2xl transition-all duration-500';
+                btnThermal.classList.add('active-size');
+                btnA4.classList.remove('active-size');
+
+                // Adjust for Thermal
+                headerSection.classList.remove('flex', 'justify-between', 'items-start');
+                headerSection.classList.add('flex-col', 'items-center', 'gap-4', 'text-center');
+                infoGrid.classList.remove('grid-cols-2');
+                infoGrid.classList.add('grid-cols-1');
+                signatures.classList.remove('grid-cols-3', 'gap-8', 'mt-12');
+                signatures.classList.add('grid-cols-1', 'gap-4', 'mt-4');
+                logoBox.classList.add('hidden');
+                brandName.classList.add('text-center', 'text-sm');
+                docTitle.classList.add('text-lg');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <script>
+        window.FontAwesomeConfig = {
+          autoReplaceSvg: 'nest'
+        };
+      </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مدیریت سایت‌ها — موبایل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #f8fafc; }
+        .skeu-card { background: #ffffff; border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="pb-28">
+
+    <header class="bg-slate-900 text-white p-6 pb-12 rounded-b-[40px] relative overflow-hidden">
+        <div class="relative z-10">
+            <h1 class="text-2xl font-black mb-1">مدیریت سایت‌ها</h1>
+            <p class="text-xs opacity-60">پنل ادمین مرکزی</p>
+        </div>
+        <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+    </header>
+
+    <main class="p-4 -mt-8 space-y-4 relative z-20">
+        <!-- Site Card -->
+        <div class="skeu-card p-5">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-green-50 text-green-700 rounded-2xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">ایستگاه مرکزی البرز</h3>
+                        <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">فعال</span>
+                    </div>
+                </div>
+                <button class="text-slate-400">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-500">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-users opacity-40"></i>
+                    ۱۲ کاربر
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked opacity-40"></i>
+                    ۲ انبار
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-phone opacity-40"></i>
+                    ۰۲۶-۳۲۴۵...
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-50 flex gap-2">
+                <button class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold">مدیریت کاربران</button>
+                <button class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold">ویرایش سایت</button>
+            </div>
+        </div>
+
+        <!-- Site Card -->
+        <div class="skeu-card p-5">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-700 rounded-2xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800">فروشگاه مریم</h3>
+                        <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">فعال</span>
+                    </div>
+                </div>
+                <button class="text-slate-400">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-[11px] text-slate-500">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-users opacity-40"></i>
+                    ۳ کاربر
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked opacity-40"></i>
+                    ۱ انبار
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-50 flex gap-2">
+                <button class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold">مدیریت کاربران</button>
+                <button class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold">ویرایش سایت</button>
+            </div>
+        </div>
+
+        <!-- Add New Site FAB-style link -->
+        <div class="fixed bottom-24 left-6 z-50">
+            <button class="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-2xl">
+                <i class="fa-solid fa-plus text-xl"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-100 p-3 flex justify-around items-center z-50">
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-house text-xl"></i>
+            <span class="text-[10px] font-bold">داشبورد</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-clipboard-list text-xl"></i>
+            <span class="text-[10px] font-bold">عملیات</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-400">
+            <i class="fa-solid fa-boxes-stacked text-xl"></i>
+            <span class="text-[10px] font-bold">انبار</span>
+        </a>
+        <a href="#" class="flex flex-col items-center gap-1 text-slate-900">
+            <i class="fa-solid fa-user-gear text-xl"></i>
+            <span class="text-[10px] font-bold">تنظیمات</span>
+        </a>
+    </nav>
+
+</body>
+</html>
