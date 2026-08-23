@@ -47,6 +47,31 @@ router.get('/deliveries', wrap(async (req, res) => {
   res.json(rows);
 }));
 
+// گزارش کامل ایستگاه شیر — هر دامدار چند لیتر/کیلو داده و هر کیلویش چند بوده
+router.get('/report', wrap(async (req, res) => {
+  const month = req.query.month || currentJalaliMonth();
+  const [rows] = await pool.query(
+    `SELECT p.id, p.fullname, p.person_code,
+            COUNT(*) AS cnt,
+            COALESCE(SUM(md.weight_kg),0) AS kg,
+            COALESCE(SUM(md.amount),0) AS value,
+            ROUND(SUM(md.amount)/NULLIF(SUM(md.weight_kg),0)) AS avg_price,
+            ROUND(AVG(md.fat_pct),2) AS avg_fat
+       FROM milk_deliveries md JOIN persons p ON p.id = md.person_id
+      WHERE md.year_month_jalali = ? AND md.deleted_at IS NULL
+      GROUP BY p.id ORDER BY kg DESC`, [month]);
+  const [[tot]] = await pool.query(
+    `SELECT COALESCE(SUM(weight_kg),0) kg, COALESCE(SUM(amount),0) value, COUNT(DISTINCT person_id) farmers, COUNT(*) cnt
+       FROM milk_deliveries WHERE year_month_jalali = ? AND deleted_at IS NULL`, [month]);
+  res.json({
+    month,
+    total: { kg: Number(tot.kg), value: Number(tot.value), farmers: tot.farmers, count: tot.cnt },
+    farmers: rows.map((r) => ({ id: r.id, fullname: r.fullname, person_code: r.person_code,
+      count: r.cnt, kg: Number(r.kg), value: Number(r.value),
+      avg_price: Number(r.avg_price || 0), avg_fat: r.avg_fat != null ? Number(r.avg_fat) : null })),
+  });
+}));
+
 // قیمت شیر ماه جاری
 router.get('/price', wrap(async (req, res) => {
   const month = req.query.month || currentJalaliMonth();

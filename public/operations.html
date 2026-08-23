@@ -21,7 +21,13 @@
     </div>
   </section>
   <section class="md:col-span-8 lg:col-span-9 space-y-6">
-    <div id="empty" class="empty-hint skeu-card p-10 text-center text-gray-400"><i class="fa-solid fa-hand-pointer text-3xl mb-3"></i><p>یک شخص را از فهرست انتخاب کنید</p></div>
+    <div id="empty" class="empty-hint skeu-card overflow-hidden">
+      <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center flex-wrap gap-2">
+        <h3 class="font-bold text-gray-700"><i class="fa-solid fa-chart-line text-green-600 ml-1"></i> گزارش ایستگاه شیر (این ماه)</h3>
+        <span id="repTotal" class="text-xs text-gray-500"></span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">دامدار</th><th class="p-3">دفعات</th><th class="p-3">مقدار (کیلو)</th><th class="p-3">میانگین قیمت</th><th class="p-3">میانگین چربی</th><th class="p-3">ارزش کل</th></tr></thead><tbody id="repBody" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
     <div id="sheetBackdrop" onclick="closeSheet()"></div>
     <div id="detail" class="hidden space-y-4">
       <div class="skeu-card p-5">
@@ -199,11 +205,14 @@ async function submitInvoice(){ document.getElementById('invErr').textContent=''
   if(!body.milk&&body.items.length===0){ document.getElementById('invErr').textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
   try{ const whs=await api('/branches/'+document.getElementById('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null; const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); window.open('/receipt.html?id='+r.id,'_blank'); }catch(e){ document.getElementById('invErr').textContent=e.message; } }
 
+async function loadStationReport(){ const d=await api('/milk/report');
+  document.getElementById('repTotal').textContent = `مجموع: ${fmt(d.total.kg)} کیلو · ${fmt(d.total.value)} ریال · ${fmt(d.total.farmers)} دامدار`;
+  document.getElementById('repBody').innerHTML = d.farmers.map(f=>`<tr class="cursor-pointer hover:bg-gray-50" onclick="selectPerson(${f.id})"><td class="p-3 font-bold">${f.fullname}</td><td class="p-3">${fmt(f.count)}</td><td class="p-3">${fmt(f.kg)}</td><td class="p-3">${fmt(f.avg_price)}</td><td class="p-3">${f.avg_fat!=null?fmt(f.avg_fat)+'٪':'—'}</td><td class="p-3 text-green-600 font-bold">${fmt(f.value)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">این ماه شیری ثبت نشده</td></tr>'; }
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('operations','عملیات روزانه');
   myBranch=u.branch_id||null; isFin=(u.role==='admin'||u.role==='accountant');
   document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
   [products,branches]=await Promise.all([api('/products'),api('/branches')]);
-  loadPersons();
+  loadPersons(); loadStationReport();
 })();
 </script>
 </body>

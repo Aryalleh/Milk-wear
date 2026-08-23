@@ -15,6 +15,7 @@
     <button data-tab="sites" onclick="tab('sites')" class="tabbtn nav-pill active bg-white px-4 py-2 rounded-full text-sm shadow-sm">سایت‌ها</button>
     <button data-tab="users" onclick="tab('users')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">کاربران</button>
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
+    <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
   </div>
 
   <!-- SITES -->
@@ -50,12 +51,40 @@
     <div class="skeu-card p-6"><div class="flex justify-between items-center flex-wrap gap-3"><h3 class="font-bold text-gray-800">لاگ تغییرات سیستم</h3><input id="auditQ" oninput="loadAudit()" placeholder="جستجو..." class="input-skeu rounded-lg px-3 py-2 w-56"></div></div>
     <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">زمان</th><th class="p-3">کاربر</th><th class="p-3">عملیات</th><th class="p-3">بخش</th><th class="p-3">مسیر</th><th class="p-3">وضعیت</th><th class="p-3">IP</th></tr></thead><tbody id="auditTable" class="divide-y divide-gray-100"></tbody></table></div></div>
   </div>
+
+  <!-- DAIRY RESTOCK (admin exception) -->
+  <div id="t-dairy" class="tabc hidden space-y-6">
+    <div class="skeu-card p-4"><p class="text-sm text-gray-600"><i class="fa-solid fa-circle-info text-amber-500 ml-1"></i> لبنیات معمولاً فقط از طریق «تولید» وارد انبار می‌شوند. این بخش فقط برای اصلاح دستیِ مدیر است.</p></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">واحد</th><th class="p-3">موجودی فعلی</th><th class="p-3">شارژ دستی</th></tr></thead><tbody id="dairyTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+  </div>
 </main>
+
+<!-- مودال شارژ لبنیات -->
+<div id="dairyModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+  <div class="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">شارژ دستی لبنیات</h3><button onclick="document.getElementById('dairyModal').classList.add('hidden')" class="text-gray-400 text-2xl">&times;</button></div>
+    <p id="dyName" class="text-sm text-gray-500 mb-3"></p>
+    <div class="space-y-3">
+      <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="dyWh" class="input-skeu rounded-lg px-3 py-2.5 w-full"></select></div>
+      <div><label class="text-xs text-gray-500 block mb-1">مقدار</label><input id="dyQty" type="number" step="0.001" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5"><button onclick="document.getElementById('dairyModal').classList.add('hidden')" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button onclick="saveDairy()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ثبت شارژ</button></div>
+    <p id="dyErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); }
+let dyWhs=[], dyPid=null;
+async function loadDairy(){ const [rows,whs]=await Promise.all([api('/inventory'),api('/inventory/warehouses')]); dyWhs=whs;
+  const dairy=rows.filter(p=>p.category==='لبنیات');
+  document.getElementById('dairyTable').innerHTML=dairy.map(p=>`<tr><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.unit||''}</td><td class="p-3 font-black ${p.on_hand>0?'text-green-600':'text-gray-500'}">${fmt(p.on_hand)}</td><td class="p-3"><button onclick="openDairy(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="text-green-700 font-bold text-xs"><i class="fa-solid fa-bolt ml-1"></i>شارژ</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">کالای لبنی‌ای نیست</td></tr>'; }
+function openDairy(id,name){ dyPid=id; document.getElementById('dyName').textContent='کالا: '+name; document.getElementById('dyErr').textContent=''; document.getElementById('dyQty').value='';
+  document.getElementById('dyWh').innerHTML=dyWhs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join(''); document.getElementById('dairyModal').classList.remove('hidden'); }
+async function saveDairy(){ document.getElementById('dyErr').textContent=''; const q=Number(document.getElementById('dyQty').value); if(!q||q<=0){document.getElementById('dyErr').textContent='مقدار لازم است';return;}
+  try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(document.getElementById('dyWh').value),product_id:dyPid,quantity:q}}); document.getElementById('dairyModal').classList.add('hidden'); loadDairy(); }catch(e){ document.getElementById('dyErr').textContent=e.message; } }
 async function loadSites(){ branches=await api('/branches'); const T={station:'ایستگاه شیر',store:'فروشگاه',distribution:'مرکز پخش',head:'دفتر مرکزی'};
   document.getElementById('sitesTable').innerHTML=branches.map(b=>`<tr><td class="p-3">${b.id}</td><td class="p-3">${b.code}</td><td class="p-3 font-bold">${b.name}</td><td class="p-3">${T[b.type]||b.type}</td><td class="p-3">${b.phone||'—'}</td><td class="p-3">${b.warehouse_count}</td><td class="p-3">${b.user_count}</td><td class="p-3"><button onclick="addOperator(${b.id},'${(b.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold">+ متصدی</button></td></tr>`).join(''); }
 async function addSite(){ try{ await api('/branches',{method:'POST',body:{code:document.getElementById('siteCode').value,name:document.getElementById('siteName').value,type:document.getElementById('siteType').value,phone:document.getElementById('sitePhone').value}}); document.getElementById('siteCode').value=document.getElementById('siteName').value=document.getElementById('sitePhone').value=''; loadSites(); }catch(e){alert(e.message);} }
