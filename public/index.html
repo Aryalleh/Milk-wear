@@ -620,12 +620,15 @@ function drawCharts(d){
 async function loadPersons(){
   const q = el('search').value ? '?q='+encodeURIComponent(el('search').value) : '';
   const list = await api('/persons'+q);
-  el('persons').innerHTML = list.map(p=>`
-    <div class="sidebar-item p-3 rounded-lg ${p.id===currentPerson?'active':''}" onclick="selectPerson(${p.id})">
-      <div class="flex justify-between items-center">
-        <div><span class="text-xs text-gray-500 block">کد: ${p.person_code}</span><span class="font-bold text-gray-800">${p.fullname}</span></div>
-        <span class="font-bold text-sm ${p.balance>0?'text-green-600':p.balance<0?'text-red-600':'text-gray-400'}">${fmt(p.balance)}</span>
-      </div></div>`).join('') || '<div class="text-gray-400 text-sm p-3">موردی نیست</div>';
+  el('persons').innerHTML = list.map(p=>{
+    const tone = p.balance>0?'green':p.balance<0?'red':'slate';
+    return `<div class="sidebar-item p-3 rounded-xl flex items-center justify-between ${p.id===currentPerson?'active':''}" onclick="selectPerson(${p.id})">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl flex items-center justify-center font-black ${tone==='green'?'bg-green-50 text-green-700':tone==='red'?'bg-red-50 text-red-700':'bg-slate-100 text-slate-500'}">${(p.fullname||'?').trim().charAt(0)}</div>
+        <div><h3 class="font-bold text-gray-800 text-sm leading-tight">${p.fullname}</h3><p class="text-[10px] text-gray-400">کد: ${p.person_code}</p></div>
+      </div>
+      <span class="font-black text-sm ${tone==='green'?'text-green-600':tone==='red'?'text-red-600':'text-gray-400'}">${fmt(p.balance)}</span>
+    </div>`;}).join('') || '<div class="text-gray-400 text-sm p-3">موردی نیست</div>';
 }
 async function selectPerson(id){
   currentPerson=id; el('empty').classList.add('hidden'); el('detail').classList.remove('hidden');
