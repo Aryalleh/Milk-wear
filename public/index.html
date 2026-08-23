@@ -250,6 +250,18 @@
     <!-- ===== INVENTORY ===== -->
     <section id="view-inventory" class="view hidden space-y-6">
       <div class="skeu-card p-6">
+        <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-square-plus text-green-600 ml-1"></i> تعریف کالای جدید</h3>
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="flex-1 min-w-[150px]"><label class="text-xs text-gray-500 block mb-1">نام کالا</label><input id="npName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+          <div><label class="text-xs text-gray-500 block mb-1">دسته</label><select id="npCat" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">واحد</label><select id="npUnit" class="input-skeu rounded-lg px-3 py-2"></select></div>
+          <div><label class="text-xs text-gray-500 block mb-1">قیمت پایه (ریال)</label><input id="npPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+          <label class="flex items-center gap-2 text-sm text-gray-600 mb-2"><input id="npTrack" type="checkbox" checked class="w-4 h-4"> ردیابی موجودی</label>
+          <button onclick="addProduct()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن کالا</button>
+        </div>
+        <p id="npErr" class="text-red-600 text-xs mt-2"></p>
+      </div>
+      <div class="skeu-card p-6">
         <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-warehouse text-amber-600 ml-1"></i> ثبت ورود کالا به انبار (چیا اومده)</h3>
         <div class="flex flex-wrap gap-3 items-end">
           <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="invWh" class="input-skeu rounded-lg px-3 py-2"></select></div>
@@ -621,13 +633,21 @@ async function loadAudit(){ const q=el('auditQ').value?'?q='+encodeURIComponent(
     <td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('') || '<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }
 
 /* ---------- INVENTORY ---------- */
-async function loadInventory(){ const [rows,whs]=await Promise.all([api('/inventory'),api('/inventory/warehouses')]);
+async function loadInventory(){ const [rows,whs,meta]=await Promise.all([api('/inventory'),api('/inventory/warehouses'),api('/products/meta')]);
   el('invTable').innerHTML=rows.map(p=>`<tr>
     <td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3">${p.unit||''}</td>
     <td class="p-3 text-green-600">${fmt(p.total_in)}</td><td class="p-3 text-red-600">${fmt(p.total_out)}</td><td class="p-3 font-bold">${fmt(p.on_hand)}</td></tr>`).join('') || '<tr><td colspan="6" class="p-4 text-center text-gray-400">کالایی نیست</td></tr>';
   el('invWh').innerHTML=whs.map(w=>`<option value="${w.id}">${w.name}${w.branch_name?(' - '+w.branch_name):''}</option>`).join('');
-  el('invProd').innerHTML=products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join(''); }
+  el('invProd').innerHTML=products.filter(p=>p.track_stock).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  el('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  el('npUnit').innerHTML=meta.units.map(u=>`<option value="${u.id}">${u.name}</option>`).join(''); }
 async function receiveStock(){ try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(el('invWh').value),product_id:Number(el('invProd').value),quantity:Number(el('invQty').value),unit_cost:el('invCost').value||null}}); el('invQty').value=el('invCost').value=''; loadInventory(); }catch(e){alert(e.message);} }
+async function addProduct(){ el('npErr').textContent='';
+  if(!el('npName').value.trim()){ el('npErr').textContent='نام کالا لازم است'; return; }
+  try{ await api('/products',{method:'POST',body:{ name:el('npName').value.trim(), category_id:Number(el('npCat').value)||null, unit_id:Number(el('npUnit').value)||null, base_price:el('npPrice').value||0, track_stock:el('npTrack').checked }});
+    el('npName').value=el('npPrice').value=''; el('npTrack').checked=true;
+    products = await api('/products');   // تازه‌سازی سراسری تا در همهٔ فرم‌ها بیاید
+    loadInventory(); }catch(e){ el('npErr').textContent=e.message; } }
 
 /* ---------- PRODUCTION ---------- */
 async function loadProduction(){ el('prWh').innerHTML='<option value="">— بدون انبار —</option>'+(await api('/inventory/warehouses')).map(w=>`<option value="${w.id}">${w.name}</option>`).join('');

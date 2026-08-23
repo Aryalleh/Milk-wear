@@ -44,30 +44,30 @@ async function run() {
     // شیر صبح (100kg × 38000 = 3,800,000)
     const [d1] = await conn.query(
       `INSERT INTO milk_deliveries (branch_id, person_id, shift, year_month_jalali, weight_kg, price_per_kg, amount)
-       VALUES (2,?, 'morning', ?, 100, 38000, 3800000)`, [hid, month]);
+       VALUES (1,?, 'morning', ?, 100, 38000, 3800000)`, [hid, month]);
     await postTransaction(conn, { personId: hid, txType: 'MILK_DELIVERY', amount: 3800000,
-      sourceType: 'milk_delivery', sourceId: d1.insertId, description: 'شیر صبح — ۱۰۰ کیلو', month, branchId: 2 });
+      sourceType: 'milk_delivery', sourceId: d1.insertId, description: 'شیر صبح — ۱۰۰ کیلو', month, branchId: 1 });
 
     // خوراک دام (بدهکار 1,200,000)
     const [o1] = await conn.query(
       `INSERT INTO orders (branch_id, order_no, person_id, channel, status, total_amount)
-       VALUES (2, ?, ?, 'farmer', 'delivered', 1200000)`, [`SO${Date.now()}`, hid]);
+       VALUES (1, ?, ?, 'farmer', 'delivered', 1200000)`, [`SO${Date.now()}`, hid]);
     await postTransaction(conn, { personId: hid, txType: 'FEED_SALE', amount: 1200000,
-      sourceType: 'order', sourceId: o1.insertId, description: 'خوراک دام', month, branchId: 2 });
+      sourceType: 'order', sourceId: o1.insertId, description: 'خوراک دام', month, branchId: 1 });
 
     // شیر شب (2,900,000)
     const [d2] = await conn.query(
       `INSERT INTO milk_deliveries (branch_id, person_id, shift, year_month_jalali, weight_kg, price_per_kg, amount)
-       VALUES (2,?, 'evening', ?, 76.31, 38000, 2900000)`, [hid, month]);
+       VALUES (1,?, 'evening', ?, 76.31, 38000, 2900000)`, [hid, month]);
     await postTransaction(conn, { personId: hid, txType: 'MILK_DELIVERY', amount: 2900000,
-      sourceType: 'milk_delivery', sourceId: d2.insertId, description: 'شیر شب', month, branchId: 2 });
+      sourceType: 'milk_delivery', sourceId: d2.insertId, description: 'شیر شب', month, branchId: 1 });
 
     // برداشت نقدی (2,000,000)
     const [pay] = await conn.query(
       `INSERT INTO payments (branch_id, person_id, direction, method, amount, note)
-       VALUES (2,?, 'out', 'cash', 2000000, 'برداشت نقدی')`, [hid]);
+       VALUES (1,?, 'out', 'cash', 2000000, 'برداشت نقدی')`, [hid]);
     await postTransaction(conn, { personId: hid, txType: 'CASH_WITHDRAWAL', amount: 2000000,
-      sourceType: 'payment', sourceId: pay.insertId, description: 'برداشت نقدی', month, branchId: 2 });
+      sourceType: 'payment', sourceId: pay.insertId, description: 'برداشت نقدی', month, branchId: 1 });
   });
   console.log('✔ سناریوی نمونهٔ دامدار ثبت شد (مانده باید 3,500,000 باشد)');
 
