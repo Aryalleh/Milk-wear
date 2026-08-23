@@ -16,6 +16,7 @@
     <button data-tab="users" onclick="tab('users')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">کاربران</button>
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
     <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
+    <button data-tab="general" onclick="tab('general')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">عمومی</button>
   </div>
 
   <!-- SITES -->
@@ -59,6 +60,19 @@
   </div>
 </main>
 
+  <!-- GENERAL -->
+  <div id="t-general" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6 max-w-md">
+      <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-database text-cyan-600 ml-1"></i> ظرفیت مخزن شیر خام</h3>
+      <div class="flex gap-2 items-end">
+        <div class="flex-1"><label class="text-xs text-gray-500 block mb-1">ظرفیت (کیلوگرم)</label><input id="siloCap" type="number" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+        <button onclick="saveSilo()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700">ذخیره</button>
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2">برای محاسبهٔ «درصد پر بودن مخزن» در داشبورد استفاده می‌شود.</p>
+      <p id="siloMsg" class="text-green-600 text-xs mt-2"></p>
+    </div>
+  </div>
+
 <!-- مودال شارژ لبنیات -->
 <div id="dairyModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
   <div class="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5">
@@ -74,9 +88,11 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','general'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='general') loadGeneral(); }
+async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; }
+async function saveSilo(){ try{ await api('/settings/silo_capacity_kg',{method:'PUT',body:{value:Number(document.getElementById('siloCap').value)||20000}}); document.getElementById('siloMsg').textContent='ذخیره شد ✓'; setTimeout(()=>document.getElementById('siloMsg').textContent='',2000); }catch(e){ alert(e.message); } }
 let dyWhs=[], dyPid=null;
 async function loadDairy(){ const [rows,whs]=await Promise.all([api('/inventory'),api('/inventory/warehouses')]); dyWhs=whs;
   const dairy=rows.filter(p=>p.category==='لبنیات');

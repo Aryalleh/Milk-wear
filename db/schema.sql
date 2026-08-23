@@ -106,6 +106,7 @@ CREATE TABLE products (
   base_price  DECIMAL(18,0) NOT NULL DEFAULT 0,
   is_raw_milk TINYINT(1) NOT NULL DEFAULT 0,
   track_stock TINYINT(1) NOT NULL DEFAULT 1,
+  reorder_level DECIMAL(14,3) NOT NULL DEFAULT 0,   -- حد نرمال موجودی
   is_active   TINYINT(1) NOT NULL DEFAULT 1,
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_prod_cat  FOREIGN KEY (category_id) REFERENCES product_categories(id),

@@ -36,6 +36,7 @@ const NAV = [
   { key:'operations', label:'عملیات', icon:'fa-list-check', href:'/operations' },
   { key:'production', label:'تولید', icon:'fa-industry', href:'/production' },
   { key:'inventory', label:'انبار', icon:'fa-warehouse', href:'/inventory' },
+  { key:'reports', label:'گزارش‌ها', icon:'fa-chart-pie', href:'/reports' },
   { key:'settings', label:'تنظیمات', icon:'fa-gear', href:'/settings', admin:true },
 ];
 function mountChrome(active, title){

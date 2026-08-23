@@ -40,4 +40,20 @@ router.post('/', wrap(async (req, res) => {
   res.status(201).json({ id: r.insertId, code: finalCode });
 }));
 
+// ویرایش کالا (قیمت پایه / حد نرمال موجودی / نام / فعال)
+router.put('/:id', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const { name, base_price, reorder_level, is_active } = req.body;
+  const [r] = await pool.query(
+    `UPDATE products SET
+       name = COALESCE(?, name),
+       base_price = COALESCE(?, base_price),
+       reorder_level = COALESCE(?, reorder_level),
+       is_active = COALESCE(?, is_active)
+     WHERE id = ?`,
+    [name ?? null, base_price ?? null, reorder_level ?? null, is_active ?? null, req.params.id]);
+  if (!r.affectedRows) throw new AppError(404, 'کالا یافت نشد');
+  res.json({ ok: true });
+}));
+
 export default router;

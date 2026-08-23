@@ -21,6 +21,8 @@ import productionRoutes from './routes/production.js';
 import wasteRoutes from './routes/waste.js';
 import auditRoutes from './routes/audit.js';
 import publicRoutes from './routes/public.js';
+import settingsRoutes from './routes/settings.js';
+import reportsRoutes from './routes/reports.js';
 import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -79,6 +81,7 @@ app.get('/operations', pub('operations.html'));
 app.get('/production', pub('production.html'));
 app.get('/inventory', pub('inventory.html'));
 app.get('/settings', pub('settings.html'));
+app.get('/reports', pub('reports.html'));
 app.get('/panel', pub('panel.html'));
 
 app.use('/api/public', publicRoutes);   // بدون احراز هویت (نمایش فاکتور با توکن برای QR)
@@ -104,6 +107,8 @@ app.use('/api/dashboard', staffRequired, dashboardRoutes);
 app.use('/api/production', staffRequired, productionRoutes);
 app.use('/api/waste', staffRequired, wasteRoutes);
 app.use('/api/audit', staffRequired, auditRoutes);
+app.use('/api/settings', staffRequired, settingsRoutes);
+app.use('/api/reports', staffRequired, reportsRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {

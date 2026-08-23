@@ -10,7 +10,7 @@ router.use(staffRequired);
 // خلاصهٔ موجودی هر کالا: چی داریم، چی اومده، چی فروش رفته
 router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT p.id, p.code, p.name, u.symbol AS unit, c.name AS category,
+    `SELECT p.id, p.code, p.name, p.reorder_level, p.base_price, u.symbol AS unit, c.name AS category,
             COALESCE(SUM(CASE WHEN sm.direction='in'  THEN sm.quantity ELSE 0 END),0) AS total_in,
             COALESCE(SUM(CASE WHEN sm.direction='out' THEN sm.quantity ELSE 0 END),0) AS total_out,
             COALESCE(SUM(CASE WHEN sm.direction='in'  THEN sm.quantity ELSE -sm.quantity END),0) AS on_hand

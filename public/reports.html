@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>گزارش‌ها</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
+  <div class="skeu-card p-4">
+    <div class="flex flex-wrap gap-3 items-end">
+      <div><label class="text-xs text-gray-500 block mb-1">از تاریخ</label><input id="from" type="date" class="input-skeu rounded-lg px-3 py-2"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">تا تاریخ</label><input id="to" type="date" class="input-skeu rounded-lg px-3 py-2"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">ماه دلخواه</label><input id="month" type="month" class="input-skeu rounded-lg px-3 py-2" onchange="setMonth()"></div>
+      <button onclick="quick('today')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">امروز</button>
+      <button onclick="quick('week')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">۷ روز</button>
+      <button onclick="quick('month')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">این ماه</button>
+      <button onclick="loadReports()" class="btn-skeu text-white px-5 py-2 rounded-lg font-bold">اعمال</button>
+      <button onclick="exportCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700"><i class="fa-solid fa-file-excel ml-1"></i> خروجی اکسل</button>
+    </div>
+    <p id="rng" class="text-xs text-gray-400 mt-2"></p>
+  </div>
+
+  <!-- خلاصهٔ مالی -->
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-coins text-amber-600 ml-1"></i> خلاصهٔ مالی</h3>
+    <div id="finSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div class="skeu-card overflow-hidden">
+      <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">فروش/خروج کالا</h3></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">مقدار</th><th class="p-3">ارزش (ریال)</th></tr></thead><tbody id="goodsSold" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+    <div class="skeu-card overflow-hidden">
+      <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">تولید</h3></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">محصول</th><th class="p-3">مقدار تولید</th></tr></thead><tbody id="goodsProd" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="skeu-card overflow-hidden">
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">تراکنش‌های مالی</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">طرف حساب</th><th class="p-3">نوع</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">شرح</th></tr></thead><tbody id="finRows" class="divide-y divide-gray-100"></tbody></table></div>
+  </div>
+</main>
+<script>
+const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'پرداخت',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال'};
+let fin={rows:[],summary:[]}, goods={sold:[],produced:[]};
+const today=()=>new Date().toISOString().slice(0,10);
+function quick(w){ const t=new Date(); const to=today();
+  if(w==='today'){ document.getElementById('from').value=to; }
+  else if(w==='week'){ const f=new Date(); f.setDate(f.getDate()-6); document.getElementById('from').value=f.toISOString().slice(0,10); }
+  else if(w==='month'){ document.getElementById('from').value=to.slice(0,8)+'01'; }
+  document.getElementById('to').value=to; document.getElementById('month').value=''; loadReports(); }
+function setMonth(){ const m=document.getElementById('month').value; if(!m)return; const [y,mo]=m.split('-'); const last=new Date(y,mo,0).getDate();
+  document.getElementById('from').value=`${m}-01`; document.getElementById('to').value=`${m}-${String(last).padStart(2,'0')}`; loadReports(); }
+async function loadReports(){ const from=document.getElementById('from').value||today(), to=document.getElementById('to').value||today();
+  document.getElementById('rng').textContent=`بازه: ${from} تا ${to}`;
+  [fin,goods]=await Promise.all([api(`/reports/financial?from=${from}&to=${to}`),api(`/reports/goods?from=${from}&to=${to}`)]);
+  // summary
+  document.getElementById('finSummary').innerHTML=fin.summary.map(s=>`<div class="bg-gray-50 border border-gray-100 rounded-xl p-3"><p class="text-[11px] text-gray-500 mb-1">${TYPE_FA[s.tx_type]||s.tx_type}</p><p class="font-black text-sm">${s.credit?('+'+fmt(s.credit)):''}${s.debit?(' -'+fmt(s.debit)):''}</p><p class="text-[10px] text-gray-400">${fmt(s.count)} مورد</p></div>`).join('')||'<p class="text-gray-400 text-sm col-span-4">داده‌ای نیست</p>';
+  document.getElementById('finRows').innerHTML=fin.rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date}</td><td class="p-3">${r.person}</td><td class="p-3">${TYPE_FA[r.tx_type]||r.tx_type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 text-gray-500">${r.description||''}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>';
+  document.getElementById('goodsSold').innerHTML=goods.sold.map(g=>`<tr><td class="p-3 font-bold">${g.name}</td><td class="p-3">${fmt(g.qty)} ${g.unit||''}</td><td class="p-3 text-green-600 font-bold">${fmt(g.value)}</td></tr>`).join('')||'<tr><td colspan="3" class="p-4 text-center text-gray-400">فروشی نیست</td></tr>';
+  document.getElementById('goodsProd').innerHTML=goods.produced.map(g=>`<tr><td class="p-3 font-bold">${g.name}</td><td class="p-3">${fmt(g.qty)} ${g.unit||''}</td></tr>`).join('')||'<tr><td colspan="2" class="p-4 text-center text-gray-400">تولیدی نیست</td></tr>';
+}
+function exportCSV(){
+  const esc=(v)=>`"${String(v??'').replace(/"/g,'""')}"`;
+  let csv='گزارش مالی\nتاریخ,طرف حساب,نوع,بدهکار,بستانکار,شرح\n';
+  fin.rows.forEach(r=>csv+=[r.date,r.person,TYPE_FA[r.tx_type]||r.tx_type,r.debit,r.credit,r.description].map(esc).join(',')+'\n');
+  csv+='\nفروش کالا\nکالا,مقدار,ارزش\n';
+  goods.sold.forEach(g=>csv+=[g.name,g.qty,g.value].map(esc).join(',')+'\n');
+  csv+='\nتولید\nمحصول,مقدار\n';
+  goods.produced.forEach(g=>csv+=[g.name,g.qty].map(esc).join(',')+'\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`report-${document.getElementById('from').value}_${document.getElementById('to').value}.csv`; a.click();
+}
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('reports','گزارش‌ها');
+  const t=today(); document.getElementById('from').value=t.slice(0,8)+'01'; document.getElementById('to').value=t; loadReports(); })();
+</script>
+</body>
+</html>
