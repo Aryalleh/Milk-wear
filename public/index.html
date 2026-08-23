@@ -8,11 +8,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { theme: { extend: { colors: {
-      dairy: { leaf:'#2d6a4f', dark:'#1b4332', bg:'#f3f4f6', ink:'#1f2937' }
-    }, fontFamily: { sans:['Vazirmatn','sans-serif'] } } } };
+      dairy: { leaf:'#2d6a4f', dark:'#1b4332', bg:'#f3f4f6', ink:'#1e293b',
+               moss:'#1b4332', gold:'#f1c40f', coral:'#f87171', muted:'#64748b',
+               line:'#e8e6de', card:'#ffffff', cream:'#faf9f5' }
+    }, fontFamily: { sans:['Vazirmatn','sans-serif'] },
+    boxShadow: { lifted:'0 18px 40px -24px rgba(27,67,50,0.55)', soft:'0 1px 2px rgba(27,67,50,0.04), 0 8px 24px -14px rgba(27,67,50,0.18)' } } } };
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap');
     body { font-family:'Vazirmatn',sans-serif; background-color:#f3f4f6; color:#1f2937; }
@@ -35,6 +39,12 @@
     .mobile-only { display:block; } @media (min-width:768px){ .mobile-only { display:none; } }
     .bnav { color:#94a3b8; transition:all .15s; }
     .bnav.active { color:#1b4332; background:#eef7f1; }
+    /* مخزن موج‌دار (موبایل، مطابق طرح ۰۹) */
+    .wave-tank { position:relative; overflow:hidden; }
+    .wave-tank::before, .wave-tank::after { content:''; position:absolute; left:-50%; width:200%; height:200%;
+      border-radius:40%; background:rgba(255,255,255,0.14); animation:wave 6s linear infinite; }
+    .wave-tank::after { background:rgba(255,255,255,0.08); animation-delay:-3s; }
+    @keyframes wave { from{transform:rotate(0)} to{transform:rotate(360deg)} }
     input,select,button,textarea { font-family:inherit; }
     table td, table th { white-space:nowrap; }
   </style>
@@ -107,6 +117,8 @@
 
     <!-- ===== DASHBOARD ===== -->
     <section id="view-dashboard" class="view hidden">
+      <!-- ===== دسکتاپ (طرح ۰۱) ===== -->
+      <div class="hidden md:block">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl md:text-2xl font-bold text-gray-800">داشبورد مدیریت <span id="dToday" class="text-gray-500 text-base font-normal"></span></h2>
       </div>
@@ -172,6 +184,36 @@
         <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-simple text-blue-700 ml-1"></i> شیر امروز به تفکیک دامدار</h3><div id="farmerChart" class="h-[300px]"></div></div>
       </div>
       <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-column text-emerald-700 ml-1"></i> جریان شیر و ضایعات (۷ روز اخیر)</h3><div id="weekChart" class="h-[280px]"></div></div>
+      </div><!-- /desktop -->
+
+      <!-- ===== موبایل ۱:۱ (طرح ۰۹) ===== -->
+      <div class="md:hidden -mx-4 -mt-4 px-5 pt-4 pb-4" style="background:#faf9f5">
+        <section class="rounded-[28px] bg-dairy-moss text-white p-6 shadow-lifted relative overflow-hidden mb-6">
+          <div class="absolute -left-10 -top-10 w-40 h-40 rounded-full bg-white/5 blur-2xl"></div>
+          <p class="text-xs text-emerald-200/80 mb-2">مجموع شیر دریافتی امروز</p>
+          <div class="flex items-end gap-2"><span id="mMilkKg" class="text-[46px] leading-none font-extrabold tracking-tighter">۰</span><span class="text-lg text-emerald-200/80 mb-1.5">کیلو</span></div>
+          <p id="mFarmersLine" class="text-xs text-emerald-200/70 mt-1"></p>
+          <div id="mSpark" class="mt-4 -mx-2"></div>
+        </section>
+        <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line mb-6">
+          <div class="flex items-center justify-between mb-4"><h2 class="text-base font-bold">فرآوری امروز (شیر → محصولات)</h2><span id="mBatches" class="text-xs text-dairy-muted"></span></div>
+          <div id="mProdList" class="grid grid-cols-3 gap-3"></div>
+        </section>
+        <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line mb-6">
+          <h2 class="text-base font-bold mb-4">شیر امروز به تفکیک دامدار</h2>
+          <div id="mFarmerList" class="space-y-3"></div>
+        </section>
+        <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line mb-6">
+          <div class="flex items-center justify-between mb-1"><h2 class="text-base font-bold">جریان شیر و ضایعات</h2><span class="text-xs text-dairy-muted">۷ روز</span></div>
+          <div class="flex gap-6 mb-2"><div><span class="inline-block w-2 h-2 rounded-full bg-dairy-leaf ml-1.5"></span><span class="text-xs text-dairy-muted">دریافت</span></div><div><span class="inline-block w-2 h-2 rounded-full bg-dairy-coral ml-1.5"></span><span class="text-xs text-dairy-muted">ضایعات</span></div></div>
+          <div id="mFlowChart" class="-mx-2"></div>
+        </section>
+        <section class="bg-white rounded-[26px] p-5 shadow-soft border border-dairy-line">
+          <div class="flex items-center justify-between mb-4"><h2 class="text-base font-bold">سطح مخزن و چربی</h2><span class="text-xs text-dairy-muted">زنده</span></div>
+          <div class="wave-tank rounded-2xl bg-dairy-moss h-32 flex items-end justify-center pb-3"><span class="relative z-10 text-white text-2xl font-bold"><span id="mSiloPct">۰</span>٪ پر</span></div>
+          <div class="mt-4 flex justify-between text-sm"><span class="text-dairy-muted">میانگین چربی امروز</span><span class="font-bold"><span id="mFat">—</span></span></div>
+        </section>
+      </div>
     </section>
 
     <!-- ===== OPERATIONS ===== -->
@@ -533,7 +575,31 @@ async function loadDashboard(){
   if(d.silo){ el('dSiloPct').textContent=fmt(d.silo.pct); el('dSiloBar').style.width=d.silo.pct+'%'; }
   el('dFat').textContent = d.avg_fat_today!=null ? (fmt(d.avg_fat_today)+'٪') : '—';
   el('dWaste').textContent = fmt(d.waste_today);
-  drawCharts(d);
+  // ----- موبایل (طرح ۰۹) -----
+  el('mMilkKg').textContent=fmt(d.station.kg);
+  el('mFarmersLine').textContent=fmt(d.station.farmers)+' دامدار امروز';
+  el('mBatches').textContent=fmt(d.production.batches)+' بَچ امروز';
+  el('mProdList').innerHTML = d.production.outputs.length
+    ? d.production.outputs.map(o=>`<div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3"><p class="text-[11px] text-dairy-muted mb-1">${o.name}</p><p class="text-base font-bold">${fmt(o.qty)} ${o.unit||''}</p></div>`).join('')
+    : '<p class="text-dairy-muted text-sm col-span-3">امروز تولیدی ثبت نشده</p>';
+  el('mFarmerList').innerHTML = d.by_farmer.length
+    ? d.by_farmer.map(f=>`<div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-dairy-leaf/10 text-dairy-leaf flex items-center justify-center"><i class="fa-solid fa-user"></i></div><div class="flex-1"><p class="text-sm font-semibold">${f.fullname}</p></div><span class="text-sm font-bold">${fmt(f.kg)} kg</span></div>`).join('')
+    : '<p class="text-dairy-muted text-sm">امروز شیری ثبت نشده</p>';
+  el('mSiloPct').textContent=fmt(d.silo.pct);
+  el('mFat').textContent = d.avg_fat_today!=null?(fmt(d.avg_fat_today)+'٪'):'—';
+  drawCharts(d); drawMobileCharts(d);
+}
+let apexSpark, apexFlow;
+function drawMobileCharts(d){
+  if (typeof ApexCharts==='undefined' || !d.week) return;
+  try {
+    if(apexSpark) apexSpark.destroy();
+    apexSpark = new ApexCharts(el('mSpark'), { chart:{type:'area',height:56,sparkline:{enabled:true},fontFamily:'Vazirmatn'}, series:[{name:'شیر',data:d.week.milk}], stroke:{curve:'smooth',width:2}, colors:['#ffffff'], fill:{type:'gradient',gradient:{opacityFrom:0.35,opacityTo:0}}, tooltip:{theme:'dark',x:{show:false},y:{formatter:v=>Number(v).toLocaleString('fa-IR')+' kg'}} });
+    apexSpark.render();
+    if(apexFlow) apexFlow.destroy();
+    apexFlow = new ApexCharts(el('mFlowChart'), { chart:{type:'bar',height:200,fontFamily:'Vazirmatn',toolbar:{show:false}}, series:[{name:'دریافت',data:d.week.milk},{name:'ضایعات',data:d.week.waste}], plotOptions:{bar:{borderRadius:6,columnWidth:'55%'}}, colors:['#10b981','#f87171'], dataLabels:{enabled:false}, legend:{show:false}, grid:{borderColor:'#f1f0ea',strokeDashArray:4}, xaxis:{categories:d.week.labels.map(l=>l.slice(5)),axisBorder:{show:false},axisTicks:{show:false},labels:{style:{colors:'#94a3b8',fontSize:'10px'}}}, yaxis:{labels:{style:{colors:'#94a3b8',fontSize:'10px'},formatter:v=>Math.abs(Number(v)).toLocaleString('fa-IR')}}, tooltip:{y:{formatter:v=>Number(v).toLocaleString('fa-IR')+' kg'}} });
+    apexFlow.render();
+  } catch(e){}
 }
 function drawCharts(d){
   if (typeof Plotly==='undefined') return;
