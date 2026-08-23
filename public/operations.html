@@ -69,6 +69,31 @@
   </section>
 </main>
 
+<!-- ADD PERSON MODAL -->
+<div id="personModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+  <div class="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">افزودن شخص جدید</h3><button onclick="closePerson()" class="text-gray-400 text-2xl">&times;</button></div>
+    <div class="space-y-3">
+      <div><label class="text-xs text-gray-500 block mb-1">نام کامل *</label><input id="npFull" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">نوع</label>
+        <div class="flex gap-2">
+          <button type="button" id="tCustomer" onclick="setPType('customer')" class="flex-1 py-2.5 rounded-lg border-2 font-bold text-sm border-green-600 bg-green-50 text-green-700">مشتری</button>
+          <button type="button" id="tFarmer" onclick="setPType('farmer')" class="flex-1 py-2.5 rounded-lg border-2 font-bold text-sm border-gray-200 text-gray-500">دامدار</button>
+        </div></div>
+      <div><label class="text-xs text-gray-500 block mb-1">موبایل</label><input id="npMobile" class="input-skeu rounded-lg px-3 py-2.5 w-full" placeholder="اختیاری"></div>
+      <div class="border-t border-gray-100 pt-3"><p class="text-xs text-gray-500 mb-2">دسترسی به پنل شخصی (اختیاری):</p>
+        <div class="flex gap-2">
+          <input id="npUser" class="input-skeu rounded-lg px-3 py-2.5 flex-1" placeholder="نام کاربری">
+          <input id="npPass" class="input-skeu rounded-lg px-3 py-2.5 flex-1" placeholder="رمز عبور">
+        </div>
+        <p class="text-[11px] text-gray-400 mt-1">اگر پر شود، شخص می‌تواند با این مشخصات وارد پنل خودش شود.</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5"><button onclick="closePerson()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button onclick="savePerson()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ذخیره</button></div>
+    <p id="npErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
+
 <!-- INVOICE MODAL -->
 <div id="invoiceModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
   <div class="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
@@ -145,10 +170,16 @@ function printReceipt(id){ window.open('/receipt.html?id='+id,'_blank'); }
 function refresh(){ if(currentPerson) selectPerson(currentPerson); }
 async function doPay(dir){ const a=prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:dir,amount:Number(a),branch_id:myBranch||null}}); refresh(); }catch(e){alert(e.message);} }
 async function doSettle(){ if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟'))return; try{ const r=await api('/payments/settle',{method:'POST',body:{person_id:currentPerson,branch_id:myBranch||null}}); alert('تسویه شد: '+fmt(r.paid)); refresh(); }catch(e){alert(e.message);} }
-async function newPerson(){ const name=prompt('نام شخص:'); if(!name)return; const isF=confirm('دامدار است؟ (لغو = مشتری)');
-  const un=prompt('نام کاربری برای ورود شخص (اختیاری - خالی=بدون لاگین):')||null;
-  const pw=un?prompt('رمز عبور:')||null:null;
-  try{ await api('/persons',{method:'POST',body:{fullname:name,roles:[isF?'farmer':'customer'],username:un,password:pw}}); loadPersons(); }catch(e){alert(e.message);} }
+let pType='customer';
+function newPerson(){ pType='customer'; setPType('customer'); document.getElementById('npFull').value=''; document.getElementById('npMobile').value=''; document.getElementById('npUser').value=''; document.getElementById('npPass').value=''; document.getElementById('npErr').textContent=''; document.getElementById('personModal').classList.remove('hidden'); }
+function closePerson(){ document.getElementById('personModal').classList.add('hidden'); }
+function setPType(t){ pType=t;
+  document.getElementById('tCustomer').className='flex-1 py-2.5 rounded-lg border-2 font-bold text-sm '+(t==='customer'?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500');
+  document.getElementById('tFarmer').className='flex-1 py-2.5 rounded-lg border-2 font-bold text-sm '+(t==='farmer'?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500'); }
+async function savePerson(){ document.getElementById('npErr').textContent='';
+  const fullname=document.getElementById('npFull').value.trim(); if(!fullname){ document.getElementById('npErr').textContent='نام لازم است'; return; }
+  const body={ fullname, roles:[pType], mobile:document.getElementById('npMobile').value||null, username:document.getElementById('npUser').value.trim()||null, password:document.getElementById('npPass').value||null };
+  try{ await api('/persons',{method:'POST',body}); closePerson(); loadPersons(); }catch(e){ document.getElementById('npErr').textContent=e.message; } }
 // modal
 function openInvoice(){ if(!currentPerson)return; document.getElementById('invErr').textContent='';
   document.getElementById('invPerson').textContent='برای: '+document.getElementById('pName').textContent;
