@@ -15,7 +15,7 @@ const router = Router();
 router.post('/', wrap(async (req, res) => {
   if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فاکتور ثبت کنند');
   const { person_id, branch_id, warehouse_id, milk, items = [], note,
-          channel = 'farmer', paid = false, payment_method = 'cash' } = req.body;
+          channel = 'farmer', paid = false, payment_method = 'cash', print = false } = req.body;
   if (!person_id) throw new AppError(400, 'شخص لازم است');
   const hasMilk = milk && milk.shift && Number(milk.weight_kg) > 0;
   const hasItems = Array.isArray(items) && items.length > 0;
@@ -64,9 +64,10 @@ router.post('/', wrap(async (req, res) => {
         lines.push({ prod, quantity: Number(it.quantity), price, amount });
       }
       const orderNo = await nextOrderNo(conn);
+      // خریدِ دامدار حضوری است (درجا تحویل)، پس به لیست ارسال/بارگیری نمی‌رود
       const [o] = await conn.query(
-        `INSERT INTO orders (branch_id, order_no, person_id, channel, status, warehouse_id, total_amount, note, created_by)
-         VALUES (?,?,?, ?, 'delivered', ?,?,?,?)`,
+        `INSERT INTO orders (branch_id, order_no, person_id, channel, fulfillment_type, status, warehouse_id, total_amount, note, created_by)
+         VALUES (?,?,?, ?, 'pickup', 'delivered', ?,?,?,?)`,
         [branch_id || null, orderNo, person_id, channel, warehouse_id || null, purchaseAmount, note || null, uid]
       );
       orderId = o.insertId;
@@ -131,8 +132,8 @@ router.post('/', wrap(async (req, res) => {
              net_amount: netAmount, balance_after: balanceAfter };
   });
 
-  // فاکتور بلافاصله به صف چاپِ سرور می‌رود (پرینت‌ایجنت آن را چاپ می‌کند)
-  enqueueReceipt(receipt.id).catch((e) => console.error('enqueueReceipt:', e.message));
+  // چاپ رسید دلبخواهی است؛ فقط اگر print=true باشد به صف چاپ می‌رود
+  if (print) enqueueReceipt(receipt.id).catch((e) => console.error('enqueueReceipt:', e.message));
 
   // اطلاع‌رسانی به شخص در بله (در صورت اتصال حساب) + لینک فاکتور — بدون بلاک‌کردن پاسخ
   const [[person]] = await pool.query(

@@ -45,18 +45,26 @@ async function guard(kinds){
 /* ---------- هدر و ناوبری مشترک کارمندان ---------- */
 const NAV = [
   { key:'dashboard', label:'داشبورد', icon:'fa-house', href:'/dashboard' },
-  { key:'operations', label:'عملیات', icon:'fa-list-check', href:'/operations' },
-  { key:'orders', label:'سفارش‌ها', icon:'fa-receipt', href:'/orders' },
-  { key:'store', label:'فروشگاه', icon:'fa-store', href:'/store' },
+  { key:'operations', label:'تحویل شیر', icon:'fa-truck-droplet', href:'/operations' },
+  { key:'orders', label:'سفارش‌ها و فروش', icon:'fa-receipt', href:'/orders' },
   { key:'production', label:'تولید', icon:'fa-industry', href:'/production' },
   { key:'inventory', label:'انبار', icon:'fa-warehouse', href:'/inventory' },
   { key:'reports', label:'گزارش‌ها', icon:'fa-chart-pie', href:'/reports' },
   { key:'settings', label:'تنظیمات', icon:'fa-gear', href:'/settings', admin:true },
 ];
+function allowedPages(u){
+  if (u && u.role === 'admin') return NAV.map(n=>n.key);
+  if (u && Array.isArray(u.pages)) return u.pages;
+  // پیش‌فرضِ سازگاری: همه جز تنظیمات
+  return NAV.map(n=>n.key).filter(k=>k!=='settings');
+}
 function mountChrome(active, title){
   const u = window.__user || {};
   const isAdmin = u.role === 'admin';
-  const items = NAV.filter(n => !n.admin || isAdmin);
+  const pages = allowedPages(u);
+  // اگر نقش به این صفحه دسترسی ندارد، به اولین صفحهٔ مجاز هدایت شود
+  if (active && !pages.includes(active)) { location.href = '/'+(pages[0]||'dashboard'); return; }
+  const items = NAV.filter(n => pages.includes(n.key));
   const chip = `${u.name||''} — ${ROLE_FA[u.role]||u.role||''}${u.branch_name?(' @ '+u.branch_name):''}`;
 
   // هدر دسکتاپ (سبز)
@@ -83,6 +91,19 @@ function mountChrome(active, title){
   </div>`;
 
   document.body.prepend(mtop); document.body.prepend(top); document.body.appendChild(bottom);
+}
+
+// فهرست صفحاتِ قابل‌دسترسِ کاربر (برای منوی لانچر داشبوردِ نقش‌های محدود)
+function accessiblePages(){ const u=window.__user||{}; const pages=allowedPages(u); return NAV.filter(n=>pages.includes(n.key)); }
+// آیا این کاربر داشبوردِ تحلیلی می‌بیند یا فقط منوی صفحات؟
+function seesDashboard(){ const u=window.__user||{}; return u.role==='admin' || allowedPages(u).includes('dashboard'); }
+// رندر منوی لانچر داخل یک المان
+function renderLauncher(el){ const items=accessiblePages().filter(n=>n.key!=='dashboard');
+  el.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">${items.map(n=>`
+    <a href="${n.href}" class="skeu-card p-6 flex flex-col items-center justify-center gap-3 text-center hover:ring-2 hover:ring-green-300 transition">
+      <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-700 flex items-center justify-center text-2xl"><i class="fa-solid ${n.icon}"></i></div>
+      <span class="font-bold text-gray-800">${n.label}</span>
+    </a>`).join('')}</div>`;
 }
 
 /* ---------- آپدیت لایو ---------- */

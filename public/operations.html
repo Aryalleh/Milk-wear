@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>عملیات روزانه</title>
+  <title>تحویل شیر</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/assets/app.js"></script>
   <link rel="stylesheet" href="/assets/ui.css">
@@ -14,9 +14,9 @@
   <section class="md:col-span-4 lg:col-span-3">
     <div class="skeu-card p-4">
       <div class="flex gap-2 mb-4">
-        <div class="relative flex-1"><input id="search" oninput="loadPersons()" placeholder="جستجو..." class="w-full pr-10 pl-3 py-2 input-skeu rounded-lg text-sm"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i></div>
-        <button onclick="newPerson()" class="bg-green-600 text-white w-10 h-10 rounded-lg flex items-center justify-center hover:bg-green-700"><i class="fa-solid fa-plus"></i></button>
+        <div class="relative flex-1"><input id="search" oninput="loadPersons()" placeholder="جستجوی دامدار..." class="w-full pr-10 pl-3 py-2 input-skeu rounded-lg text-sm"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i></div>
       </div>
+      <p class="text-[11px] text-gray-400 mb-3 px-1">افزودن دامدار/مشتری از «تنظیمات ← کاربران» انجام می‌شود.</p>
       <div id="persons" class="space-y-2 overflow-y-auto max-h-[72vh] no-scrollbar"></div>
     </div>
   </section>
@@ -35,9 +35,10 @@
         <div class="flex items-center gap-3 mb-1"><h2 id="pName" class="text-xl font-black text-gray-800"></h2><span id="pStatus" class="text-xs px-2 py-0.5 rounded-full font-bold"></span></div>
         <p class="text-gray-500 text-sm mb-4">کد: <span id="pCode"></span></p>
         <div class="flex gap-2 flex-wrap">
-          <button onclick="openInvoice()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center gap-2"><i class="fa-solid fa-file-invoice"></i> ساخت فاکتور</button>
-          <button onclick="doPay('out')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">پرداخت به دامدار</button>
-          <button onclick="doPay('in')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">دریافت از مشتری</button>
+          <button onclick="openInvoice()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center gap-2"><i class="fa-solid fa-file-invoice"></i> تحویل شیر / خرید</button>
+          <button onclick="doPay('out')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">پرداخت/قرض به دامدار</button>
+          <button onclick="doPay('in')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">دریافت وجه</button>
+          <button onclick="doOnBehalf()" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">ثبت خرید/دریافت کالا از دامدار</button>
           <button onclick="doSettle()" class="fin-only bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg font-bold text-sm">تسویهٔ کامل</button>
         </div>
       </div>
@@ -116,7 +117,10 @@
     <div class="border border-gray-200 rounded-xl p-3 mb-3"><h4 class="font-bold text-sm mb-2">🛒 خرید کالا / خوراک (اختیاری)</h4><div id="invItems" class="space-y-2"></div><button onclick="addItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button></div>
     <div class="mb-3"><label class="text-xs text-gray-500 block mb-1">توضیحات</label><input id="invNote" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
     <div class="bg-gray-50 rounded-lg p-3 text-sm flex flex-wrap gap-x-4 gap-y-1"><span>بستانکار شیر: <b id="sumMilk" class="text-green-700">۰</b></span><span>بدهکار خرید: <b id="sumBuy" class="text-red-700">۰</b></span><span>خالص: <b id="sumNet">۰</b></span></div>
-    <div class="flex justify-end gap-2 mt-4"><button onclick="closeInvoice()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold">انصراف</button><button onclick="submitInvoice()" class="btn-skeu text-white px-5 py-2 rounded-lg font-bold">ثبت و پرینت فاکتور</button></div>
+    <div class="flex justify-between items-center gap-2 mt-4">
+      <label class="flex items-center gap-1.5 text-sm font-bold text-gray-600"><input id="invPrint" type="checkbox" class="w-4 h-4"> چاپ رسید</label>
+      <div class="flex gap-2"><button onclick="closeInvoice()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold">انصراف</button><button onclick="submitInvoice()" class="btn-skeu text-white px-5 py-2 rounded-lg font-bold">ثبت فاکتور</button></div>
+    </div>
     <p id="invErr" class="text-red-600 text-xs mt-2"></p>
   </div>
 </div>
@@ -124,8 +128,8 @@
 <script>
 let currentPerson=null, products=[], branches=[], myBranch=null, isFin=false;
 async function loadPersons(){
-  const q=document.getElementById('search').value?'?q='+encodeURIComponent(document.getElementById('search').value):'';
-  const list=await api('/persons'+q);
+  const s=document.getElementById('search').value;
+  const list=await api('/persons?type=farmer'+(s?('&q='+encodeURIComponent(s)):''));
   document.getElementById('persons').innerHTML = list.map(p=>{
     const tone=p.balance>0?'green':p.balance<0?'red':'slate';
     return `<div class="sidebar-item p-3 rounded-xl flex items-center justify-between ${p.id===currentPerson?'active':''}" onclick="selectPerson(${p.id})">
@@ -172,12 +176,13 @@ function renderLedger(){ const box=document.getElementById('ledgerBox');
 async function loadLedger(id){ ledgerRows=await api('/persons/'+id+'/ledger'); renderLedger(); }
 async function loadReceipts(id){ const rows=await api('/receipts?person_id='+id);
   document.getElementById('receiptsBox').innerHTML = rows.length? `<div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">شماره</th><th class="p-2">شیر</th><th class="p-2">خرید</th><th class="p-2">خالص</th><th class="p-2">چاپ</th></tr></thead><tbody class="divide-y divide-gray-100">${rows.map(r=>`<tr><td class="p-2 font-bold">${r.receipt_no}</td><td class="p-2 text-green-600">${fmt(r.milk_amount)}</td><td class="p-2 text-red-600">${fmt(r.purchase_amount)}</td><td class="p-2 font-bold">${fmt(r.net_amount)}</td><td class="p-2"><button onclick="printReceipt(${r.id})" class="text-blue-600"><i class="fa-solid fa-print"></i></button></td></tr>`).join('')}</tbody></table></div>` : '<p class="p-4 text-center text-gray-400">فاکتوری نیست</p>'; }
-function printReceipt(id){ window.open('/receipt.html?id='+id+'&print=1','_blank'); }
+async function printReceipt(id){ try{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
 function refresh(){ if(currentPerson) selectPerson(currentPerson); }
 async function doPay(dir){ const a=prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:dir,amount:Number(a),branch_id:myBranch||null}}); refresh(); }catch(e){alert(e.message);} }
 async function doSettle(){ if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟'))return; try{ const r=await api('/payments/settle',{method:'POST',body:{person_id:currentPerson,branch_id:myBranch||null}}); alert('تسویه شد: '+fmt(r.paid)); refresh(); }catch(e){alert(e.message);} }
+async function doOnBehalf(){ const a=prompt('ارزش کالای خریداری/دریافت‌شده از این دامدار (ریال):'); if(!a)return; const d=prompt('شرح (نوع کالا):','')||''; try{ await api('/submissions/on-behalf',{method:'POST',body:{person_id:currentPerson,amount:Number(a),description:d}}); toast('ثبت شد — به بستانکاری دامدار اضافه شد'); refresh(); }catch(e){alert(e.message);} }
 let pType='customer';
-function newPerson(){ pType='customer'; setPType('customer'); document.getElementById('npFull').value=''; document.getElementById('npMobile').value=''; document.getElementById('npUser').value=''; document.getElementById('npPass').value=''; document.getElementById('npErr').textContent=''; document.getElementById('personModal').classList.remove('hidden'); }
+function newPerson(){ pType='farmer'; setPType('farmer'); document.getElementById('npFull').value=''; document.getElementById('npMobile').value=''; document.getElementById('npUser').value=''; document.getElementById('npPass').value=''; document.getElementById('npErr').textContent=''; document.getElementById('personModal').classList.remove('hidden'); }
 function closePerson(){ document.getElementById('personModal').classList.add('hidden'); }
 function setPType(t){ pType=t;
   document.getElementById('tCustomer').className='flex-1 py-2.5 rounded-lg border-2 font-bold text-sm '+(t==='customer'?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500');
@@ -200,15 +205,15 @@ function readItems(){ return [...document.getElementById('invItems').children].m
 function calcInv(){ const w=Number(document.getElementById('invWeight').value)||0,pr=Number(document.getElementById('invPrice').value)||0,milk=Math.round(w*pr); const buy=readItems().reduce((s,i)=>s+Math.round((i.unit_price||0)*i.quantity),0);
   document.getElementById('sumMilk').textContent=fmt(milk); document.getElementById('sumBuy').textContent=fmt(buy); document.getElementById('sumNet').textContent=fmt(milk-buy); }
 async function submitInvoice(){ document.getElementById('invErr').textContent='';
-  const body={person_id:currentPerson,branch_id:Number(document.getElementById('invSite').value),warehouse_id:null,items:readItems(),note:document.getElementById('invNote').value||null};
+  const body={person_id:currentPerson,branch_id:Number(document.getElementById('invSite').value),warehouse_id:null,items:readItems(),note:document.getElementById('invNote').value||null,print:document.getElementById('invPrint').checked};
   if(document.getElementById('invShift').value&&Number(document.getElementById('invWeight').value)>0) body.milk={shift:document.getElementById('invShift').value,weight_kg:Number(document.getElementById('invWeight').value),fat_pct:document.getElementById('invFat').value===''?null:Number(document.getElementById('invFat').value),price_per_kg:document.getElementById('invPrice').value===''?null:Number(document.getElementById('invPrice').value)};
   if(!body.milk&&body.items.length===0){ document.getElementById('invErr').textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
-  try{ const whs=await api('/branches/'+document.getElementById('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null; const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); window.open('/receipt.html?id='+r.id+'&print=1','_blank'); }catch(e){ document.getElementById('invErr').textContent=e.message; } }
+  try{ const whs=await api('/branches/'+document.getElementById('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null; const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); toast(body.print?'فاکتور ثبت و به صف چاپ رفت 🖨':'فاکتور ثبت شد'); }catch(e){ document.getElementById('invErr').textContent=e.message; } }
 
 async function loadStationReport(){ const d=await api('/milk/report');
   document.getElementById('repTotal').textContent = `مجموع: ${fmt(d.total.kg)} کیلو · ${fmt(d.total.value)} ریال · ${fmt(d.total.farmers)} دامدار`;
   document.getElementById('repBody').innerHTML = d.farmers.map(f=>`<tr class="cursor-pointer hover:bg-gray-50" onclick="selectPerson(${f.id})"><td class="p-3 font-bold">${f.fullname}</td><td class="p-3">${fmt(f.count)}</td><td class="p-3">${fmt(f.kg)}</td><td class="p-3">${fmt(f.avg_price)}</td><td class="p-3">${f.avg_fat!=null?fmt(f.avg_fat)+'٪':'—'}</td><td class="p-3 text-green-600 font-bold">${fmt(f.value)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">این ماه شیری ثبت نشده</td></tr>'; }
-(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('operations','عملیات روزانه');
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('operations','تحویل شیر');
   myBranch=u.branch_id||null; isFin=(u.role==='admin'||u.role==='accountant');
   document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
   [products,branches]=await Promise.all([api('/products'),api('/branches')]);

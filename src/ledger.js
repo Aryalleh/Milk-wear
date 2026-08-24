@@ -22,6 +22,7 @@ const DEFAULT_DIRECTION = {
   REFUND: 'credit',
   VOID: 'credit',
   PURCHASE: 'credit',   // خرید از شخص → شرکت به او بدهکار می‌شود
+  GOODS_IN: 'credit',   // دریافت کالا از شخص بابت بدهی → بدهی او به شرکت کم می‌شود
 };
 
 /**

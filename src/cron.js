@@ -90,12 +90,6 @@ export function startCron() {
   cron.schedule('0 2 * * *', runBackup);
   // هر روز ساعت ۰۷:۰۰ گزارش روزانه
   cron.schedule('0 7 * * *', runDailyReport);
-  // هر دقیقه: بررسی زمان‌بندی سفارش‌گیری و صف‌کردن بارنامه‌ها برای چاپ خودکار
-  cron.schedule('* * * * *', async () => {
-    try {
-      const r = await printTick();
-      if (r.due && r.printed) console.log(`🖨 ${r.printed} بارنامه به صف چاپ رفت`);
-    } catch (e) { console.error('printTick:', e.message); }
-  });
-  console.log('⏰ کرون فعال شد: بک‌آپ ۰۲:۰۰، گزارش ۰۷:۰۰، تیک چاپ هر دقیقه');
+  // چاپ خودکار بارنامه لغو شد؛ راننده هنگام بارگیری همه را دستی چاپ می‌کند.
+  console.log('⏰ کرون فعال شد: بک‌آپ ۰۲:۰۰، گزارش ۰۷:۰۰');
 }

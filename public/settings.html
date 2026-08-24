@@ -17,6 +17,7 @@
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
     <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
     <button data-tab="trusted" onclick="tab('trusted')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">اشخاص معتمد</button>
+    <button data-tab="access" onclick="tab('access')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">دسترسی نقش‌ها</button>
     <button data-tab="print" onclick="tab('print')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">چاپ و سفارش‌گیری</button>
     <button data-tab="general" onclick="tab('general')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">عمومی</button>
   </div>
@@ -37,7 +38,23 @@
 
   <!-- USERS -->
   <div id="t-users" class="tabc hidden space-y-6">
-    <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4">افزودن کاربر</h3>
+    <!-- افزودن مشتری / دامدار -->
+    <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-user-plus text-green-600 ml-1"></i> افزودن مشتری / دامدار</h3>
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[140px]"><label class="text-xs text-gray-500 block mb-1">نام کامل *</label><input id="pName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">نوع</label>
+          <select id="pType" class="input-skeu rounded-lg px-3 py-2"><option value="customer">مشتری</option><option value="farmer">دامدار</option></select></div>
+        <div><label class="text-xs text-gray-500 block mb-1">موبایل</label><input id="pMobile" class="input-skeu rounded-lg px-3 py-2 w-32" placeholder="اختیاری"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">آدرس</label><input id="pAddr" class="input-skeu rounded-lg px-3 py-2 w-40" placeholder="اختیاری"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">نام کاربری پنل</label><input id="pUser" class="input-skeu rounded-lg px-3 py-2 w-28" placeholder="اختیاری"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">رمز پنل</label><input id="pPass" class="input-skeu rounded-lg px-3 py-2 w-24" placeholder="اختیاری"></div>
+        <button onclick="addPerson()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن</button>
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2">اگر نام کاربری/رمز پر شود، شخص می‌تواند وارد پنل شخصی خودش شود.</p>
+      <p id="pMsg" class="text-green-600 text-xs mt-1"></p>
+    </div>
+
+    <div class="skeu-card p-6"><h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-user-gear text-gray-500 ml-1"></i> افزودن کاربر (کارمند/مدیر)</h3>
       <div class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[140px]"><label class="text-xs text-gray-500 block mb-1">نام کامل</label><input id="uName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
         <div><label class="text-xs text-gray-500 block mb-1">نام کاربری</label><input id="uUser" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
@@ -73,8 +90,38 @@
   </div>
 
   <!-- GENERAL -->
+  <!-- دسترسی نقش‌ها به صفحات -->
+  <div id="t-access" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-user-lock text-indigo-600 ml-1"></i> دسترسی نقش‌ها به صفحات</h3>
+      <p class="text-[11px] text-gray-400 mb-4">برای هر نقش مشخص کنید به کدام صفحات دسترسی داشته باشد. اگر «داشبورد» تیک نخورَد، آن نقش به‌جای داشبورد یک منوی ساده از صفحاتش می‌بیند. «مدیر» همیشه به همه‌جا دسترسی دارد.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3 text-right">نقش</th><th class="p-3">داشبورد</th><th class="p-3">تحویل شیر</th><th class="p-3">سفارش‌ها و فروش</th><th class="p-3">تولید</th><th class="p-3">انبار</th><th class="p-3">گزارش‌ها</th></tr></thead><tbody id="accessTable" class="divide-y divide-gray-100"></tbody></table></div>
+      <button onclick="saveAccess()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700 mt-4">ذخیره دسترسی‌ها</button>
+      <p id="accessMsg" class="text-green-600 text-xs mt-2"></p>
+    </div>
+  </div>
+
   <!-- چاپ سرور + بازهٔ سفارش‌گیری -->
   <div id="t-print" class="tabc hidden space-y-6">
+    <!-- لوگوی برند (بالای فاکتور/بارنامه/صورتحساب) -->
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-image text-purple-600 ml-1"></i> لوگوی برند</h3>
+      <p class="text-[11px] text-gray-400 mb-4">این لوگو بالای فاکتور، بارنامه و صورتحساب به‌جای آیکن پیش‌فرض چاپ می‌شود. تصویر مربعی و ساده بهتر است (روی پرینتر حرارتی سیاه‌سفید چاپ می‌شود).</p>
+      <div class="flex items-center gap-4">
+        <div class="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden">
+          <img id="logoPreview" class="w-full h-full object-contain hidden"><i id="logoPlaceholder" class="fa-solid fa-cow text-3xl text-gray-300"></i>
+        </div>
+        <div class="flex flex-col gap-2">
+          <input id="logoFile" type="file" accept="image/*" onchange="pickLogo(event)" class="text-sm">
+          <div class="flex gap-2">
+            <button onclick="saveLogo()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700">ذخیره لوگو</button>
+            <button onclick="removeLogo()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-bold text-sm">حذف لوگو</button>
+          </div>
+          <p id="logoMsg" class="text-green-600 text-xs"></p>
+        </div>
+      </div>
+    </div>
+
     <div class="skeu-card p-6">
       <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-clock text-indigo-600 ml-1"></i> بازهٔ سفارش‌گیری و چاپ خودکار بارنامه</h3>
       <p class="text-[11px] text-gray-400 mb-4">سفارش‌ها در بازهٔ زیر پذیرفته و صف می‌شوند؛ در «پایان سفارش‌گیری» یا هر چند دقیقه، بارنامه‌ها خودکار برای چاپ به پرینت‌ایجنت فرستاده می‌شوند.</p>
@@ -143,9 +190,28 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','access','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+
+const ACCESS_PAGES=['dashboard','operations','orders','production','inventory','reports'];
+const ACCESS_ROLE_FA={accountant:'حسابداری',station:'مسئول ایستگاه',store:'فروشگاه',distribution:'مدیر پخش',driver:'کارگر/راننده'};
+const ACCESS_DEFAULT={driver:['operations','orders']};
+let _rolePages={};
+async function loadAccess(){
+  const [roles,s]=await Promise.all([api('/users/roles'),api('/settings')]);
+  _rolePages=(s.role_pages&&typeof s.role_pages==='object')?s.role_pages:{};
+  const editable=roles.filter(r=>!['admin','farmer','customer'].includes(r.name));
+  document.getElementById('accessTable').innerHTML=editable.map(r=>{
+    const allowed=Array.isArray(_rolePages[r.name])?_rolePages[r.name]:(ACCESS_DEFAULT[r.name]||ACCESS_PAGES);
+    return `<tr><td class="p-3 text-right font-bold">${ACCESS_ROLE_FA[r.name]||r.title||r.name}</td>${ACCESS_PAGES.map(pg=>`<td class="p-3"><input type="checkbox" class="w-4 h-4 acc-cb" data-role="${r.name}" data-page="${pg}" ${allowed.includes(pg)?'checked':''}></td>`).join('')}</tr>`;
+  }).join('')||'<tr><td colspan="7" class="p-4 text-gray-400">نقشی نیست</td></tr>';
+}
+async function saveAccess(){
+  const map={};
+  document.querySelectorAll('.acc-cb').forEach(cb=>{ const r=cb.dataset.role; if(!map[r])map[r]=[]; if(cb.checked)map[r].push(cb.dataset.page); });
+  try{ await api('/settings/role_pages',{method:'PUT',body:{value:map}}); document.getElementById('accessMsg').textContent='ذخیره شد ✓ (کاربران با ورود بعدی اعمال می‌شود)'; setTimeout(()=>document.getElementById('accessMsg').textContent='',3500); toast('دسترسی‌ها ذخیره شد'); }catch(e){ toast(e.message,'err'); }
+}
 
 const PJ_ST={queued:['در صف','bg-amber-100 text-amber-700'],printing:['در حال چاپ','bg-blue-100 text-blue-700'],done:['چاپ‌شده','bg-green-100 text-green-700'],error:['خطا','bg-red-100 text-red-700']};
 const PJ_KIND={waybill:'بارنامه',receipt:'فاکتور',test:'آزمایشی'};
@@ -158,8 +224,22 @@ async function loadPrint(){
   document.getElementById('pInterval').value=s.print_interval_min||10;
   document.getElementById('owOutside').checked=!!s.accept_orders_outside_window;
   try{ const t=await api('/print/agent-token'); _agentToken=t.token; document.getElementById('agentToken').textContent=t.token; }catch{}
+  // لوگوی فعلی
+  const lg=s.brand_logo||null;
+  if(lg){ document.getElementById('logoPreview').src=lg; document.getElementById('logoPreview').classList.remove('hidden'); document.getElementById('logoPlaceholder').classList.add('hidden'); }
   loadJobs();
 }
+let _logoData=null;
+function pickLogo(ev){ const f=ev.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=()=>{ const max=240; let w=img.width,h=img.height; if(w>h){ if(w>max){h=Math.round(h*max/w);w=max;} } else { if(h>max){w=Math.round(w*max/h);h=max;} }
+    const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); _logoData=c.toDataURL('image/png');
+    const pv=document.getElementById('logoPreview'); pv.src=_logoData; pv.classList.remove('hidden'); document.getElementById('logoPlaceholder').classList.add('hidden'); };
+    img.src=rd.result; };
+  rd.readAsDataURL(f); }
+async function saveLogo(){ if(!_logoData){ toast('ابتدا یک تصویر انتخاب کنید','err'); return; }
+  try{ await api('/settings/brand_logo',{method:'PUT',body:{value:_logoData}}); document.getElementById('logoMsg').textContent='لوگو ذخیره شد ✓'; setTimeout(()=>document.getElementById('logoMsg').textContent='',2500); toast('لوگو ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
+async function removeLogo(){ try{ await api('/settings/brand_logo',{method:'PUT',body:{value:null}}); _logoData=null;
+  document.getElementById('logoPreview').classList.add('hidden'); document.getElementById('logoPlaceholder').classList.remove('hidden'); document.getElementById('logoFile').value=''; toast('لوگو حذف شد'); }catch(e){ toast(e.message,'err'); } }
 async function loadJobs(){
   const [jobs,sum]=await Promise.all([api('/print/jobs'),api('/print/summary')]);
   document.getElementById('pjSummary').textContent=`صف: ${sum.queued} · در حال چاپ: ${sum.printing} · چاپ‌شده: ${sum.done} · خطا: ${sum.error}`;
@@ -205,6 +285,10 @@ async function loadUsers(){ const [list,roles]=await Promise.all([api('/users'),
   document.getElementById('uBranch').innerHTML='<option value="">— بدون سایت —</option>'+branches.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
   document.getElementById('usersTable').innerHTML=list.map(u=>`<tr><td class="p-3">${u.id}</td><td class="p-3 font-bold">${u.fullname}</td><td class="p-3">${u.username}</td><td class="p-3">${u.role_title}</td><td class="p-3">${u.branch_name||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${u.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${u.is_active?'فعال':'غیرفعال'}</span></td><td class="p-3">${u.bale_user_id?(u.bale_user_id+` <button onclick="linkBale(${u.id})" class="text-blue-600 text-xs">تغییر</button>`):`<button onclick="linkBale(${u.id})" class="text-green-700 text-xs font-bold">اتصال بله</button>`}</td></tr>`).join(''); }
 async function addUser(){ try{ await api('/users',{method:'POST',body:{fullname:document.getElementById('uName').value,username:document.getElementById('uUser').value,password:document.getElementById('uPass').value,role:document.getElementById('uRole').value,branch_id:document.getElementById('uBranch').value||null,bale_user_id:document.getElementById('uBale').value||null}}); document.getElementById('uName').value=document.getElementById('uUser').value=document.getElementById('uPass').value=document.getElementById('uBale').value=''; loadUsers(); }catch(e){alert(e.message);} }
+async function addPerson(){ const name=document.getElementById('pName').value.trim(); if(!name){ toast('نام لازم است','err'); return; }
+  const body={ fullname:name, roles:[document.getElementById('pType').value], mobile:document.getElementById('pMobile').value||null, address:document.getElementById('pAddr').value||null, username:document.getElementById('pUser').value.trim()||null, password:document.getElementById('pPass').value||null };
+  try{ await api('/persons',{method:'POST',body}); ['pName','pMobile','pAddr','pUser','pPass'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('pMsg').textContent='افزوده شد ✓'; setTimeout(()=>document.getElementById('pMsg').textContent='',2500); toast('شخص افزوده شد'); }catch(e){ toast(e.message,'err'); } }
 async function linkBale(id){ const v=prompt('شناسهٔ عددی بله (خالی=حذف):'); if(v===null)return; try{ await api('/users/'+id+'/bale',{method:'PUT',body:{bale_user_id:v.trim()||null}}); loadUsers(); }catch(e){alert(e.message);} }
 async function loadAudit(){ const q=document.getElementById('auditQ').value?'?q='+encodeURIComponent(document.getElementById('auditQ').value):''; const rows=await api('/audit'+q);
   document.getElementById('auditTable').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500 whitespace-nowrap">${r.when}</td><td class="p-3">${r.actor}</td><td class="p-3">${ACTION_FA[r.action]||r.action}</td><td class="p-3">${r.resource||'—'}</td><td class="p-3 text-gray-500">${r.path||''}</td><td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }

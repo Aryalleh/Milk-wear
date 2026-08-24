@@ -7,15 +7,16 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/assets/app.js"></script>
   <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="/assets/vendor/jalalidatepicker.min.css">
+  <script src="/assets/vendor/jalalidatepicker.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
 <main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
   <div class="skeu-card p-4">
     <div class="flex flex-wrap gap-3 items-end">
-      <div><label class="text-xs text-gray-500 block mb-1">از تاریخ</label><input id="from" type="date" class="input-skeu rounded-lg px-3 py-2"></div>
-      <div><label class="text-xs text-gray-500 block mb-1">تا تاریخ</label><input id="to" type="date" class="input-skeu rounded-lg px-3 py-2"></div>
-      <div><label class="text-xs text-gray-500 block mb-1">ماه دلخواه</label><input id="month" type="month" class="input-skeu rounded-lg px-3 py-2" onchange="setMonth()"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">از تاریخ (شمسی)</label><input id="fromJ" data-jdp data-jdp-target-value-input="#fromG" data-jdp-target-value-type="gregorian" placeholder="۱۴۰۵/۰۶/۰۱" class="input-skeu rounded-lg px-3 py-2 w-36" readonly><input type="hidden" id="fromG"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">تا تاریخ (شمسی)</label><input id="toJ" data-jdp data-jdp-target-value-input="#toG" data-jdp-target-value-type="gregorian" placeholder="۱۴۰۵/۰۶/۳۱" class="input-skeu rounded-lg px-3 py-2 w-36" readonly><input type="hidden" id="toG"></div>
       <button onclick="quick('today')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">امروز</button>
       <button onclick="quick('week')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">۷ روز</button>
       <button onclick="quick('month')" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold">این ماه</button>
@@ -25,10 +26,37 @@
     <p id="rng" class="text-xs text-gray-400 mt-2"></p>
   </div>
 
-  <!-- خلاصهٔ مالی -->
+  <!-- کارت‌های کلیدی مالی -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش کل</p><p id="tSale" class="font-black text-lg text-amber-700">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش خالص</p><p id="tNetSale" class="font-black text-lg text-amber-800">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">درآمد (دریافتی)</p><p id="tIncome" class="font-black text-lg text-green-700">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">خرید شیر/کالا</p><p id="tPurch" class="font-black text-lg text-blue-700">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">پرداختی (هزینه)</p><p id="tOut" class="font-black text-lg text-red-600">—</p></div>
+  </div>
+
+  <!-- خلاصهٔ مالی به تفکیک نوع -->
   <div class="skeu-card p-6">
-    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-coins text-amber-600 ml-1"></i> خلاصهٔ مالی</h3>
+    <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-coins text-amber-600 ml-1"></i> خلاصهٔ مالی (به تفکیک نوع)</h3>
     <div id="finSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+  </div>
+
+  <!-- گردش حساب اشخاص (چاپ/خروجی) -->
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-file-invoice-dollar text-indigo-600 ml-1"></i> گردش حساب دامدار / مشتری</h3>
+    <div class="flex flex-wrap gap-2 items-end">
+      <div class="relative flex-1 min-w-[200px]"><label class="text-xs text-gray-500 block mb-1">شخص</label>
+        <input id="stSearch" oninput="stSearch()" placeholder="جستجوی نام..." class="input-skeu rounded-lg px-3 py-2 w-full">
+        <div id="stResults" class="hidden absolute z-20 bg-white border border-gray-200 rounded-lg mt-1 w-full max-h-52 overflow-y-auto shadow-lg"></div>
+      </div>
+      <label class="flex items-center gap-1.5 text-sm font-bold text-gray-600"><input id="stSince" type="checkbox" class="w-4 h-4"> از آخرین تسویه</label>
+      <button onclick="stView()" class="btn-skeu text-white px-4 py-2 rounded-lg font-bold">نمایش</button>
+      <button onclick="stPrint()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold" title="چاپ از مرورگر"><i class="fa-solid fa-print ml-1"></i>چاپ</button>
+      <button onclick="stThermal()" class="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold" title="چاپ روی پرینتر حرارتی از طریق ایجنت"><i class="fa-solid fa-receipt ml-1"></i>چاپ حرارتی</button>
+      <button onclick="stCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold"><i class="fa-solid fa-file-excel ml-1"></i>اکسل</button>
+    </div>
+    <p id="stChip" class="hidden text-xs mt-2 font-bold text-indigo-700"></p>
+    <div id="stBox" class="mt-3"></div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -51,18 +79,20 @@
 const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'پرداخت',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال'};
 let fin={rows:[],summary:[]}, goods={sold:[],produced:[]};
 const today=()=>new Date().toISOString().slice(0,10);
-function quick(w){ const t=new Date(); const to=today();
-  if(w==='today'){ document.getElementById('from').value=to; }
-  else if(w==='week'){ const f=new Date(); f.setDate(f.getDate()-6); document.getElementById('from').value=f.toISOString().slice(0,10); }
-  else if(w==='month'){ document.getElementById('from').value=to.slice(0,8)+'01'; }
-  document.getElementById('to').value=to; document.getElementById('month').value=''; loadReports(); }
-function setMonth(){ const m=document.getElementById('month').value; if(!m)return; const [y,mo]=m.split('-'); const last=new Date(y,mo,0).getDate();
-  document.getElementById('from').value=`${m}-01`; document.getElementById('to').value=`${m}-${String(last).padStart(2,'0')}`; loadReports(); }
+const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+function setDates(fromISO,toISO){ document.getElementById('fromG').value=fromISO; document.getElementById('toG').value=toISO;
+  document.getElementById('fromJ').value=jdate(fromISO); document.getElementById('toJ').value=jdate(toISO); }
+function quick(w){ const to=today(); let from=to;
+  if(w==='week'){ const f=new Date(); f.setDate(f.getDate()-6); from=f.toISOString().slice(0,10); }
+  else if(w==='month'){ from=to.slice(0,8)+'01'; }
+  setDates(from,to); loadReports(); }
 const JF=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'});
 const jdate=(iso)=>{ try{ return JF.format(new Date(iso+'T00:00:00')); }catch(e){ return iso; } };
-async function loadReports(){ const from=document.getElementById('from').value||today(), to=document.getElementById('to').value||today();
+async function loadReports(){ const from=document.getElementById('fromG').value||today(), to=document.getElementById('toG').value||today();
   document.getElementById('rng').textContent=`بازه (شمسی): ${jdate(from)} تا ${jdate(to)}`;
   [fin,goods]=await Promise.all([api(`/reports/financial?from=${from}&to=${to}`),api(`/reports/goods?from=${from}&to=${to}`)]);
+  const T=fin.totals||{};
+  set('tSale',fmt(T.total_sale)); set('tNetSale',fmt(T.net_sale)); set('tIncome',fmt(T.received)); set('tPurch',fmt(T.purchases)); set('tOut',fmt(T.paid_out));
   // summary
   document.getElementById('finSummary').innerHTML=fin.summary.map(s=>`<div class="bg-gray-50 border border-gray-100 rounded-xl p-3"><p class="text-[11px] text-gray-500 mb-1">${TYPE_FA[s.tx_type]||s.tx_type}</p><p class="font-black text-sm">${s.credit?('+'+fmt(s.credit)):''}${s.debit?(' -'+fmt(s.debit)):''}</p><p class="text-[10px] text-gray-400">${fmt(s.count)} مورد</p></div>`).join('')||'<p class="text-gray-400 text-sm col-span-4">داده‌ای نیست</p>';
   document.getElementById('finRows').innerHTML=fin.rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date}</td><td class="p-3">${r.person}</td><td class="p-3">${TYPE_FA[r.tx_type]||r.tx_type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 text-gray-500">${r.description||''}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>';
@@ -79,10 +109,49 @@ function exportCSV(){
   goods.produced.forEach(g=>csv+=[g.name,g.qty].map(esc).join(',')+'\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download=`report-${document.getElementById('from').value}_${document.getElementById('to').value}.csv`; a.click();
+  a.download=`report-${document.getElementById('fromG').value}_${document.getElementById('toG').value}.csv`; a.click();
 }
+
+// ---- گردش حساب اشخاص ----
+let stPerson=null;
+async function stSearch(){ const q=document.getElementById('stSearch').value.trim(); const box=document.getElementById('stResults');
+  if(!q){ box.classList.add('hidden'); return; }
+  const list=await api('/persons?q='+encodeURIComponent(q));
+  box.innerHTML=list.map(p=>`<div class="p-2.5 hover:bg-gray-50 cursor-pointer text-sm" onclick="stPick(${p.id},'${(p.fullname||'').replace(/'/g,'')}','${p.person_code}')">${p.fullname} <span class="text-gray-400 text-xs">(${p.person_code})</span></div>`).join('')||'<div class="p-2.5 text-gray-400 text-sm">موردی نیست</div>';
+  box.classList.remove('hidden'); }
+function stPick(id,name,code){ stPerson={id,name,code}; document.getElementById('stResults').classList.add('hidden'); document.getElementById('stSearch').value=name;
+  const c=document.getElementById('stChip'); c.textContent=`انتخاب‌شده: ${name} (${code})`; c.classList.remove('hidden'); }
+function stParams(){ if(!stPerson){ toast('ابتدا شخص را انتخاب کنید','err'); return null; }
+  const since=document.getElementById('stSince').checked;
+  const from=document.getElementById('fromG').value||today(), to=document.getElementById('toG').value||today();
+  return since?`person_id=${stPerson.id}&since=settlement&to=${to}`:`person_id=${stPerson.id}&from=${from}&to=${to}`; }
+async function stView(){ const p=stParams(); if(!p)return; const d=await api('/reports/statement?'+p);
+  const rows=d.ledger.map(r=>`<tr><td class="p-2 text-gray-500">${r.date}</td><td class="p-2">${TYPE_FA[r.tx_type]||r.tx_type}${r.description?(' — '+r.description):''}</td><td class="p-2 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-2 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-2 font-bold">${fmt(r.balance)}</td></tr>`).join('');
+  document.getElementById('stBox').innerHTML=`
+    <div class="text-xs text-gray-500 mb-2">بازه: ${d.from_jalali} تا ${d.to_jalali}${d.last_settlement_jalali?(' · آخرین تسویه: '+d.last_settlement_jalali):' · بدون تسویهٔ قبلی'}</div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">تاریخ</th><th class="p-2">شرح</th><th class="p-2">بدهکار</th><th class="p-2">بستانکار</th><th class="p-2">مانده</th></tr></thead>
+    <tbody class="divide-y divide-gray-100"><tr class="bg-gray-50"><td class="p-2 text-gray-500" colspan="4">ماندهٔ ابتدای دوره</td><td class="p-2 font-bold">${fmt(d.opening)}</td></tr>${rows}</tbody>
+    <tfoot><tr class="border-t-2 border-gray-200 font-black"><td class="p-2" colspan="2">جمع</td><td class="p-2 text-red-600">${fmt(d.total_debit)}</td><td class="p-2 text-green-600">${fmt(d.total_credit)}</td><td class="p-2 text-indigo-700">${fmt(d.closing)}</td></tr></tfoot></table></div>
+    <p class="text-sm mt-2 font-bold">مانده نهایی: <span class="${d.closing<0?'text-red-600':'text-green-600'}">${fmt(Math.abs(d.closing))} ${d.closing<0?'بدهکار':(d.closing>0?'بستانکار':'تسویه')}</span></p>`;
+}
+function stPrint(){ const p=stParams(); if(!p)return; window.open('/statement.html?'+p,'_blank'); }
+async function stThermal(){ if(!stPerson){ toast('ابتدا شخص را انتخاب کنید','err'); return; }
+  const since=document.getElementById('stSince').checked;
+  const body={ person_id:stPerson.id, to:document.getElementById('toG').value||undefined };
+  if(since) body.since=true; else body.from=document.getElementById('fromG').value||undefined;
+  try{ await api('/print/statement',{method:'POST',body}); toast('صورتحساب به صف چاپ حرارتی رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
+async function stCSV(){ const p=stParams(); if(!p)return; const d=await api('/reports/statement?'+p);
+  const esc=(v)=>`"${String(v??'').replace(/"/g,'""')}"`;
+  let csv=`گردش حساب,${d.person.fullname} (${d.person.person_code})\nبازه,${d.from_jalali} تا ${d.to_jalali}\n\nتاریخ,شرح,بدهکار,بستانکار,مانده\n`;
+  csv+=['','ماندهٔ ابتدای دوره','','',d.opening].map(esc).join(',')+'\n';
+  d.ledger.forEach(r=>csv+=[r.date,(TYPE_FA[r.tx_type]||r.tx_type)+(r.description?(' — '+r.description):''),r.debit,r.credit,r.balance].map(esc).join(',')+'\n');
+  csv+=['','جمع',d.total_debit,d.total_credit,d.closing].map(esc).join(',')+'\n';
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`statement-${d.person.person_code}.csv`; a.click();
+}
+
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('reports','گزارش‌ها');
-  const t=today(); document.getElementById('from').value=t.slice(0,8)+'01'; document.getElementById('to').value=t; loadReports(); })();
+  jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' });
+  const t=today(); setDates(t.slice(0,8)+'01', t); loadReports(); })();
 </script>
 </body>
 </html>

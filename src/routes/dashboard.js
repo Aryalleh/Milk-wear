@@ -40,11 +40,21 @@ router.get('/', wrap(async (req, res) => {
             COALESCE(SUM(total_amount),0) AS value
        FROM orders WHERE channel='distribution' AND DATE(ordered_at)=CURDATE() AND deleted_at IS NULL`);
 
-  // حساب‌ها — طلب از مشتریان / بدهی به دامداران (از مانده‌ها)
+  // حساب‌ها — تفکیک دامدار/مشتری، بدهی و طلب جدا (جمع نمی‌شوند)
   const [[acc]] = await pool.query(
-    `SELECT COALESCE(SUM(CASE WHEN current_balance>0 THEN current_balance ELSE 0 END),0) AS payable,
-            COALESCE(SUM(CASE WHEN current_balance<0 THEN -current_balance ELSE 0 END),0) AS receivable
-       FROM account_balances`);
+    `SELECT
+        COALESCE(SUM(CASE WHEN t.is_farmer=1 AND ab.current_balance>0 THEN ab.current_balance ELSE 0 END),0) AS farmer_payable,
+        COALESCE(SUM(CASE WHEN t.is_farmer=1 AND ab.current_balance<0 THEN -ab.current_balance ELSE 0 END),0) AS farmer_receivable,
+        COALESCE(SUM(CASE WHEN t.is_farmer=0 AND ab.current_balance>0 THEN ab.current_balance ELSE 0 END),0) AS customer_payable,
+        COALESCE(SUM(CASE WHEN t.is_farmer=0 AND ab.current_balance<0 THEN -ab.current_balance ELSE 0 END),0) AS customer_receivable
+       FROM account_balances ab
+       JOIN (
+         SELECT p.id, MAX(CASE WHEN pt.\`key\`='farmer' THEN 1 ELSE 0 END) AS is_farmer
+           FROM persons p
+           LEFT JOIN person_roles pr ON pr.person_id=p.id
+           LEFT JOIN person_types pt ON pt.id=pr.person_type_id
+          GROUP BY p.id
+       ) t ON t.id = ab.person_id`);
 
   // علی‌الحساب و دریافتی امروز
   const [[cash]] = await pool.query(
@@ -111,7 +121,15 @@ router.get('/', wrap(async (req, res) => {
       orders: dist.orders, delivered: Number(dist.delivered || 0),
       remaining: Number(dist.remaining || 0), value: Number(dist.value),
     },
-    accounts: { payable: Number(acc.payable), receivable: Number(acc.receivable) },
+    accounts: {
+      farmer_payable: Number(acc.farmer_payable),
+      farmer_receivable: Number(acc.farmer_receivable),
+      customer_payable: Number(acc.customer_payable),
+      customer_receivable: Number(acc.customer_receivable),
+      // سازگاری با نمای قدیمی
+      payable: Number(acc.farmer_payable) + Number(acc.customer_payable),
+      receivable: Number(acc.farmer_receivable) + Number(acc.customer_receivable),
+    },
     cash: { onaccount: Number(cash.onaccount), received: Number(cash.received), goods: Number(cash.goods) },
     processing: {
       milk_in: Number(procIn.milk_in),

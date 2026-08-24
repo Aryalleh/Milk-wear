@@ -38,8 +38,12 @@
         <div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">تحویل‌شده</span><span class="font-bold text-green-600" id="dDistDelivered">—</span></div>
         <div class="flex justify-between"><span class="text-gray-500">باقیمانده</span><span class="font-bold text-red-600" id="dDistRemaining">—</span></div></div></div>
       <div onclick="location.href='/reports'" class="skeu-card p-4 cursor-pointer hover:ring-2 hover:ring-green-300 transition"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">💰 حساب‌ها</h3><i class="fa-solid fa-hand-holding-dollar text-red-600"></i></div>
-        <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">طلب از مشتریان</span><span class="font-bold text-red-600" id="dReceivable">—</span></div>
-        <div class="flex justify-between"><span class="text-gray-500">بدهی به دامداران</span><span class="font-bold text-green-600" id="dPayable">—</span></div></div></div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-green-50 rounded-lg p-2"><p class="text-gray-500 mb-0.5">بدهی ما به دامداران</p><p class="font-black text-green-700 text-sm" id="dFarmerPayable">—</p></div>
+          <div class="bg-amber-50 rounded-lg p-2"><p class="text-gray-500 mb-0.5">طلب ما از دامداران</p><p class="font-black text-amber-700 text-sm" id="dFarmerRecv">—</p></div>
+          <div class="bg-green-50 rounded-lg p-2"><p class="text-gray-500 mb-0.5">بدهی ما به مشتریان</p><p class="font-black text-green-700 text-sm" id="dCustPayable">—</p></div>
+          <div class="bg-red-50 rounded-lg p-2"><p class="text-gray-500 mb-0.5">طلب ما از مشتریان</p><p class="font-black text-red-600 text-sm" id="dCustRecv">—</p></div>
+        </div></div>
       <div onclick="location.href='/inventory'" class="skeu-card p-4 cursor-pointer hover:ring-2 hover:ring-green-300 transition"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🧪 کیفیت و مخزن</h3><i class="fa-solid fa-flask-vial text-cyan-600"></i></div>
         <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">سطح مخزن</span><span class="font-bold text-cyan-700"><span id="dSiloPct">—</span>٪</span></div>
         <div class="flex justify-between"><span class="text-gray-500">ضایعات امروز</span><span class="font-bold text-red-600" id="dWaste">—</span></div></div>
@@ -108,7 +112,8 @@ async function loadDashboard(){
   document.getElementById('dProdOut').innerHTML = d.production.outputs.length? d.production.outputs.map(o=>`<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">${o.name} ${fmt(o.qty)}</span>`).join(''):'<span class="text-gray-400 text-xs">—</span>';
   set('dStoreVal',fmt(d.store.value)); set('dStoreCount',fmt(d.store.count)+' فاکتور');
   set('dDistOrders',fmt(d.distribution.orders)+' فاکتور'); set('dDistDelivered',fmt(d.distribution.delivered)); set('dDistRemaining',fmt(d.distribution.remaining));
-  set('dReceivable',fmt(d.accounts.receivable)); set('dPayable',fmt(d.accounts.payable));
+  set('dFarmerPayable',fmt(d.accounts.farmer_payable)); set('dFarmerRecv',fmt(d.accounts.farmer_receivable));
+  set('dCustPayable',fmt(d.accounts.customer_payable)); set('dCustRecv',fmt(d.accounts.customer_receivable));
   set('dSiloPct',fmt(d.silo.pct)); document.getElementById('dSiloBar').style.width=d.silo.pct+'%'; set('dWaste',fmt(d.waste_today));
   set('dFatVal', d.avg_fat_today!=null?fmt(d.avg_fat_today):'—'); document.getElementById('dFatThumb').style.right=fatPos(d.avg_fat_today)+'%';
   // موبایل
@@ -140,7 +145,15 @@ function drawCharts(d){
   if(spEl){ chSpark=new ApexCharts(spEl,{chart:{type:'area',height:56,sparkline:{enabled:true},fontFamily:'Vazirmatn'},series:[{name:'شیر',data:d.week.milk}],stroke:{curve:'smooth',width:2},colors:['#ffffff'],fill:{type:'gradient',gradient:{opacityFrom:.35,opacityTo:0}},tooltip:{theme:'dark',x:{show:false},y:{formatter:v=>Number(v).toLocaleString('fa-IR')+' kg'}}}); chSpark.render(); }
   chFlow=bar(document.getElementById('mFlow'), [{name:'دریافت',data:d.week.milk},{name:'ضایعات',data:d.week.waste}], d.week.labels.map(l=>l.slice(5)), ['#10b981','#f87171'],{h:200}); chFlow&&chFlow.render();
 }
-(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('dashboard','داشبورد'); live(loadDashboard, 15000); })();
+(async function(){ const u=await guard(['staff']); if(!u) return;
+  if(!seesDashboard()){
+    // نقشِ محدود: به‌جای داشبورد تحلیلی، منوی صفحاتِ مجاز
+    mountChrome(null,'منو'); const m=document.querySelector('main');
+    m.innerHTML=`<h2 class="text-2xl font-bold text-gray-800 mb-5">سلام ${u.name||''} 👋</h2><p class="text-gray-500 mb-5">به یکی از بخش‌های زیر بروید:</p><div id="launcher"></div>`;
+    renderLauncher(document.getElementById('launcher')); return;
+  }
+  mountChrome('dashboard','داشبورد'); live(loadDashboard, 15000);
+})();
 </script>
 </body>
 </html>

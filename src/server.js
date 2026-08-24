@@ -43,8 +43,8 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../public'), {
   index: false,   // '/' توسط روت اختصاصی مدیریت شود، نه index.html
   setHeaders: (res, filePath) => {
-    // HTML همیشه تازه بارگذاری شود تا نسخهٔ قدیمیِ کش‌شده باعث خطای ورود نشود
-    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    // HTML/JS/CSS همیشه تازه بارگذاری شوند تا نسخهٔ قدیمیِ کش‌شده (مثل نوار ناوبری) نمانَد
+    if (/\.(html|js|css)$/.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   },
 }));
 
@@ -87,7 +87,7 @@ app.get('/inventory', pub('inventory.html'));
 app.get('/settings', pub('settings.html'));
 app.get('/reports', pub('reports.html'));
 app.get('/orders', pub('orders.html'));
-app.get('/store', pub('store.html'));
+app.get('/store', (req, res) => res.redirect('/orders'));   // فروشگاه در سفارش‌ها ادغام شد
 app.get('/panel', pub('panel.html'));
 
 app.use('/api/public', publicRoutes);   // بدون احراز هویت (نمایش فاکتور با توکن برای QR)

@@ -136,6 +136,11 @@ export async function enqueueReceipt(receiptId, copies = 1) {
   return enqueuePrint({ kind: 'receipt', refType: 'receipt', refId: receiptId, branchId: b.branch_id, copies, payload: b.payload });
 }
 
+// صورتحساب: کوئریِ صفحهٔ statement.html در payload ذخیره می‌شود؛ ایجنت همان صفحه را چاپ می‌کند
+export async function enqueueStatement(query, copies = 1) {
+  return enqueuePrint({ kind: 'statement', refType: 'none', refId: null, branchId: null, copies, payload: { doc: 'statement', query } });
+}
+
 // تیکِ زمان‌بندی: بارنامهٔ سفارش‌های صف‌شده را در ساعت مقرر/بازه‌ای به صف چاپ می‌فرستد
 export async function printTick(now = new Date()) {
   const s = await getSettings();

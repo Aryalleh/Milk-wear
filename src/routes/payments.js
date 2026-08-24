@@ -35,6 +35,24 @@ router.post('/', wrap(async (req, res) => {
   res.status(201).json(result);
 }));
 
+// دریافت کالا از شخص بابت پرداخت بدهی (مثلاً دامداری که قرض گرفته و با کالا پس می‌دهد)
+//  → بستانکارِ شخص (بدهی او به شرکت کم می‌شود)
+router.post('/goods-in', wrap(async (req, res) => {
+  const { person_id, amount, description, branch_id } = req.body;
+  if (!person_id || !amount || Number(amount) <= 0) throw new AppError(400, 'شخص و مبلغ لازم است');
+  const result = await withTx(async (conn) => {
+    const txId = await postTransaction(conn, {
+      personId: person_id, txType: 'GOODS_IN', amount: Math.round(Number(amount)),
+      sourceType: 'manual', sourceId: null,
+      description: description || 'دریافت کالا بابت پرداخت بدهی',
+      branchId: branch_id || null, userId: req.user?.uid, month: currentJalaliMonth(),
+    });
+    const [[bal]] = await conn.query('SELECT current_balance FROM account_balances WHERE person_id = ?', [person_id]);
+    return { id: txId, balance: Number(bal?.current_balance || 0) };
+  });
+  res.status(201).json(result);
+}));
+
 // تسویهٔ کامل: پرداخت کل ماندهٔ قابل‌پرداخت به دامدار
 router.post('/settle', wrap(async (req, res) => {
   const { person_id, method = 'cash', branch_id } = req.body;

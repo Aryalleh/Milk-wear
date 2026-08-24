@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { staffRequired, requireRole } from '../auth.js';
-import { wrap, toJalaliDate } from '../util.js';
+import { wrap, toJalaliDate, AppError } from '../util.js';
 import { runBackup, runDailyReport } from '../cron.js';
 
 const router = Router();
@@ -33,8 +33,24 @@ router.get('/financial', wrap(async (req, res) => {
             COUNT(*) cnt
        FROM transactions WHERE status='active' AND DATE(tx_date) BETWEEN ? AND ?
       GROUP BY tx_type`, [from, to]);
+  const [[t]] = await pool.query(
+    `SELECT
+       COALESCE(SUM(CASE WHEN tx_type IN ('PRODUCT_SALE','FEED_SALE') THEN amount END),0) total_sale,
+       COALESCE(SUM(CASE WHEN tx_type='REFUND' THEN amount END),0) refunds,
+       COALESCE(SUM(CASE WHEN tx_type='PAYMENT_IN' THEN amount END),0) received,
+       COALESCE(SUM(CASE WHEN tx_type IN ('PAYMENT_OUT','CASH_WITHDRAWAL') THEN amount END),0) paid_out,
+       COALESCE(SUM(CASE WHEN tx_type IN ('MILK_DELIVERY','PURCHASE','GOODS_IN') THEN amount END),0) purchases
+     FROM transactions WHERE status='active' AND DATE(tx_date) BETWEEN ? AND ?`, [from, to]);
+  const totals = {
+    total_sale: Number(t.total_sale),
+    net_sale: Number(t.total_sale) - Number(t.refunds),
+    received: Number(t.received),           // درآمد (دریافت نقدی)
+    paid_out: Number(t.paid_out),           // هزینه/پرداختی نقدی
+    purchases: Number(t.purchases),         // خرید شیر/کالا از اشخاص
+    net_cash: Number(t.received) - Number(t.paid_out),
+  };
   res.json({
-    from, to,
+    from, to, totals,
     summary: summary.map((s) => ({ tx_type: s.tx_type, credit: Number(s.credit), debit: Number(s.debit), count: s.cnt })),
     rows: rows.map((r) => ({
       date: toJalaliDate(r.tx_date), person: r.fullname, tx_type: r.tx_type,
@@ -64,6 +80,59 @@ router.get('/goods', wrap(async (req, res) => {
     from, to,
     sold: sold.map((r) => ({ name: r.name, unit: r.unit, qty: Number(r.qty), value: Number(r.value) })),
     produced: produced.map((r) => ({ name: r.name, unit: r.unit, qty: Number(r.qty) })),
+  });
+}));
+
+// گردش حساب یک شخص (دامدار/مشتری) در بازهٔ دلخواه یا از آخرین تسویه — برای نمایش/چاپ
+router.get('/statement', wrap(async (req, res) => {
+  const personId = Number(req.query.person_id);
+  if (!personId) throw new AppError(400, 'شخص لازم است');
+  const [[person]] = await pool.query(
+    'SELECT id, person_code, fullname, mobile, address FROM persons WHERE id = ?', [personId]);
+  if (!person) throw new AppError(404, 'شخص یافت نشد');
+  const [[ab]] = await pool.query(
+    'SELECT current_balance, last_settlement_at FROM account_balances WHERE person_id = ?', [personId]);
+
+  // بازه: from از پارامتر، یا از «آخرین تسویه»؛ to پیش‌فرض امروز
+  const to = req.query.to || new Date().toISOString().slice(0, 10);
+  let from = req.query.from || null;
+  const sinceSettlement = req.query.since === 'settlement';
+  if (sinceSettlement && ab?.last_settlement_at) {
+    from = new Date(ab.last_settlement_at).toISOString().slice(0, 10);
+  }
+  if (!from) from = '1300-01-01';   // از ابتدا
+
+  // ماندهٔ ابتدای دوره = جمع تراکنش‌های پیش از from
+  const [[op]] = await pool.query(
+    `SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) AS opening
+       FROM transactions WHERE person_id = ? AND status='active' AND DATE(tx_date) < ?`,
+    [personId, from]);
+  let running = Number(op.opening);
+  const opening = running;
+
+  const [rows] = await pool.query(
+    `SELECT tx_date, tx_type, direction, amount, description
+       FROM transactions WHERE person_id = ? AND status='active' AND DATE(tx_date) BETWEEN ? AND ?
+      ORDER BY tx_date ASC, id ASC`, [personId, from, to]);
+
+  const ledger = rows.map((r) => {
+    const credit = r.direction === 'credit' ? Number(r.amount) : 0;
+    const debit = r.direction === 'debit' ? Number(r.amount) : 0;
+    running += credit - debit;
+    return { date: toJalaliDate(r.tx_date), tx_type: r.tx_type, description: r.description, debit, credit, balance: running };
+  });
+  const totalCredit = ledger.reduce((s, r) => s + r.credit, 0);
+  const totalDebit = ledger.reduce((s, r) => s + r.debit, 0);
+
+  res.json({
+    person,
+    from, to,
+    from_jalali: toJalaliDate(from), to_jalali: toJalaliDate(to),
+    last_settlement_jalali: ab?.last_settlement_at ? toJalaliDate(ab.last_settlement_at) : null,
+    opening, closing: running,
+    total_credit: totalCredit, total_debit: totalDebit,
+    current_balance: Number(ab?.current_balance || 0),
+    ledger,
   });
 }));
 

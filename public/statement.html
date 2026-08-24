@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فیش صورتحساب — MilkWear</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @font-face{font-family:'Vazirmatn';src:url('/assets/fonts/Vazirmatn.ttf') format('truetype');font-weight:100 900;font-display:swap;}
+    body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; padding:20px; display:flex; justify-content:center; }
+    .thermal-receipt { width:80mm; background:#fff; padding:10mm 4mm; box-shadow:0 10px 25px rgba(0,0,0,.1); border:1px solid #e2e8f0; position:relative; color:#000; }
+    .thermal-receipt::after { content:""; position:absolute; bottom:-10px; left:0; right:0; height:10px;
+      background:linear-gradient(-45deg,#fff 5px,transparent 0),linear-gradient(45deg,#fff 5px,transparent 0); background-size:10px 10px; }
+    .dashed-line { border-top:1px dashed #000; margin:8px 0; }
+    .text-condensed { letter-spacing:-.05em; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th,td { padding:4px 2px; text-align:right; border-bottom:1px solid #eee; }
+    .price { font-weight:700; }
+    @media print {
+      body { background:#fff; padding:0; margin:0; display:block; }
+      .thermal-receipt { width:100%; box-shadow:none; border:none; padding:0; }
+      .thermal-receipt::after { display:none; }
+      .no-print { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print fixed top-5 left-5 space-y-2">
+    <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-xl"><i class="fa-solid fa-print"></i> چاپ صورتحساب</button>
+    <p class="text-[10px] text-slate-400 font-bold text-center">اندازه استاندارد ۸۰ میلی‌متری</p>
+  </div>
+
+  <div id="receipt" class="thermal-receipt"><div class="text-center text-slate-400 py-16">در حال بارگذاری…</div></div>
+
+<script>
+  const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  const faD=(s)=>String(s||'').replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+  const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'علی‌الحساب',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال',PURCHASE:'خرید کالا',GOODS_IN:'دریافت کالا'};
+  const shortD=(j)=>{ const p=String(j||'').split('/'); return p.length===3?`${p[1]}/${p[2]}`:j; };
+  const qs=new URLSearchParams(location.search);
+  (async()=>{
+    const box=document.getElementById('receipt');
+    try{
+      const [d,branches,LOGO]=await Promise.all([
+        fetch('/api/reports/statement?'+qs.toString(),{credentials:'same-origin'}).then(r=>{ if(!r.ok) throw new Error('عدم دسترسی'); return r.json(); }),
+        fetch('/api/branches',{credentials:'same-origin'}).then(r=>r.ok?r.json():[]).catch(()=>[]),
+        fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null),
+      ]);
+      const b=branches[0]||{};
+      const rows=d.ledger.map(r=>{ const cr=r.credit>0; const amt=cr?r.credit:r.debit;
+        const desc = r.description ? r.description : (TYPE_FA[r.tx_type]||r.tx_type);
+        return `<tr><td>${shortD(r.date)}</td><td>${desc}</td><td class="text-left price ${cr?'':'text-red-600'}">${fmt(amt)}${cr?'+':'−'}</td></tr>`;
+      }).join('');
+      const closing=Number(d.closing); const isCred=closing>0;
+      const balLabel = closing<0?'بدهکار':(closing>0?'بستانکار':'تسویه');
+      box.innerHTML=`
+        <div class="text-center mb-4">
+          ${LOGO?`<img src="${LOGO}" class="w-16 h-16 object-contain mx-auto mb-2">`:`<div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-cow text-2xl"></i></div>`}
+          <h1 class="text-lg font-black tracking-tight">${b.name||'لبنیات محمدپور'}</h1>
+          ${b.phone?`<p class="text-[10px] font-bold">تلفن: ${faD(b.phone)}</p>`:''}
+          ${b.address?`<p class="text-[9px] mt-1">${b.address}</p>`:''}
+        </div>
+        <div class="dashed-line"></div>
+        <div class="text-center py-1">
+          <h2 class="text-sm font-black border border-black inline-block px-4 py-0.5">صورتحساب تفصیلی</h2>
+          <p class="text-[10px] mt-1 font-bold">بازه: ${d.from_jalali} تا ${d.to_jalali}</p>
+        </div>
+        <div class="dashed-line"></div>
+        <div class="text-[11px] space-y-1">
+          <div class="flex justify-between"><span class="font-bold">طرف حساب:</span><span>${d.person.fullname}</span></div>
+          <div class="flex justify-between"><span class="font-bold">کد تفصیلی:</span><span class="text-condensed">${d.person.person_code}</span></div>
+          <div class="flex justify-between"><span class="font-bold">تلفن:</span><span>${d.person.mobile?faD(d.person.mobile):'—'}</span></div>
+          <div class="flex justify-between"><span class="font-bold">مانده قبلی:</span><span class="price">${fmt(d.opening)}</span></div>
+        </div>
+        <div class="dashed-line"></div>
+        <table>
+          <thead><tr class="bg-gray-100"><th class="w-14">تاریخ</th><th>شرح</th><th class="text-left">مبلغ (ریال)</th></tr></thead>
+          <tbody class="text-[10px]">${rows||'<tr><td colspan="3" class="text-center py-3">تراکنشی نیست</td></tr>'}</tbody>
+        </table>
+        <div class="mt-4 space-y-1.5 border-t-2 border-black pt-2">
+          <div class="flex justify-between text-[11px]"><span>جمع بدهکار:</span><span class="price">${fmt(d.total_debit)}</span></div>
+          <div class="flex justify-between text-[11px]"><span>جمع بستانکار:</span><span class="price">${fmt(d.total_credit)}</span></div>
+          <div class="dashed-line opacity-30"></div>
+          <div class="flex justify-between text-xs font-black bg-black text-white p-1"><span>مانده نهایی (${balLabel}):</span><span class="price">${fmt(Math.abs(closing))}</span></div>
+        </div>
+        <div class="mt-8 text-center space-y-3">
+          <div class="text-[9px] font-bold space-y-1">
+            <p>صادرشده در: ${new Date().toLocaleDateString('fa-IR')}</p>
+            <p>توسط سامانه مدیریت لبنیات MilkWear</p>
+          </div>
+          <div class="mt-4 text-[8px] opacity-50 italic">این فیش صرفاً جهت اطلاع‌رسانی بوده و فاقد ارزش قانونی می‌باشد.</div>
+        </div>`;
+    }catch(e){ box.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
+  })();
+</script>
+</body>
+</html>

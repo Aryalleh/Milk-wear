@@ -2,6 +2,8 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { getAgentToken } from '../print.js';
+import { docHTML } from '../thermal.js';
+import { renderHtmlToPng, renderElementToPng } from '../render.js';
 import { AppError, wrap } from '../util.js';
 
 const router = Router();
@@ -37,6 +39,27 @@ router.post('/poll', wrap(async (req, res) => {
   } finally {
     conn.release();
   }
+}));
+
+// تصویر آمادهٔ چاپِ سند — عیناً همان صفحهٔ HTML (فاکتور/بارنامه/صورتحساب) رندر می‌شود
+router.get('/jobs/:id/image', wrap(async (req, res) => {
+  const [[job]] = await pool.query('SELECT kind, ref_id, payload FROM print_jobs WHERE id = ?', [req.params.id]);
+  if (!job) throw new AppError(404, 'کار چاپ یافت نشد');
+  const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : (job.payload || {});
+  let png;
+  if (job.kind === 'receipt') {
+    png = await renderElementToPng(`/receipt.html?id=${job.ref_id}`, '#card');
+  } else if (job.kind === 'waybill') {
+    png = await renderElementToPng(`/waybill.html?id=${job.ref_id}`, '#card');
+  } else if (job.kind === 'statement') {
+    png = await renderElementToPng(`/statement.html?${payload.query || ''}`, '#receipt');
+  } else {
+    // test و سایر: از تمپلیت خودبسندهٔ حرارتی
+    png = await renderHtmlToPng(await docHTML(payload), 576);
+  }
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(png);
 }));
 
 // اعلام موفقیتِ چاپ

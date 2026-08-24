@@ -27,6 +27,28 @@ router.get('/', wrap(async (req, res) => {
     created_jalali: toJalaliDate(r.created_at) })));
 }));
 
+// ثبت فاکتور خرید از طرفِ شخص توسط کارمند/مدیر (مثلاً وقتی شخص با سیستم کار نمی‌کند)
+//  → مستقیم تأییدشده ثبت و به حساب شخص اضافه می‌شود
+router.post('/on-behalf', wrap(async (req, res) => {
+  const { person_id, amount, description, photo } = req.body;
+  if (!person_id || !amount || Number(amount) <= 0) throw new AppError(400, 'شخص و مبلغ لازم است');
+  const out = await withTx(async (conn) => {
+    const [s] = await conn.query(
+      `INSERT INTO purchase_submissions (person_id, amount, description, photo, status, approved_by, approved_at)
+       VALUES (?,?,?,?, 'approved', ?, NOW())`,
+      [person_id, Math.round(Number(amount)), description || null, photo || null, req.user.uid || null]);
+    const txId = await postTransaction(conn, {
+      personId: person_id, txType: 'PURCHASE', amount: Math.round(Number(amount)),
+      sourceType: 'manual', sourceId: s.insertId,
+      description: 'خرید از شخص (ثبت توسط کارمند)' + (description ? (' — ' + description) : ''),
+      userId: req.user.uid, month: currentJalaliMonth(),
+    });
+    await conn.query('UPDATE purchase_submissions SET tx_id=? WHERE id=?', [txId, s.insertId]);
+    return { ok: true, id: s.insertId, tx_id: txId };
+  });
+  res.status(201).json(out);
+}));
+
 // عکس فاکتور
 router.get('/:id/photo', wrap(async (req, res) => {
   const [[r]] = await pool.query('SELECT photo FROM purchase_submissions WHERE id = ?', [req.params.id]);

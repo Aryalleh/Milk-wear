@@ -2,15 +2,17 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
+import { pagesForRole } from '../access.js';
 import { AppError, wrap } from '../util.js';
 
 const router = Router();
 
-// شکل یکسان خروجی کاربر برای login و me
-function userPayload(u) {
+// شکل یکسان خروجی کاربر برای login و me (شامل صفحات مجاز برای کارمند)
+async function userPayload(u) {
+  const pages = u.kind === 'staff' ? await pagesForRole(u.role) : [];
   return {
     kind: u.kind, id: u.uid, person_id: u.person_id, name: u.name,
-    role: u.role, branch_id: u.branch, branch_name: u.branch_name,
+    role: u.role, branch_id: u.branch, branch_name: u.branch_name, pages,
   };
 }
 
@@ -59,7 +61,7 @@ router.post('/login', wrap(async (req, res) => {
       kind: 'staff', uid: user.id, role: user.role_name, branch: user.branch_id,
       branch_name: user.branch_name, name: user.fullname,
     };
-    return res.json({ user: userPayload(req.session.user) });
+    return res.json({ user: await userPayload(req.session.user) });
   }
 
   // ۲) شخص (دامدار/مشتری) با لاگین اختصاصی
@@ -80,7 +82,7 @@ router.post('/login', wrap(async (req, res) => {
     kind: 'person', person_id: person.id, role: roles.includes('farmer') ? 'farmer' : 'customer',
     name: person.fullname, branch: null, branch_name: null,
   };
-  res.json({ user: userPayload(req.session.user) });
+  res.json({ user: await userPayload(req.session.user) });
 }));
 
 // لاگین خودکار از داخل مینی‌اپ بله
@@ -115,7 +117,7 @@ router.post('/bale', wrap(async (req, res) => {
       kind: 'staff', uid: staff.id, role: staff.role_name, branch: staff.branch_id,
       branch_name: staff.branch_name, name: staff.fullname,
     };
-    return res.json({ user: userPayload(req.session.user) });
+    return res.json({ user: await userPayload(req.session.user) });
   }
 
   // ۲) اتصال به یک شخص (دامدار/مشتری) → پنل شخصی
@@ -150,14 +152,14 @@ router.post('/bale', wrap(async (req, res) => {
     kind: 'person', person_id: person.id, role: primaryRole,
     name: person.fullname, branch: null, branch_name: null,
   };
-  res.json({ user: userPayload(req.session.user) });
+  res.json({ user: await userPayload(req.session.user) });
 }));
 
 // وضعیت نشست جاری (برای بارگذاری اولیهٔ صفحه)
-router.get('/me', (req, res) => {
-  if (req.session && req.session.user) return res.json({ user: userPayload(req.session.user) });
+router.get('/me', wrap(async (req, res) => {
+  if (req.session && req.session.user) return res.json({ user: await userPayload(req.session.user) });
   res.status(401).json({ error: 'ورود لازم است' });
-});
+}));
 
 // خروج: نابودی session و پاک‌کردن کوکی
 router.post('/logout', (req, res) => {

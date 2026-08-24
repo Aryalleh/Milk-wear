@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
+    @font-face{font-family:'Vazirmatn';src:url('/assets/fonts/Vazirmatn.ttf') format('truetype');font-weight:100 900;font-display:swap;}
     body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; }
     .receipt-card { background:#fff; border-radius:24px; box-shadow:0 10px 25px -5px rgba(0,0,0,.08); }
     @media print {
@@ -36,10 +36,11 @@
   (async()=>{ const card=document.getElementById('card');
     try{ const r=await fetch('/api/orders/'+id,{credentials:'same-origin'}); if(!r.ok) throw new Error('عدم دسترسی به بارنامه'); const d=await r.json(); const o=d.order;
       const rows=(d.items||[]).map(i=>`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">${fmt(i.quantity)} ${i.unit||''} × ${fmt(i.unit_price)}</p></div><span class="font-black text-slate-700 text-sm">${fmt(i.amount)}</span></div>`).join('');
+      const LOGO=await fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null);
       card.innerHTML=`
         <div class="absolute -top-3 left-0 right-0 flex justify-around">${'<div class="w-6 h-6 rounded-full bg-[#f1f5f9]"></div>'.repeat(5)}</div>
         <div class="text-center mt-4 mb-6">
-          <div class="w-16 h-16 bg-blue-50 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-truck-fast"></i></div>
+          ${LOGO?`<img src="${LOGO}" class="w-16 h-16 object-contain mx-auto mb-4">`:`<div class="w-16 h-16 bg-blue-50 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fa-solid fa-truck-fast"></i></div>`}
           <h2 class="text-xl font-black text-slate-800">${d.branch?.name||'سامانه لبنیات'}</h2>
           <span class="inline-block mt-2 bg-blue-600 text-white text-xs font-black px-4 py-1 rounded-full">بارنامه</span>
           <p class="text-xs text-slate-400 mt-2">شماره: ${o.waybill_no||o.order_no}</p>

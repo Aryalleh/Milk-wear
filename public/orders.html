@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>سفارش‌ها</title>
+  <title>سفارش‌ها و فروش</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/assets/app.js"></script>
   <link rel="stylesheet" href="/assets/ui.css">
@@ -12,24 +12,77 @@
 <body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
 <main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
   <div class="skeu-card p-4 flex items-center justify-between flex-wrap gap-3">
-    <h2 class="text-lg font-bold text-gray-800">سفارش‌ها</h2>
-    <div class="flex gap-2 overflow-x-auto no-scrollbar">
-      <button data-f="" onclick="setF('')" class="fbtn nav-pill active bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">همه</button>
-      <button data-f="confirmed" onclick="setF('confirmed')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">در انتظار تحویل</button>
-      <button data-f="delivered" onclick="setF('delivered')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">تحویل‌شده</button>
+    <h2 class="text-lg font-bold text-gray-800">سفارش‌ها و فروش</h2>
+    <div class="flex gap-2 items-center flex-wrap">
+      <div class="flex gap-2 overflow-x-auto no-scrollbar">
+        <button data-f="" onclick="setF('')" class="fbtn nav-pill active bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">همه</button>
+        <button data-f="queued" onclick="setF('queued')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">در صف بار</button>
+        <button data-f="delivered" onclick="setF('delivered')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">تحویل‌شده</button>
+      </div>
+      <button onclick="openManifest()" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold"><i class="fa-solid fa-clipboard-list ml-1"></i>مانیفست بارگیری</button>
     </div>
   </div>
 
   <!-- دسکتاپ: جدول -->
   <div class="hidden md:block skeu-card overflow-hidden">
     <div class="overflow-x-auto"><table class="w-full text-sm text-right">
-      <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مشتری</th><th class="p-3">تلفن</th><th class="p-3">مبلغ</th><th class="p-3">مقصد</th><th class="p-3">وضعیت</th><th class="p-3">عملیات</th></tr></thead>
+      <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">طرف حساب</th><th class="p-3">تلفن</th><th class="p-3">نوع</th><th class="p-3">مبلغ</th><th class="p-3">بدهی طرف</th><th class="p-3">مقصد</th><th class="p-3">وضعیت</th><th class="p-3">عملیات</th></tr></thead>
       <tbody id="ordTable" class="divide-y divide-gray-100"></tbody>
     </table></div>
   </div>
   <!-- موبایل: کارت‌ها -->
   <div class="md:hidden space-y-3" id="ordCards"></div>
 </main>
+
+<!-- دکمهٔ شناور + -->
+<button onclick="openCreate()" class="fixed bottom-24 md:bottom-8 left-5 z-40 w-14 h-14 rounded-full bg-green-600 text-white text-2xl shadow-lg flex items-center justify-center hover:bg-green-700"><i class="fa-solid fa-plus"></i></button>
+
+<!-- مودال ساخت سفارش/فروش جدید -->
+<div id="createModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+  <div class="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 max-h-[94vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">سفارش / فروش جدید</h3><button onclick="closeCreate()" class="text-gray-400 text-2xl">&times;</button></div>
+    <!-- طرف حساب -->
+    <label class="text-xs text-gray-500 block mb-1">طرف حساب</label>
+    <div class="flex gap-2">
+      <div class="relative flex-1">
+        <input id="custSearch" oninput="searchCust()" placeholder="جستجوی مشتری..." class="input-skeu rounded-lg px-3 py-2.5 w-full">
+        <div id="custResults" class="hidden absolute z-20 bg-white border border-gray-200 rounded-lg mt-1 w-full max-h-52 overflow-y-auto shadow-lg"></div>
+      </div>
+      <button onclick="walkIn()" class="bg-gray-100 px-3 rounded-lg text-sm font-bold whitespace-nowrap">مشتری نقدی</button>
+    </div>
+    <div id="custChip" class="hidden mt-2 inline-flex items-center gap-2 bg-green-50 text-green-800 px-3 py-1.5 rounded-full text-sm font-bold"></div>
+    <p id="custDebt" class="hidden text-xs mt-1 font-bold"></p>
+
+    <!-- نوع تحویل -->
+    <label class="text-xs text-gray-500 block mb-1 mt-4">نوع تحویل</label>
+    <div class="flex gap-2">
+      <button type="button" data-ff="delivery" onclick="setFF('delivery')" class="ffbtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm border-green-600 bg-green-50 text-green-700"><i class="fa-solid fa-truck ml-1"></i>ارسال با راننده</button>
+      <button type="button" data-ff="pickup" onclick="setFF('pickup')" class="ffbtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm border-gray-200 text-gray-500"><i class="fa-solid fa-bag-shopping ml-1"></i>تحویل درجا</button>
+    </div>
+    <div id="destWrap" class="mt-3">
+      <label class="text-xs text-gray-500 block mb-1">مقصد تحویل</label>
+      <input id="dest" placeholder="آدرس مقصد" class="input-skeu rounded-lg px-3 py-2.5 w-full">
+    </div>
+
+    <!-- اقلام -->
+    <div class="flex justify-between items-center mb-2 mt-4"><label class="text-xs text-gray-500">اقلام</label><button onclick="addRow()" class="text-green-700 font-bold text-sm">+ افزودن قلم</button></div>
+    <div id="cart" class="space-y-2"></div>
+
+    <!-- پرداخت -->
+    <div class="mt-4 bg-gray-50 rounded-xl p-3">
+      <div class="flex justify-between items-center mb-2"><span class="text-sm font-bold text-gray-700">جمع فاکتور</span><span class="text-lg font-black text-green-700"><span id="cartTotal">۰</span> ریال</span></div>
+      <label class="text-xs text-gray-500 block mb-1">مبلغ پرداختی الان — می‌تواند کمتر/صفر باشد</label>
+      <input id="paidAmount" type="number" placeholder="۰" class="input-skeu rounded-lg px-3 py-2 w-full">
+      <div class="flex gap-2 mt-2 text-xs">
+        <button onclick="document.getElementById('paidAmount').value=document.getElementById('cartTotal').dataset.raw||0" class="bg-white border px-2 py-1 rounded font-bold">پرداخت کامل</button>
+        <button onclick="document.getElementById('paidAmount').value=0" class="bg-white border px-2 py-1 rounded font-bold">بدون پرداخت</button>
+        <label class="flex items-center gap-1 mr-auto font-bold text-gray-600"><input id="doPrint" type="checkbox" class="w-4 h-4"> چاپ فاکتور</label>
+      </div>
+    </div>
+    <button onclick="submitOrder()" class="btn-skeu text-white w-full py-3 rounded-xl font-black text-lg mt-4">ثبت</button>
+    <p id="createErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
 
 <!-- مودال جزئیات سفارش -->
 <div id="detModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
@@ -38,44 +91,134 @@
     <div id="detBody"></div>
   </div>
 </div>
+
+<!-- مودال تحویل + پرداخت -->
+<div id="delModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+  <div class="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5">
+    <div class="flex justify-between items-center mb-3"><h3 class="font-black text-gray-800">تحویل سفارش</h3><button onclick="document.getElementById('delModal').classList.add('hidden')" class="text-gray-400 text-2xl">&times;</button></div>
+    <p id="delInfo" class="text-sm text-gray-500 mb-3"></p>
+    <label class="text-xs text-gray-500 block mb-1">مبلغی که مشتری الان پرداخت کرد</label>
+    <input id="delPaid" type="number" placeholder="۰ (می‌تواند بدون پرداخت باشد)" class="input-skeu rounded-lg px-3 py-2.5 w-full">
+    <button onclick="confirmDeliver()" class="btn-skeu text-white w-full py-3 rounded-xl font-black mt-4">ثبت تحویل</button>
+    <p id="delErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
+
+<!-- مودال مانیفست بارگیری -->
+<div id="manModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+  <div class="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-3"><h3 class="font-black text-gray-800">مانیفست بارگیری</h3><button onclick="document.getElementById('manModal').classList.add('hidden')" class="text-gray-400 text-2xl">&times;</button></div>
+    <p class="text-xs text-gray-400 mb-3">مجموع اقلامِ همهٔ سفارش‌های ارسالیِ در انتظار — چقدر چی باید بار بزنید.</p>
+    <div id="manBody"></div>
+    <button onclick="printAllWaybills()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mt-4"><i class="fa-solid fa-print ml-1"></i>چاپ همهٔ بارنامه‌ها</button>
+  </div>
+</div>
+
 <script>
-let filter='';
-const ST={queued:['در صف چاپ','bg-purple-100 text-purple-700'],confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
+let filter='', products=[], warehouse=null, branchId=null, cust=null, ff='delivery', delId=null;
+const ST={queued:['در صف بار','bg-purple-100 text-purple-700'],confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
+const FF={delivery:'ارسال',pickup:'درجا'};
 function setF(f){ filter=f; document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('active', b.dataset.f===f)); load(); }
+function debtLabel(bal){ bal=Number(bal||0); if(bal<0) return `<span class="text-red-600 font-bold">${fmt(-bal)} بدهکار</span>`; if(bal>0) return `<span class="text-green-600 font-bold">${fmt(bal)} بستانکار</span>`; return '<span class="text-gray-400">تسویه</span>'; }
 async function printWaybill(id){ try{ await api('/print/waybill/'+id,{method:'POST'}); toast('بارنامه به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
 async function reprintReceipt(id){ try{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
 function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o.receipt_id})" class="text-blue-600" title="فاکتور"><i class="fa-solid fa-receipt"></i></button>`:'';
   const wb=`<button onclick="printWaybill(${o.id})" class="text-blue-600" title="بارنامه"><i class="fa-solid fa-truck"></i></button>`;
-  const dl=o.status==='confirmed'?`<button onclick="deliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل شد</button>`:'';
+  const dl=(o.status==='queued'||o.status==='confirmed')?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
   return `<div class="flex gap-3 items-center">${inv} ${wb} ${dl}</div>`; }
-async function load(){ const rows=await api('/orders'+(filter?('?status='+filter):''));
-  document.getElementById('ordTable').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3 text-gray-500">${o.mobile||'—'}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3">${actions(o)}</td></tr>`).join('')||'<tr><td colspan="7" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
+async function load(){ let rows=await api('/orders'+(filter?('?status='+filter):''));
+  rows=rows.filter(o=>o.channel!=='farmer');   // خریدِ دامدار در «تحویل شیر» است، نه در لیست ارسال
+  window._rows=rows;
+  document.getElementById('ordTable').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3 text-gray-500">${o.mobile||'—'}</td><td class="p-3 text-xs">${FF[o.fulfillment_type]||o.fulfillment_type}</td><td class="p-3">${fmt(o.total_amount)}${Number(o.paid_amount)>0?`<span class="block text-[10px] text-green-600">پرداخت ${fmt(o.paid_amount)}</span>`:''}</td><td class="p-3 text-xs">${debtLabel(o.balance)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3">${actions(o)}</td></tr>`).join('')||'<tr><td colspan="9" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
   document.getElementById('ordCards').innerHTML=rows.map(o=>`<div class="skeu-card p-4" style="border-radius:20px" onclick="details(${o.id})">
     <div class="flex justify-between items-start mb-2">
-      <div><h3 class="font-bold text-slate-800">${o.fullname}</h3><p class="text-[11px] text-slate-500"><i class="fa-solid fa-phone text-[9px] ml-1"></i>${o.mobile||'بدون شماره'}</p><p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-[9px] ml-1"></i>${o.destination||'بدون مقصد'}</p></div>
+      <div><h3 class="font-bold text-slate-800">${o.fullname} <span class="text-[10px] text-slate-400">(${FF[o.fulfillment_type]||''})</span></h3><p class="text-[11px] text-slate-500"><i class="fa-solid fa-phone text-[9px] ml-1"></i>${o.mobile||'بدون شماره'}</p><p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-[9px] ml-1"></i>${o.destination||'بدون مقصد'}</p><p class="text-[11px] mt-1">بدهی طرف: ${debtLabel(o.balance)}</p></div>
       <span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span>
     </div>
     <div class="flex justify-between items-center pt-2 border-t border-slate-100" onclick="event.stopPropagation()">
-      <button onclick="printWaybill(${o.id})" class="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-print ml-1"></i>چاپ بارنامه</button>
-      ${o.status==='confirmed'?`<button onclick="deliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل داده شد</button>`:'<span class="text-xs text-green-600 font-bold">تحویل‌شده ✓</span>'}
+      <button onclick="printWaybill(${o.id})" class="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-print ml-1"></i>بارنامه</button>
+      ${(o.status==='queued'||o.status==='confirmed')?`<button onclick="openDeliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل</button>`:'<span class="text-xs text-green-600 font-bold">تحویل‌شده ✓</span>'}
     </div>
   </div>`).join('')||'<div class="text-center text-gray-400 p-8">سفارشی نیست</div>'; }
+
 async function details(id){ const d=await api('/orders/'+id); const o=d.order;
   document.getElementById('detBody').innerHTML=`
     <div class="space-y-2 text-sm mb-4">
-      <div class="flex justify-between"><span class="text-gray-400">مشتری</span><b>${d.person.fullname}</b></div>
-      <div class="flex justify-between"><span class="text-gray-400">تلفن</span><b>${d.person.mobile||'—'}</b></div>
+      <div class="flex justify-between"><span class="text-gray-400">طرف حساب</span><b>${d.person.fullname}</b></div>
+      <div class="flex justify-between"><span class="text-gray-400">تلفن</span><b dir="ltr">${d.person.mobile||'—'}</b></div>
+      <div class="flex justify-between"><span class="text-gray-400">بدهی/طلب طرف</span><b>${debtLabel(d.balance)}</b></div>
+      <div class="flex justify-between"><span class="text-gray-400">نوع</span><b>${FF[o.fulfillment_type]||o.fulfillment_type}</b></div>
       <div class="flex justify-between"><span class="text-gray-400">مقصد</span><b>${o.destination||d.person.address||'—'}</b></div>
       <div class="flex justify-between"><span class="text-gray-400">شمارهٔ سفارش</span><b>${o.order_no}</b></div>
-      <div class="flex justify-between"><span class="text-gray-400">وضعیت</span><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></div>
+      <div class="flex justify-between"><span class="text-gray-400">پرداخت‌شده</span><b>${fmt(o.paid_amount)} از ${fmt(o.total_amount)}</b></div>
     </div>
     <table class="w-full text-sm text-right border-t border-gray-100"><thead class="text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">تعداد</th><th class="p-2">مبلغ</th></tr></thead>
       <tbody class="divide-y divide-gray-100">${d.items.map(i=>`<tr><td class="p-2 font-bold">${i.product_name}</td><td class="p-2">${fmt(i.quantity)} ${i.unit||''}</td><td class="p-2">${fmt(i.amount)}</td></tr>`).join('')}</tbody></table>
     <div class="flex justify-between font-black mt-2"><span>جمع کل</span><span>${fmt(o.total_amount)} ریال</span></div>
-    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${o.status==='confirmed'?`<button onclick="deliver(${o.id});document.getElementById('detModal').classList.add('hidden')" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل داده شد</button>`:''}</div>`;
+    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${(o.status==='queued'||o.status==='confirmed')?`<button onclick="document.getElementById('detModal').classList.add('hidden');openDeliver(${o.id})" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل</button>`:''}</div>
+    <div class="flex gap-2 mt-2"><button onclick="custPay(${d.person.id},'in')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">دریافت وجه</button><button onclick="custPay(${d.person.id},'out')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">پرداخت/قرض به مشتری</button></div>`;
   document.getElementById('detModal').classList.remove('hidden'); }
-async function deliver(id){ if(!confirm('این سفارش تحویل شد و بار آماده ارسال است؟'))return; try{ await api('/orders/'+id+'/status',{method:'PATCH',body:{status:'delivered'}}); load(); }catch(e){alert(e.message);} }
-(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('orders','سفارش‌ها'); live(load, 15000); })();
+async function custPay(pid,dir){ const a=prompt(dir==='in'?'مبلغ دریافت از مشتری (ریال):':'مبلغ پرداخت/قرض‌الحسنه به مشتری (ریال):'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:pid,direction:dir,amount:Number(a),note:dir==='out'?'قرض‌الحسنه/پرداخت به مشتری':'دریافت از مشتری',branch_id:branchId||null}}); toast('ثبت شد'); document.getElementById('detModal').classList.add('hidden'); load(); }catch(e){toast(e.message,'err');} }
+
+// --- تحویل + پرداخت ---
+function openDeliver(id){ delId=id; document.getElementById('delPaid').value=''; document.getElementById('delErr').textContent='';
+  const o=(window._rows||[]).find(x=>x.id===id);
+  document.getElementById('delInfo').textContent = o? `${o.fullname} — مبلغ فاکتور ${fmt(o.total_amount)} — بدهی فعلی: ${Number(o.balance)<0?fmt(-o.balance):'۰'}` : '';
+  document.getElementById('delModal').classList.remove('hidden'); }
+async function confirmDeliver(){ try{ const paid=Number(document.getElementById('delPaid').value||0);
+  await api('/orders/'+delId+'/deliver',{method:'POST',body:{paid_amount:paid,payment_method:'cash'}});
+  document.getElementById('delModal').classList.add('hidden'); toast('تحویل ثبت شد'); load();
+}catch(e){ document.getElementById('delErr').textContent=e.message; } }
+
+// --- ساخت سفارش/فروش ---
+function openCreate(){ cust=null; ff='delivery'; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden');
+  document.getElementById('custSearch').value=''; document.getElementById('dest').value=''; document.getElementById('paidAmount').value=''; document.getElementById('doPrint').checked=false; document.getElementById('createErr').textContent='';
+  document.getElementById('cart').innerHTML=''; addRow();
+  const canDeliver=(window.__user?.role!=='driver');
+  document.querySelector('.ffbtn[data-ff="delivery"]').style.display=canDeliver?'':'none';
+  setFF(canDeliver?'delivery':'pickup'); calc(); document.getElementById('createModal').classList.remove('hidden'); }
+function closeCreate(){ document.getElementById('createModal').classList.add('hidden'); }
+function setFF(v){ ff=v; document.querySelectorAll('.ffbtn').forEach(b=>b.className='ffbtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm '+(b.dataset.ff===v?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500'));
+  document.getElementById('destWrap').style.display = v==='delivery'?'block':'none'; }
+async function searchCust(){ const q=document.getElementById('custSearch').value.trim(); const box=document.getElementById('custResults');
+  if(!q){ box.classList.add('hidden'); return; }
+  const list=await api('/persons?q='+encodeURIComponent(q));
+  box.innerHTML=list.map(p=>`<div class="p-2.5 hover:bg-gray-50 cursor-pointer text-sm" onclick="pickCust(${p.id},'${(p.fullname||'').replace(/'/g,'')}','${p.person_code}')">${p.fullname} <span class="text-gray-400 text-xs">(${p.person_code})</span></div>`).join('')||'<div class="p-2.5 text-gray-400 text-sm">موردی نیست</div>';
+  box.classList.remove('hidden'); }
+async function pickCust(id,name,code){ cust={id,name,code}; document.getElementById('custResults').classList.add('hidden'); document.getElementById('custSearch').value='';
+  const chip=document.getElementById('custChip'); chip.innerHTML=`<i class="fa-solid fa-user"></i> ${name} (${code}) <button onclick="clearCust()" class="text-green-600">&times;</button>`; chip.classList.remove('hidden');
+  try{ const led=await api('/persons/'+id+'/dashboard'); const bal=Number(led.balance?.current_balance||0);
+    const el=document.getElementById('custDebt'); el.className='text-xs mt-1 font-bold '+(bal<0?'text-red-600':'text-green-600'); el.textContent= bal<0?`بدهی این شخص: ${fmt(-bal)} ریال`:(bal>0?`طلب این شخص: ${fmt(bal)} ریال`:'حساب تسویه'); el.classList.remove('hidden'); }catch{}
+}
+function clearCust(){ cust=null; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden'); }
+async function walkIn(){ try{ const list=await api('/persons?q=مشتری نقدی'); let w=list.find(p=>p.fullname==='مشتری نقدی');
+  if(!w){ const r=await api('/persons',{method:'POST',body:{fullname:'مشتری نقدی',roles:['customer']}}); w={id:r.id,fullname:'مشتری نقدی',person_code:'—'}; }
+  pickCust(w.id,'مشتری نقدی',w.person_code||'—'); ff='pickup'; setFF('pickup'); }catch(e){ toast(e.message,'err'); } }
+function addRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<select class="c-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+    <input class="c-qty input-skeu rounded-lg px-2 py-2 w-16" type="number" step="0.001" value="1" oninput="calc()">
+    <input class="c-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت" oninput="calc()">
+    <button class="text-red-500 px-1" onclick="this.parentElement.remove();calc()">&times;</button>`;
+  document.getElementById('cart').appendChild(div);
+  div.querySelector('.c-prod').onchange=(e)=>{ div.querySelector('.c-price').value=e.target.selectedOptions[0]?.dataset.price||''; calc(); }; }
+function readCart(){ return [...document.getElementById('cart').children].map(r=>({product_id:Number(r.querySelector('.c-prod').value),quantity:Number(r.querySelector('.c-qty').value),unit_price:r.querySelector('.c-price').value===''?null:Number(r.querySelector('.c-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
+function calc(){ const t=[...document.getElementById('cart').children].reduce((s,r)=>{const p=Number(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0); const el=document.getElementById('cartTotal'); el.textContent=fmt(t); el.dataset.raw=t; }
+async function submitOrder(){ document.getElementById('createErr').textContent='';
+  if(!cust){ document.getElementById('createErr').textContent='طرف حساب را انتخاب کنید'; return; }
+  const items=readCart(); if(!items.length){ document.getElementById('createErr').textContent='حداقل یک قلم کالا لازم است'; return; }
+  try{ const r=await api('/orders',{method:'POST',body:{person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:Number(document.getElementById('paidAmount').value||0), payment_method:'cash', print:document.getElementById('doPrint').checked}});
+    closeCreate(); toast(ff==='pickup'?'فروش ثبت شد':'سفارش ثبت و به صف بار رفت'); load();
+  }catch(e){ document.getElementById('createErr').textContent=e.message; } }
+
+// --- مانیفست ---
+async function openManifest(){ const m=await api('/orders/manifest');
+  document.getElementById('manBody').innerHTML = m.order_count? `<table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">مقدار کل</th><th class="p-2">ارزش</th></tr></thead><tbody class="divide-y divide-gray-100">${m.items.map(i=>`<tr><td class="p-2 font-bold">${i.product_name}</td><td class="p-2 font-black text-indigo-700">${fmt(i.qty)} ${i.unit}</td><td class="p-2">${fmt(i.amount)}</td></tr>`).join('')}</tbody></table><div class="flex justify-between font-black mt-3 pt-2 border-t"><span>${fmt(m.order_count)} سفارش · جمع کل</span><span>${fmt(m.total)} ریال</span></div>` : '<p class="text-center text-gray-400 py-6">سفارش ارسالیِ در انتظاری نیست</p>';
+  document.getElementById('manModal').classList.remove('hidden'); }
+async function printAllWaybills(){ try{ const r=await api('/print/waybills',{method:'POST',body:{}}); toast(`${r.printed} بارنامه به صف چاپ رفت 🖨`); document.getElementById('manModal').classList.add('hidden'); }catch(e){ toast(e.message,'err'); } }
+
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('orders','سفارش‌ها'); branchId=u.branch_id||null;
+  products=await api('/products'); const whs=await api('/inventory/warehouses'); warehouse=(whs.find(w=>/فروشگاه|store/i.test(w.name))||whs[0])?.id||null;
+  live(load, 15000); })();
 </script>
 </body>
 </html>
