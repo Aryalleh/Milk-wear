@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { pool, withTx } from '../db.js';
-import { postTransaction, resolveMilkPrice, recomputeBalance } from '../ledger.js';
+import { postTransaction, resolveMilkPrice, recomputeBalance, nextOrderNo } from '../ledger.js';
 import { notifyReceipt } from '../bale.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
@@ -62,7 +62,7 @@ router.post('/', wrap(async (req, res) => {
         purchaseAmount += amount;
         lines.push({ prod, quantity: Number(it.quantity), price, amount });
       }
-      const orderNo = `SO${Date.now().toString().slice(-9)}`;
+      const orderNo = await nextOrderNo(conn);
       const [o] = await conn.query(
         `INSERT INTO orders (branch_id, order_no, person_id, channel, status, warehouse_id, total_amount, note, created_by)
          VALUES (?,?,?, ?, 'delivered', ?,?,?,?)`,

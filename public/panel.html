@@ -24,8 +24,8 @@
     <div class="relative z-10">
       <div class="flex justify-between items-start mb-5"><div><span id="meBalLbl" class="text-xs opacity-70 block mb-1">مانده حساب</span><div class="text-3xl font-black"><span id="meBal">—</span> <span class="text-sm font-medium">ریال</span></div></div><span id="meStatus" class="bg-white/20 text-[10px] px-3 py-1 rounded-full border border-white/20"></span></div>
       <div class="grid grid-cols-2 gap-3">
-        <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">شیر این ماه (کیلو)</span><span id="meKg" class="text-lg font-bold">—</span></div>
-        <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">ارزش شیر ماه</span><span id="meMilk" class="text-lg font-bold text-green-300">—</span></div>
+        <div id="milkTile1" class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">شیر این ماه (کیلو)</span><span id="meKg" class="text-lg font-bold">—</span></div>
+        <div id="milkTile2" class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">ارزش شیر ماه</span><span id="meMilk" class="text-lg font-bold text-green-300">—</span></div>
         <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">مجموع خرید</span><span id="meBuy" class="text-lg font-bold">—</span></div>
         <div class="bg-white/10 p-3 rounded-xl"><span class="text-[10px] opacity-60 block mb-1">مجموع پرداخت‌ها</span><span id="mePaid" class="text-lg font-bold">—</span></div>
       </div>
@@ -36,6 +36,16 @@
   <section id="milkSection" class="hidden bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-sm">
     <div class="p-4 border-b border-gray-100"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-glass-water text-green-600 ml-1"></i> شیرهای تحویلی من</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">شیفت</th><th class="p-3">وزن (kg)</th><th class="p-3">چربی</th><th class="p-3">قیمت</th><th class="p-3">مبلغ</th></tr></thead><tbody id="meMilk" class="divide-y divide-gray-100"></tbody></table></div>
+  </section>
+
+  <!-- فاکتور فروش به شرکت (خرید شرکت از شخص) -->
+  <section class="bg-white rounded-[20px] p-4 border border-slate-100 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-bold text-slate-800"><i class="fa-solid fa-file-arrow-up text-amber-600 ml-1"></i> فاکتور فروش من به شرکت</h3>
+      <button onclick="openInv()" class="bg-amber-500 text-white px-3 py-2 rounded-lg text-sm font-bold">+ افزودن</button>
+    </div>
+    <p class="text-[11px] text-slate-400 mb-3">اگر چیزی به شرکت فروخته‌اید، مبلغ و عکس فاکتور را ثبت کنید تا پس از تأیید مدیر به حسابتان اضافه شود.</p>
+    <div id="meInvoices" class="space-y-2"></div>
   </section>
 
   <!-- ثبت سفارش (فقط مشتری) -->
@@ -59,8 +69,37 @@
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">شرح</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">مانده</th></tr></thead><tbody id="meLedger" class="divide-y divide-gray-100"></tbody></table></div>
   </section>
 </main>
+
+<!-- مودال افزودن فاکتور فروش (با عکس) -->
+<div id="invModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+  <div class="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">فاکتور فروش به شرکت</h3><button onclick="closeInv()" class="text-gray-400 text-2xl">&times;</button></div>
+    <div class="space-y-3">
+      <div><label class="text-xs text-gray-500 block mb-1">مبلغ (تومان) *</label><input id="ivAmount" type="number" class="input-skeu rounded-lg px-3 py-2.5 w-full" placeholder="مثلاً ۵۰۰۰۰۰"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">توضیح</label><input id="ivDesc" class="input-skeu rounded-lg px-3 py-2.5 w-full" placeholder="بابت چه چیزی؟"></div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">عکس فاکتور</label>
+        <label class="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-6 cursor-pointer text-gray-500">
+          <i class="fa-solid fa-camera text-xl"></i> <span>گرفتن عکس / انتخاب</span>
+          <input type="file" accept="image/*" capture="environment" class="hidden" onchange="readPhoto(this)">
+        </label>
+        <img id="ivPreview" class="hidden mt-3 rounded-xl max-h-48 mx-auto border">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-5"><button onclick="closeInv()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button onclick="submitInv()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ارسال برای تأیید</button></div>
+    <p id="ivErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
+
 <script>
-let products=[];
+let products=[], ivPhoto=null;
+const SST={pending:['در انتظار تأیید','bg-amber-100 text-amber-700'],approved:['تأییدشده','bg-green-100 text-green-700'],rejected:['رد شده','bg-red-100 text-red-700']};
+function openInv(){ document.getElementById('ivErr').textContent=''; document.getElementById('ivAmount').value=''; document.getElementById('ivDesc').value=''; ivPhoto=null; document.getElementById('ivPreview').classList.add('hidden'); document.getElementById('invModal').classList.remove('hidden'); }
+function closeInv(){ document.getElementById('invModal').classList.add('hidden'); }
+function readPhoto(inp){ const f=inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ ivPhoto=e.target.result; const img=document.getElementById('ivPreview'); img.src=ivPhoto; img.classList.remove('hidden'); }; r.readAsDataURL(f); }
+async function submitInv(){ document.getElementById('ivErr').textContent=''; const toman=Number(document.getElementById('ivAmount').value); if(!toman||toman<=0){document.getElementById('ivErr').textContent='مبلغ لازم است';return;}
+  try{ await api('/me/invoices',{method:'POST',body:{amount:Math.round(toman*10), description:document.getElementById('ivDesc').value||null, photo:ivPhoto}}); closeInv(); loadMeInvoices(); }catch(e){ document.getElementById('ivErr').textContent=e.message; } }
+async function loadMeInvoices(){ const rows=await api('/me/invoices'); document.getElementById('meInvoices').innerHTML=rows.map(r=>`<div class="border border-gray-100 rounded-xl p-3 flex justify-between items-center"><div><p class="font-bold text-sm">${fmt(r.amount)} ریال</p><p class="text-[11px] text-gray-400">${r.created_jalali}${r.description?(' · '+r.description):''}</p></div><span class="text-[10px] px-2 py-0.5 rounded-full ${(SST[r.status]||['',''])[1]}">${(SST[r.status]||[r.status])[0]}</span></div>`).join('')||'<p class="text-gray-400 text-xs text-center py-2">فاکتوری ثبت نشده</p>'; }
 async function loadMe(){ const d=await api('/me/dashboard');
   document.getElementById('meName').textContent=d.person.fullname; document.getElementById('meRole').textContent='کد: '+d.person.code+' | '+(d.role==='farmer'?'دامدار':'مشتری');
   const cb=d.balance.current_balance, map={creditor:'بستانکار',debtor:'بدهکار',settled:'تسویه'};
@@ -70,10 +109,13 @@ async function loadMe(){ const d=await api('/me/dashboard');
   document.getElementById('meMilk').textContent=fmt(d.balance.milk_value_month); document.getElementById('meBuy').textContent=fmt(d.balance.purchases_total); document.getElementById('mePaid').textContent=fmt(d.balance.payments_total);
   // تفکیک نقش: دامدار خرید آنلاین ندارد، شیرهای تحویلی را می‌بیند
   const farmer = d.role==='farmer';
+  // مشتری شیر نمی‌دهد → آمار شیر پنهان
+  document.getElementById('milkTile1').classList.toggle('hidden', !farmer);
+  document.getElementById('milkTile2').classList.toggle('hidden', !farmer);
   document.getElementById('orderSection').classList.toggle('hidden', farmer);
   document.getElementById('milkSection').classList.toggle('hidden', !farmer);
   if (farmer) loadMeMilk(); else { document.getElementById('meItems').innerHTML=''; meAddItemRow(); meCalc(); }
-  loadMeOrders(); loadMeLedger(); }
+  loadMeOrders(); loadMeLedger(); loadMeInvoices(); }
 async function loadMeMilk(){ const rows=await api('/me/milk');
   document.getElementById('meMilk').innerHTML=rows.map(m=>`<tr><td class="p-3 text-gray-500">${m.date_jalali}</td><td class="p-3">${m.shift==='morning'?'صبح':'شب'}</td><td class="p-3 font-bold">${fmt(m.weight_kg)}</td><td class="p-3">${m.fat_pct!=null?fmt(m.fat_pct)+'٪':'—'}</td><td class="p-3">${fmt(m.price_per_kg)}</td><td class="p-3 text-green-600 font-bold">${fmt(m.amount)}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">شیری ثبت نشده</td></tr>'; }
 async function loadMeLedger(){ const rows=await api('/me/ledger'); document.getElementById('meLedger').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date_jalali}</td><td class="p-3">${r.description||r.type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 font-bold">${fmt(r.balance)}</td></tr>`).join('')||'<tr><td colspan="5" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>'; }

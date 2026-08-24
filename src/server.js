@@ -23,11 +23,12 @@ import auditRoutes from './routes/audit.js';
 import publicRoutes from './routes/public.js';
 import settingsRoutes from './routes/settings.js';
 import reportsRoutes from './routes/reports.js';
+import submissionsRoutes from './routes/submissions.js';
 import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));   // عکس فاکتور (base64)
 
 // اجازهٔ باز شدن مینی‌اپ داخل iframe نسخهٔ وب بله (بدون X-Frame-Options)
 app.use((req, res, next) => {
@@ -111,6 +112,7 @@ app.use('/api/waste', staffRequired, wasteRoutes);
 app.use('/api/audit', staffRequired, auditRoutes);
 app.use('/api/settings', staffRequired, settingsRoutes);
 app.use('/api/reports', staffRequired, reportsRoutes);
+app.use('/api/submissions', staffRequired, submissionsRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {

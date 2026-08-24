@@ -19,6 +19,7 @@
       <h2 class="text-2xl font-bold text-gray-800">داشبورد مدیریت <span id="dToday" class="text-gray-500 text-base font-normal"></span></h2>
       <span class="text-xs text-gray-400"><i class="fa-solid fa-circle text-green-500 text-[8px] ml-1 animate-pulse"></i> آپدیت زنده</span>
     </div>
+    <div id="subsBox" class="mb-6"></div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       <div onclick="location.href='/operations'" class="skeu-card p-4 cursor-pointer hover:ring-2 hover:ring-green-300 transition"><div class="flex justify-between items-start mb-3"><h3 class="font-bold text-gray-700">🥛 ایستگاه شیر</h3><i class="fa-solid fa-arrow-left text-green-600"></i></div>
         <div class="space-y-2 text-sm"><div class="flex justify-between border-b border-gray-100 pb-2"><span class="text-gray-500">دریافت امروز</span><span class="font-bold text-green-700"><span id="dMilkKg">—</span> kg</span></div>
@@ -90,6 +91,10 @@
   </div>
 </main>
 
+<div id="photoModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
+  <img id="photoImg" class="max-h-[90vh] max-w-full rounded-lg">
+</div>
+
 <script>
 let chP, chF, chW, chSpark, chFlow;
 function fatPos(v){ if(v==null) return 50; return Math.max(0, Math.min(100, (v-1.5)/(6-1.5)*100)); }
@@ -110,8 +115,15 @@ async function loadDashboard(){
   document.getElementById('mProdList').innerHTML = d.production.outputs.length? d.production.outputs.map(o=>`<div class="rounded-2xl bg-dairy-bg border border-dairy-line p-3"><p class="text-[11px] text-dairy-muted mb-1">${o.name}</p><p class="text-base font-bold">${fmt(o.qty)} ${o.unit||''}</p></div>`).join(''):'<p class="text-dairy-muted text-sm col-span-3">امروز تولیدی ثبت نشده</p>';
   document.getElementById('mFarmerList').innerHTML = d.by_farmer.length? d.by_farmer.map(f=>`<div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-dairy-leaf/10 text-dairy-leaf flex items-center justify-center"><i class="fa-solid fa-user"></i></div><div class="flex-1"><p class="text-sm font-semibold">${f.fullname}</p></div><span class="text-sm font-bold">${fmt(f.kg)} kg</span></div>`).join(''):'<p class="text-dairy-muted text-sm">امروز شیری ثبت نشده</p>';
   set('mSiloPct',fmt(d.silo.pct)); set('mFat', d.avg_fat_today!=null?fmt(d.avg_fat_today):'—'); document.getElementById('mFatThumb').style.right=fatPos(d.avg_fat_today)+'%';
-  drawCharts(d);
+  drawCharts(d); loadSubs();
 }
+async function loadSubs(){ const box=document.getElementById('subsBox'); if(!box) return;
+  let rows=[]; try{ rows=await api('/submissions'); }catch{ return; }
+  if(!rows.length){ box.innerHTML=''; return; }
+  box.innerHTML=`<div class="skeu-card p-4" style="border-right:4px solid #f59e0b"><h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-bell text-amber-500 ml-1"></i> فاکتورهای فروش در انتظار تأیید (${fmt(rows.length)})</h3><div class="space-y-2">${rows.map(s=>`<div class="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl p-3"><div><p class="font-bold">${s.fullname} <span class="text-xs text-gray-400">(${s.person_code}${s.mobile?(' · '+s.mobile):''})</span></p><p class="text-sm text-gray-600">${fmt(s.amount)} ریال${s.description?(' · '+s.description):''}</p></div><div class="flex gap-2">${s.has_photo?`<button onclick="viewPhoto(${s.id})" class="bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-bold">عکس فاکتور</button>`:''}<button onclick="approveSub(${s.id})" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">تأیید</button><button onclick="rejectSub(${s.id})" class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold">رد</button></div></div>`).join('')}</div></div>`; }
+async function viewPhoto(id){ try{ const d=await api('/submissions/'+id+'/photo'); if(!d.photo){alert('عکسی ثبت نشده');return;} document.getElementById('photoImg').src=d.photo; document.getElementById('photoModal').classList.remove('hidden'); }catch(e){alert(e.message);} }
+async function approveSub(id){ if(!confirm('این فاکتور تأیید و به حساب شخص اضافه شود؟'))return; try{ await api('/submissions/'+id+'/approve',{method:'POST'}); loadDashboard(); }catch(e){alert(e.message);} }
+async function rejectSub(id){ if(!confirm('این فاکتور رد شود؟'))return; try{ await api('/submissions/'+id+'/reject',{method:'POST'}); loadSubs(); }catch(e){alert(e.message);} }
 function bar(el, series, cats, colors, opts={}){ if(!el) return null;
   return new ApexCharts(el, { chart:{type:'bar',height:opts.h||260,fontFamily:'Vazirmatn',toolbar:{show:false}}, series, colors,
     plotOptions:{bar:{borderRadius:6,columnWidth:'55%'}}, dataLabels:{enabled:false}, legend:{show:opts.legend||false,position:'bottom'},

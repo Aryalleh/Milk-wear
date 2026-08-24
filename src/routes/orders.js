@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
-import { postTransaction } from '../ledger.js';
+import { postTransaction, nextOrderNo } from '../ledger.js';
 import { AppError, wrap, currentJalaliMonth } from '../util.js';
 
 const router = Router();
@@ -69,7 +69,7 @@ router.post('/', wrap(async (req, res) => {
       lines.push({ prod, quantity: Number(it.quantity), price, amount });
     }
 
-    const orderNo = `SO${Date.now().toString().slice(-9)}`;
+    const orderNo = await nextOrderNo(conn);
     const [o] = await conn.query(
       `INSERT INTO orders (branch_id, order_no, person_id, channel, status, warehouse_id, total_amount, note, created_by)
        VALUES (?,?,?,?, 'delivered', ?,?,?,?)`,

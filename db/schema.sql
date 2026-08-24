@@ -5,7 +5,7 @@
 USE milk_wear;
 
 SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS waste_log, receipts, production_outputs, production_inputs, production_batches,
+DROP TABLE IF EXISTS purchase_submissions, waste_log, receipts, production_outputs, production_inputs, production_batches,
   audit_logs, account_balances, transactions, payments,
   order_items, orders, stock_movements, stock_balances, milk_deliveries,
   milk_price_history, warehouses, products, product_categories, units,
@@ -265,7 +265,7 @@ CREATE TABLE transactions (
   branch_id         BIGINT,
   person_id         BIGINT NOT NULL,
   tx_type           ENUM('MILK_DELIVERY','PRODUCT_SALE','FEED_SALE','CASH_WITHDRAWAL',
-                         'PAYMENT_OUT','PAYMENT_IN','ADJUSTMENT','REFUND','OPENING_BALANCE','VOID') NOT NULL,
+                         'PAYMENT_OUT','PAYMENT_IN','ADJUSTMENT','REFUND','OPENING_BALANCE','VOID','PURCHASE') NOT NULL,
   direction         ENUM('credit','debit') NOT NULL,  -- نسبت به شخص. مانده = SUM(credit)-SUM(debit)
   amount            DECIMAL(18,0) NOT NULL,
   tx_date           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -324,6 +324,20 @@ CREATE TABLE receipts (
   CONSTRAINT fk_rc_branch FOREIGN KEY (branch_id) REFERENCES branches(id),
   INDEX idx_rc_person (person_id),
   INDEX idx_rc_branch (branch_id, issued_at)
+) ENGINE=InnoDB;
+
+-- ============ فاکتور فروش ارسالیِ شخص (خرید از او) ============
+CREATE TABLE purchase_submissions (
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  person_id   BIGINT NOT NULL,
+  amount      DECIMAL(18,0) NOT NULL,
+  description VARCHAR(255),
+  photo       MEDIUMTEXT,
+  status      ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  approved_by BIGINT, approved_at TIMESTAMP NULL, tx_id BIGINT,
+  CONSTRAINT fk_ps_person FOREIGN KEY (person_id) REFERENCES persons(id),
+  INDEX idx_ps_status (status)
 ) ENGINE=InnoDB;
 
 -- ============ ضایعات ============

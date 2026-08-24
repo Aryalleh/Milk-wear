@@ -1,4 +1,12 @@
-import { currentJalaliMonth } from './util.js';
+import { currentJalaliMonth, toJalaliDate } from './util.js';
+
+// شمارهٔ سفارش روزانه و ساده برای راننده: مثل 14050603-3 (تاریخ شمسی + شمارهٔ روز)
+export async function nextOrderNo(conn) {
+  const [[r]] = await conn.query('SELECT COUNT(*) AS c FROM orders WHERE DATE(ordered_at)=CURDATE()');
+  const seq = Number(r.c) + 1;
+  const jd = toJalaliDate(new Date()).replace(/\//g, '');
+  return `${jd}-${seq}`;
+}
 
 // جهت پیش‌فرض هر نوع تراکنش نسبت به شخص
 // credit = شرکت به شخص بدهکار می‌شود (بستانکاریِ شخص) | debit = شخص به شرکت بدهکار
@@ -13,6 +21,7 @@ const DEFAULT_DIRECTION = {
   ADJUSTMENT: 'credit',
   REFUND: 'credit',
   VOID: 'credit',
+  PURCHASE: 'credit',   // خرید از شخص → شرکت به او بدهکار می‌شود
 };
 
 /**

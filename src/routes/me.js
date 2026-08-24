@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
 import { personRequired } from '../auth.js';
-import { postTransaction, recomputeBalance } from '../ledger.js';
+import { postTransaction, recomputeBalance, nextOrderNo } from '../ledger.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -71,6 +71,25 @@ router.get('/milk', wrap(async (req, res) => {
   })));
 }));
 
+// ثبت فاکتور فروش توسط شخص (شرکت از او خرید می‌کند) با عکس → در انتظار تأیید مدیر
+router.post('/invoices', wrap(async (req, res) => {
+  const { amount, description, photo } = req.body;   // amount به ریال
+  if (!amount || Number(amount) <= 0) throw new AppError(400, 'مبلغ لازم است');
+  if (photo && photo.length > 8000000) throw new AppError(400, 'حجم عکس زیاد است (حداکثر ~۶ مگابایت)');
+  const [r] = await pool.query(
+    'INSERT INTO purchase_submissions (person_id, amount, description, photo) VALUES (?,?,?,?)',
+    [req.user.person_id, Math.round(Number(amount)), description || null, photo || null]);
+  res.status(201).json({ id: r.insertId });
+}));
+
+// فاکتورهای ارسالی من و وضعیتشان
+router.get('/invoices', wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT id, amount, description, status, created_at FROM purchase_submissions WHERE person_id=? ORDER BY id DESC LIMIT 50',
+    [req.user.person_id]);
+  res.json(rows.map((r) => ({ id: r.id, amount: Number(r.amount), description: r.description, status: r.status, created_jalali: toJalaliDate(r.created_at) })));
+}));
+
 // سفارش‌های من
 router.get('/orders', wrap(async (req, res) => {
   const [rows] = await pool.query(
@@ -106,8 +125,8 @@ router.post('/orders', wrap(async (req, res) => {
       lines.push({ prod, quantity: Number(it.quantity), price: Number(prod.base_price), amount });
     }
 
-    const orderNo = `SO${Date.now().toString().slice(-9)}`;
-    const waybillNo = `WB${Date.now().toString().slice(-9)}`;
+    const orderNo = await nextOrderNo(conn);
+    const waybillNo = orderNo;
     const [o] = await conn.query(
       `INSERT INTO orders (branch_id, order_no, waybill_no, person_id, channel, status,
                            warehouse_id, total_amount, note, destination, created_by)

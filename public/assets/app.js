@@ -65,7 +65,7 @@ function mountChrome(active, title){
   // ناوبری پایین موبایل
   const bottom = document.createElement('nav');
   bottom.className = 'md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1';
-  const mItems = items.filter(n => ['dashboard','operations','inventory','settings'].includes(n.key));
+  const mItems = items.filter(n => ['dashboard','operations','orders','inventory','settings'].includes(n.key));
   bottom.innerHTML = `<div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-around px-1 py-1">
     ${mItems.map(n=>`<a href="${n.href}" class="bnav ${n.key===active?'active':''} flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl"><i class="fa-solid ${n.icon} text-lg"></i><span class="text-[10px] font-bold">${n.label}</span></a>`).join('')}
   </div>`;
