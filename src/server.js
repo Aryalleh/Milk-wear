@@ -65,7 +65,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true,                      // با هر درخواست، عمر کوکی تمدید می‌شود
-  cookie: { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 12 * 60 * 60 * 1000 },
+  cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.COOKIE_SECURE === 'true', maxAge: 12 * 60 * 60 * 1000 },
 }));
 
 // ثبت خودکار همهٔ عملیات تغییردهنده در لاگ (بعد از session تا کاربر مشخص باشد)
