@@ -16,6 +16,7 @@
     <button data-tab="users" onclick="tab('users')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">کاربران</button>
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
     <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
+    <button data-tab="trusted" onclick="tab('trusted')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">اشخاص معتمد</button>
     <button data-tab="general" onclick="tab('general')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">عمومی</button>
   </div>
 
@@ -60,6 +61,15 @@
   </div>
 </main>
 
+  <!-- TRUSTED PERSONS -->
+  <div id="t-trusted" class="tabc hidden space-y-6">
+    <div class="skeu-card p-4">
+      <p class="text-sm text-gray-600 mb-3"><i class="fa-solid fa-shield-halved text-green-600 ml-1"></i> شخص «معتمد» فاکتور فروشش <b>بدون تأیید مدیر</b> مستقیم به حساب اضافه می‌شود.</p>
+      <input id="trQ" oninput="loadTrusted()" placeholder="جستجوی شخص..." class="input-skeu rounded-lg px-3 py-2.5 w-full md:w-80">
+    </div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">نام</th><th class="p-3">کد</th><th class="p-3">تلفن</th><th class="p-3">وضعیت</th></tr></thead><tbody id="trTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+  </div>
+
   <!-- GENERAL -->
   <div id="t-general" class="tabc hidden space-y-6">
     <div class="skeu-card p-6 max-w-md">
@@ -88,9 +98,12 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy','general'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='general') loadGeneral(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+async function loadTrusted(){ const q=document.getElementById('trQ').value; const rows=await api('/persons'+(q?('?q='+encodeURIComponent(q)):''));
+  document.getElementById('trTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.fullname}</td><td class="p-3">${p.person_code}</td><td class="p-3">${p.mobile||'—'}</td><td class="p-3"><button onclick="toggleTrust(${p.id},${p.trusted?0:1})" class="px-3 py-1.5 rounded-full text-xs font-bold ${p.trusted?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}"><i class="fa-solid ${p.trusted?'fa-shield-halved':'fa-shield'} ml-1"></i>${p.trusted?'معتمد':'عادی'}</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">موردی نیست</td></tr>'; }
+async function toggleTrust(id,val){ try{ await api('/persons/'+id+'/trusted',{method:'PUT',body:{trusted:!!val}}); loadTrusted(); }catch(e){alert(e.message);} }
 async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; }
 async function saveSilo(){ try{ await api('/settings/silo_capacity_kg',{method:'PUT',body:{value:Number(document.getElementById('siloCap').value)||20000}}); document.getElementById('siloMsg').textContent='ذخیره شد ✓'; setTimeout(()=>document.getElementById('siloMsg').textContent='',2000); }catch(e){ alert(e.message); } }
 let dyWhs=[], dyPid=null;

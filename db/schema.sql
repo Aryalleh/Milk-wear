@@ -63,6 +63,7 @@ CREATE TABLE persons (
   bale_username VARCHAR(64) NULL,
   address      VARCHAR(255),
   credit_limit DECIMAL(18,0),
+  trusted      TINYINT(1) NOT NULL DEFAULT 0,   -- فاکتور فروشش مستقیم ثبت شود
   is_active    TINYINT(1) NOT NULL DEFAULT 1,
   created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

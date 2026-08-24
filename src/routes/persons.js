@@ -11,7 +11,7 @@ router.get('/', wrap(async (req, res) => {
   const { q, type } = req.query;
   const params = [];
   let sql = `
-    SELECT p.id, p.person_code, p.fullname, p.mobile, p.is_active,
+    SELECT p.id, p.person_code, p.fullname, p.mobile, p.is_active, p.trusted,
            COALESCE(b.current_balance,0) AS balance,
            COALESCE(b.status,'settled') AS status
       FROM persons p
@@ -27,6 +27,15 @@ router.get('/', wrap(async (req, res) => {
   sql += ` WHERE ${where.join(' AND ')} ORDER BY p.fullname LIMIT 200`;
   const [rows] = await pool.query(sql, params);
   res.json(rows);
+}));
+
+// تغییر وضعیت «معتمد» شخص — فقط مدیر
+router.put('/:id/trusted', wrap(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError(403, 'فقط مدیر');
+  const trusted = req.body.trusted ? 1 : 0;
+  const [r] = await pool.query('UPDATE persons SET trusted = ? WHERE id = ?', [trusted, req.params.id]);
+  if (!r.affectedRows) throw new AppError(404, 'شخص یافت نشد');
+  res.json({ ok: true, trusted });
 }));
 
 // ایجاد شخص (با نقش‌ها)

@@ -28,6 +28,7 @@ import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set('trust proxy', 1);   // پشت nginx/reverse-proxy IP و https درست تشخیص داده شود
 app.use(express.json({ limit: '8mb' }));   // عکس فاکتور (base64)
 
 // اجازهٔ باز شدن مینی‌اپ داخل iframe نسخهٔ وب بله (بدون X-Frame-Options)
@@ -122,7 +123,8 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🥛 Milk-wear روی http://localhost:${PORT} اجرا شد`);
+const HOST = process.env.HOST || '0.0.0.0';   // روی همهٔ آیپی‌ها/دامنه‌ها
+app.listen(PORT, HOST, () => {
+  console.log(`🥛 Milk-wear روی http://${HOST}:${PORT} (همهٔ رابط‌ها) اجرا شد`);
   import('./cron.js').then((m) => m.startCron()).catch((e) => console.error('cron:', e.message));
 });

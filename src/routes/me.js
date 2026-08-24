@@ -76,10 +76,30 @@ router.post('/invoices', wrap(async (req, res) => {
   const { amount, description, photo } = req.body;   // amount به ریال
   if (!amount || Number(amount) <= 0) throw new AppError(400, 'مبلغ لازم است');
   if (photo && photo.length > 8000000) throw new AppError(400, 'حجم عکس زیاد است (حداکثر ~۶ مگابایت)');
+  const amt = Math.round(Number(amount));
+  const pid = req.user.person_id;
+  const [[p]] = await pool.query('SELECT trusted FROM persons WHERE id = ?', [pid]);
+
+  if (p && p.trusted) {
+    // شخص معتمد → مستقیم ثبت و به حساب اضافه می‌شود
+    const out = await withTx(async (conn) => {
+      const [s] = await conn.query(
+        "INSERT INTO purchase_submissions (person_id, amount, description, photo, status, approved_at) VALUES (?,?,?,?, 'approved', NOW())",
+        [pid, amt, description || null, photo || null]);
+      const txId = await postTransaction(conn, {
+        personId: pid, txType: 'PURCHASE', amount: amt, sourceType: 'manual', sourceId: s.insertId,
+        description: 'خرید از شخص (معتمد)' + (description ? (' — ' + description) : ''), month: currentJalaliMonth(),
+      });
+      await conn.query('UPDATE purchase_submissions SET tx_id = ? WHERE id = ?', [txId, s.insertId]);
+      return { id: s.insertId, auto: true };
+    });
+    return res.status(201).json(out);
+  }
+
   const [r] = await pool.query(
     'INSERT INTO purchase_submissions (person_id, amount, description, photo) VALUES (?,?,?,?)',
-    [req.user.person_id, Math.round(Number(amount)), description || null, photo || null]);
-  res.status(201).json({ id: r.insertId });
+    [pid, amt, description || null, photo || null]);
+  res.status(201).json({ id: r.insertId, auto: false });
 }));
 
 // فاکتورهای ارسالی من و وضعیتشان
