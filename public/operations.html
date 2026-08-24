@@ -59,7 +59,7 @@
       <div class="skeu-card overflow-hidden">
         <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-ledger',this)"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-list-check text-green-600 ml-1"></i> گردش حساب</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
         <div id="acc-ledger" class="acc-body hidden p-4 pt-0">
-          <div class="flex gap-2 mb-3">
+          <div class="gap-2 mb-3 hidden md:flex">
             <button id="lvTable" onclick="setLedgerView('table')" class="px-3 py-1 rounded-lg text-xs font-bold bg-dairy-dark text-white">جدولی</button>
             <button id="lvCard" onclick="setLedgerView('card')" class="px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600">کارتی</button>
           </div>
@@ -157,7 +157,7 @@ function acc(id, head){ const body=document.getElementById(id); const isOpen=!bo
   document.querySelectorAll('#detail .acc-head').forEach(h=>h.classList.remove('open'));
   if(!isOpen){ body.classList.remove('hidden'); head.classList.add('open'); } }
 // ----- دفتر: جدولی/کارتی -----
-let ledgerRows=[], ledgerView='table';
+let ledgerRows=[], ledgerView = window.innerWidth < 768 ? 'card' : 'table';   // موبایل: فقط کارتی
 function setLedgerView(v){ ledgerView=v;
   document.getElementById('lvTable').className='px-3 py-1 rounded-lg text-xs font-bold '+(v==='table'?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600');
   document.getElementById('lvCard').className='px-3 py-1 rounded-lg text-xs font-bold '+(v==='card'?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600');
