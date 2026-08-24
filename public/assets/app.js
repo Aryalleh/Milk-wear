@@ -34,6 +34,8 @@ async function guard(kinds){
 const NAV = [
   { key:'dashboard', label:'داشبورد', icon:'fa-house', href:'/dashboard' },
   { key:'operations', label:'عملیات', icon:'fa-list-check', href:'/operations' },
+  { key:'orders', label:'سفارش‌ها', icon:'fa-receipt', href:'/orders' },
+  { key:'store', label:'فروشگاه', icon:'fa-store', href:'/store' },
   { key:'production', label:'تولید', icon:'fa-industry', href:'/production' },
   { key:'inventory', label:'انبار', icon:'fa-warehouse', href:'/inventory' },
   { key:'reports', label:'گزارش‌ها', icon:'fa-chart-pie', href:'/reports' },

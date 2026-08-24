@@ -82,6 +82,8 @@ app.get('/production', pub('production.html'));
 app.get('/inventory', pub('inventory.html'));
 app.get('/settings', pub('settings.html'));
 app.get('/reports', pub('reports.html'));
+app.get('/orders', pub('orders.html'));
+app.get('/store', pub('store.html'));
 app.get('/panel', pub('panel.html'));
 
 app.use('/api/public', publicRoutes);   // بدون احراز هویت (نمایش فاکتور با توکن برای QR)
@@ -118,4 +120,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🥛 Milk-wear روی http://localhost:${PORT} اجرا شد`));
+app.listen(PORT, () => {
+  console.log(`🥛 Milk-wear روی http://localhost:${PORT} اجرا شد`);
+  import('./cron.js').then((m) => m.startCron()).catch((e) => console.error('cron:', e.message));
+});

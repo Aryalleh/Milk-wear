@@ -1,11 +1,16 @@
 // گزارش‌گیری مالی و جنسی با بازهٔ تاریخ (روزانه/ماهانه/دلخواه)
 import { Router } from 'express';
 import { pool } from '../db.js';
-import { staffRequired } from '../auth.js';
+import { staffRequired, requireRole } from '../auth.js';
 import { wrap, toJalaliDate } from '../util.js';
+import { runBackup, runDailyReport } from '../cron.js';
 
 const router = Router();
 router.use(staffRequired);
+
+// اجرای دستی بک‌آپ و گزارش روزانه (برای تست) — فقط مدیر
+router.post('/backup-now', requireRole('admin'), wrap(async (req, res) => { res.json(await runBackup()); }));
+router.post('/daily-now', requireRole('admin'), wrap(async (req, res) => { res.json(await runDailyReport()); }));
 
 function range(req) {
   const to = req.query.to || new Date().toISOString().slice(0, 10);

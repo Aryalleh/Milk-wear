@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>داشبورد فروشگاه</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
+  <h2 class="text-xl font-bold text-gray-800">🏪 داشبورد فروشگاه <span id="sToday" class="text-gray-500 text-base font-normal"></span></h2>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">فروش امروز (ریال)</p><p class="text-xl font-black text-amber-700" id="sSales">—</p></div>
+    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">تعداد فاکتور فروشگاه</p><p class="text-xl font-black" id="sCount">—</p></div>
+    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">دریافتی از مشتری</p><p class="text-xl font-black text-green-700" id="sRecv">—</p></div>
+    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">طلب از مشتریان</p><p class="text-xl font-black text-red-600" id="sReceivable">—</p></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">سفارش پخش امروز</p><p class="text-2xl font-black" id="sOrders">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">تحویل‌شده</p><p class="text-2xl font-black text-green-600" id="sDelivered">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">در انتظار تحویل</p><p class="text-2xl font-black text-red-600" id="sRemaining">—</p></div>
+  </div>
+
+  <div class="skeu-card overflow-hidden">
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-truck-fast text-purple-600 ml-1"></i> دلیوری‌ها و سفارش‌های اخیر</h3><a href="/orders" class="text-xs text-green-700 font-bold">همه سفارش‌ها</a></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+      <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مشتری</th><th class="p-3">مبلغ</th><th class="p-3">مقصد</th><th class="p-3">وضعیت</th><th class="p-3">بارنامه</th></tr></thead>
+      <tbody id="delTable" class="divide-y divide-gray-100"></tbody>
+    </table></div>
+  </div>
+</main>
+<script>
+const ST={confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
+async function load(){
+  const [d, orders] = await Promise.all([api('/dashboard'), api('/orders?channel=distribution')]);
+  document.getElementById('sToday').textContent='| '+d.date_jalali;
+  document.getElementById('sSales').textContent=fmt(d.store.value); document.getElementById('sCount').textContent=fmt(d.store.count);
+  document.getElementById('sRecv').textContent=fmt(d.cash.received); document.getElementById('sReceivable').textContent=fmt(d.accounts.receivable);
+  document.getElementById('sOrders').textContent=fmt(d.distribution.orders); document.getElementById('sDelivered').textContent=fmt(d.distribution.delivered); document.getElementById('sRemaining').textContent=fmt(d.distribution.remaining);
+  document.getElementById('delTable').innerHTML=orders.slice(0,50).map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3"><button onclick="window.open('/waybill.html?id=${o.id}','_blank')" class="text-blue-600"><i class="fa-solid fa-truck"></i></button></td></tr>`).join('')||'<tr><td colspan="6" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
+}
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('store','فروشگاه'); live(load, 15000); })();
+</script>
+</body>
+</html>

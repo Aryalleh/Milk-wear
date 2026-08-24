@@ -5,6 +5,32 @@ import { AppError, wrap, currentJalaliMonth } from '../util.js';
 
 const router = Router();
 
+// فهرست سفارش‌ها (کارمند) — با فیلتر وضعیت/کانال
+router.get('/', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const { status, channel } = req.query;
+  const where = ['o.deleted_at IS NULL'], params = [];
+  if (status) { where.push('o.status = ?'); params.push(status); }
+  if (channel) { where.push('o.channel = ?'); params.push(channel); }
+  const [rows] = await pool.query(
+    `SELECT o.id, o.order_no, o.waybill_no, o.channel, o.status, o.total_amount, o.ordered_at, o.destination,
+            p.fullname, p.mobile,
+            (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id
+       FROM orders o JOIN persons p ON p.id = o.person_id
+      WHERE ${where.join(' AND ')} ORDER BY o.id DESC LIMIT 300`, params);
+  res.json(rows);
+}));
+
+// تغییر وضعیت سفارش (تحویل/بستن) — کارمند
+router.patch('/:id/status', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const { status } = req.body;
+  if (!['confirmed', 'delivered', 'settled', 'canceled'].includes(status)) throw new AppError(400, 'وضعیت نامعتبر');
+  const [r] = await pool.query('UPDATE orders SET status = ? WHERE id = ? AND deleted_at IS NULL', [status, req.params.id]);
+  if (!r.affectedRows) throw new AppError(404, 'سفارش یافت نشد');
+  res.json({ ok: true });
+}));
+
 // دریافت یک سفارش (برای بارنامه/فاکتور) — کارمند یا صاحب سفارش
 router.get('/:id', wrap(async (req, res) => {
   const [[order]] = await pool.query('SELECT * FROM orders WHERE id = ? AND deleted_at IS NULL', [req.params.id]);

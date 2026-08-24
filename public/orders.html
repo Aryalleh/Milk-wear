@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سفارش‌ها</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
+  <div class="skeu-card p-4 flex items-center justify-between flex-wrap gap-3">
+    <h2 class="text-lg font-bold text-gray-800">سفارش‌ها</h2>
+    <div class="flex gap-2 overflow-x-auto no-scrollbar">
+      <button data-f="" onclick="setF('')" class="fbtn nav-pill active bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">همه</button>
+      <button data-f="confirmed" onclick="setF('confirmed')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">در انتظار تحویل</button>
+      <button data-f="delivered" onclick="setF('delivered')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">تحویل‌شده</button>
+    </div>
+  </div>
+
+  <!-- دسکتاپ: جدول -->
+  <div class="hidden md:block skeu-card overflow-hidden">
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right">
+      <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مشتری</th><th class="p-3">تلفن</th><th class="p-3">مبلغ</th><th class="p-3">مقصد</th><th class="p-3">وضعیت</th><th class="p-3">عملیات</th></tr></thead>
+      <tbody id="ordTable" class="divide-y divide-gray-100"></tbody>
+    </table></div>
+  </div>
+  <!-- موبایل: کارت‌ها -->
+  <div class="md:hidden space-y-3" id="ordCards"></div>
+</main>
+<script>
+let filter='';
+const ST={confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
+function setF(f){ filter=f; document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('active', b.dataset.f===f)); load(); }
+function actions(o){ const inv=o.receipt_id?`<button onclick="window.open('/receipt.html?id=${o.receipt_id}','_blank')" class="text-blue-600" title="فاکتور"><i class="fa-solid fa-receipt"></i></button>`:'';
+  const wb=`<button onclick="window.open('/waybill.html?id=${o.id}','_blank')" class="text-blue-600" title="بارنامه"><i class="fa-solid fa-truck"></i></button>`;
+  const dl=o.status==='confirmed'?`<button onclick="deliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل شد</button>`:'';
+  return `<div class="flex gap-3 items-center">${inv} ${wb} ${dl}</div>`; }
+async function load(){ const rows=await api('/orders'+(filter?('?status='+filter):''));
+  document.getElementById('ordTable').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3 text-gray-500">${o.mobile||'—'}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3">${actions(o)}</td></tr>`).join('')||'<tr><td colspan="7" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
+  document.getElementById('ordCards').innerHTML=rows.map(o=>`<div class="skeu-card p-4" style="border-radius:20px">
+    <div class="flex justify-between items-start mb-2"><div><h3 class="font-bold text-slate-800">${o.fullname}</h3><p class="text-[10px] text-slate-400">${o.order_no} · ${o.destination||'بدون مقصد'}</p></div><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></div>
+    <div class="flex justify-between items-center"><span class="font-black text-slate-800">${fmt(o.total_amount)} ریال</span>${actions(o)}</div>
+  </div>`).join('')||'<div class="text-center text-gray-400 p-8">سفارشی نیست</div>'; }
+async function deliver(id){ if(!confirm('این سفارش تحویل شد و بار آماده ارسال است؟'))return; try{ await api('/orders/'+id+'/status',{method:'PATCH',body:{status:'delivered'}}); load(); }catch(e){alert(e.message);} }
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('orders','سفارش‌ها'); live(load, 15000); })();
+</script>
+</body>
+</html>
