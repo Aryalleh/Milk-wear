@@ -13,7 +13,8 @@ const router = Router();
 //         items: [{ product_id, quantity, unit_price? }], note }
 router.post('/', wrap(async (req, res) => {
   if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فاکتور ثبت کنند');
-  const { person_id, branch_id, warehouse_id, milk, items = [], note } = req.body;
+  const { person_id, branch_id, warehouse_id, milk, items = [], note,
+          channel = 'farmer', paid = false, payment_method = 'cash' } = req.body;
   if (!person_id) throw new AppError(400, 'شخص لازم است');
   const hasMilk = milk && milk.shift && Number(milk.weight_kg) > 0;
   const hasItems = Array.isArray(items) && items.length > 0;
@@ -64,8 +65,8 @@ router.post('/', wrap(async (req, res) => {
       const orderNo = `SO${Date.now().toString().slice(-9)}`;
       const [o] = await conn.query(
         `INSERT INTO orders (branch_id, order_no, person_id, channel, status, warehouse_id, total_amount, note, created_by)
-         VALUES (?,?,?, 'farmer', 'delivered', ?,?,?,?)`,
-        [branch_id || null, orderNo, person_id, warehouse_id || null, purchaseAmount, note || null, uid]
+         VALUES (?,?,?, ?, 'delivered', ?,?,?,?)`,
+        [branch_id || null, orderNo, person_id, channel, warehouse_id || null, purchaseAmount, note || null, uid]
       );
       orderId = o.insertId;
       for (const ln of lines) {
@@ -95,6 +96,19 @@ router.post('/', wrap(async (req, res) => {
         description: lines.map((l) => `${l.prod.name}×${l.quantity}`).join('، '),
         branchId: branch_id || null, userId: uid, month,
       });
+
+      // پرداخت نقدی/کارت هم‌زمان (فروش فروشگاهی) → دریافت از مشتری، مانده صفر می‌شود
+      if (paid && purchaseAmount > 0) {
+        const [pay] = await conn.query(
+          `INSERT INTO payments (branch_id, person_id, direction, method, amount, note, created_by)
+           VALUES (?,?, 'in', ?, ?, 'فروش فروشگاهی', ?)`,
+          [branch_id || null, person_id, payment_method, purchaseAmount, uid]);
+        await postTransaction(conn, {
+          personId: person_id, txType: 'PAYMENT_IN', amount: purchaseAmount,
+          sourceType: 'payment', sourceId: pay.insertId, description: 'دریافت فروش فروشگاهی',
+          branchId: branch_id || null, userId: uid, month,
+        });
+      }
     }
 
     // --- مانده کل حساب پس از این فاکتور ---

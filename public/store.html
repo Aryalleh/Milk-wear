@@ -3,48 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>داشبورد فروشگاه</title>
+  <title>صندوق فروش</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/assets/app.js"></script>
   <link rel="stylesheet" href="/assets/ui.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
-<main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
-  <h2 class="text-xl font-bold text-gray-800">🏪 داشبورد فروشگاه <span id="sToday" class="text-gray-500 text-base font-normal"></span></h2>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">فروش امروز (ریال)</p><p class="text-xl font-black text-amber-700" id="sSales">—</p></div>
-    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">تعداد فاکتور فروشگاه</p><p class="text-xl font-black" id="sCount">—</p></div>
-    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">دریافتی از مشتری</p><p class="text-xl font-black text-green-700" id="sRecv">—</p></div>
-    <div class="skeu-card p-4"><p class="text-xs text-gray-500 mb-1">طلب از مشتریان</p><p class="text-xl font-black text-red-600" id="sReceivable">—</p></div>
+<main class="max-w-[1100px] mx-auto p-4 md:p-6 space-y-5">
+  <div class="flex justify-between items-center flex-wrap gap-2">
+    <h2 class="text-xl font-bold text-gray-800">🏪 صندوق فروش فروشگاه</h2>
+    <div class="text-sm text-gray-500">فروش امروز: <b id="todaySales" class="text-amber-700">—</b> ریال</div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">سفارش پخش امروز</p><p class="text-2xl font-black" id="sOrders">—</p></div>
-    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">تحویل‌شده</p><p class="text-2xl font-black text-green-600" id="sDelivered">—</p></div>
-    <div class="skeu-card p-4 text-center"><p class="text-xs text-gray-500 mb-1">در انتظار تحویل</p><p class="text-2xl font-black text-red-600" id="sRemaining">—</p></div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <!-- سبد فروش -->
+    <div class="lg:col-span-2 skeu-card p-5 space-y-4">
+      <!-- مشتری -->
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">مشتری</label>
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <input id="custSearch" oninput="searchCust()" placeholder="جستجوی مشتری..." class="input-skeu rounded-lg px-3 py-2.5 w-full">
+            <div id="custResults" class="hidden absolute z-20 bg-white border border-gray-200 rounded-lg mt-1 w-full max-h-52 overflow-y-auto shadow-lg"></div>
+          </div>
+          <button onclick="walkIn()" class="bg-gray-100 px-3 rounded-lg text-sm font-bold whitespace-nowrap">مشتری نقدی</button>
+        </div>
+        <div id="custChip" class="hidden mt-2 inline-flex items-center gap-2 bg-green-50 text-green-800 px-3 py-1.5 rounded-full text-sm font-bold"></div>
+      </div>
+      <!-- اقلام -->
+      <div>
+        <div class="flex justify-between items-center mb-2"><label class="text-xs text-gray-500">اقلام فروش</label><button onclick="addRow()" class="text-green-700 font-bold text-sm">+ افزودن قلم</button></div>
+        <div id="cart" class="space-y-2"></div>
+      </div>
+      <!-- پرداخت -->
+      <div>
+        <label class="text-xs text-gray-500 block mb-2">روش پرداخت</label>
+        <div class="flex gap-2">
+          <button data-m="cash" onclick="setPay('cash')" class="paybtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm border-green-600 bg-green-50 text-green-700">نقدی</button>
+          <button data-m="card" onclick="setPay('card')" class="paybtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm border-gray-200 text-gray-500">کارت</button>
+          <button data-m="credit" onclick="setPay('credit')" class="paybtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm border-gray-200 text-gray-500">نسیه</button>
+        </div>
+      </div>
+    </div>
+    <!-- خلاصه و ثبت -->
+    <div class="skeu-card p-5 h-fit sticky top-24">
+      <h3 class="font-bold text-gray-700 mb-4">جمع فاکتور</h3>
+      <div class="text-3xl font-black text-green-700 mb-1"><span id="cartTotal">۰</span> <span class="text-sm">ریال</span></div>
+      <p id="payHint" class="text-xs text-gray-400 mb-4">پرداخت: نقدی</p>
+      <button onclick="checkout()" class="btn-skeu text-white w-full py-3.5 rounded-xl font-black text-lg">ثبت فروش و چاپ فاکتور</button>
+      <p id="posErr" class="text-red-600 text-xs mt-2"></p>
+    </div>
   </div>
 
+  <!-- فروش‌های امروز -->
   <div class="skeu-card overflow-hidden">
-    <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-truck-fast text-purple-600 ml-1"></i> دلیوری‌ها و سفارش‌های اخیر</h3><a href="/orders" class="text-xs text-green-700 font-bold">همه سفارش‌ها</a></div>
-    <div class="overflow-x-auto"><table class="w-full text-sm text-right">
-      <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مشتری</th><th class="p-3">مبلغ</th><th class="p-3">مقصد</th><th class="p-3">وضعیت</th><th class="p-3">بارنامه</th></tr></thead>
-      <tbody id="delTable" class="divide-y divide-gray-100"></tbody>
-    </table></div>
+    <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">فروش‌های اخیر فروشگاه</h3></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">شماره</th><th class="p-3">مشتری</th><th class="p-3">مبلغ</th><th class="p-3">فاکتور</th></tr></thead><tbody id="salesTable" class="divide-y divide-gray-100"></tbody></table></div>
   </div>
 </main>
 <script>
-const ST={confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
-async function load(){
-  const [d, orders] = await Promise.all([api('/dashboard'), api('/orders?channel=distribution')]);
-  document.getElementById('sToday').textContent='| '+d.date_jalali;
-  document.getElementById('sSales').textContent=fmt(d.store.value); document.getElementById('sCount').textContent=fmt(d.store.count);
-  document.getElementById('sRecv').textContent=fmt(d.cash.received); document.getElementById('sReceivable').textContent=fmt(d.accounts.receivable);
-  document.getElementById('sOrders').textContent=fmt(d.distribution.orders); document.getElementById('sDelivered').textContent=fmt(d.distribution.delivered); document.getElementById('sRemaining').textContent=fmt(d.distribution.remaining);
-  document.getElementById('delTable').innerHTML=orders.slice(0,50).map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3"><button onclick="window.open('/waybill.html?id=${o.id}','_blank')" class="text-blue-600"><i class="fa-solid fa-truck"></i></button></td></tr>`).join('')||'<tr><td colspan="6" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
-}
-(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('store','فروشگاه'); live(load, 15000); })();
+let products=[], warehouse=null, branchId=null, cust=null, payMethod='cash', walkinId=null;
+async function searchCust(){ const q=document.getElementById('custSearch').value.trim(); const box=document.getElementById('custResults');
+  if(!q){ box.classList.add('hidden'); return; }
+  const list=await api('/persons?q='+encodeURIComponent(q));
+  box.innerHTML=list.map(p=>`<div class="p-2.5 hover:bg-gray-50 cursor-pointer text-sm" onclick="pickCust(${p.id},'${(p.fullname||'').replace(/'/g,'')}','${p.person_code}')">${p.fullname} <span class="text-gray-400 text-xs">(${p.person_code})</span></div>`).join('')||'<div class="p-2.5 text-gray-400 text-sm">موردی نیست</div>';
+  box.classList.remove('hidden'); }
+function pickCust(id,name,code){ cust={id,name,code}; document.getElementById('custResults').classList.add('hidden'); document.getElementById('custSearch').value='';
+  const chip=document.getElementById('custChip'); chip.innerHTML=`<i class="fa-solid fa-user"></i> ${name} (${code}) <button onclick="clearCust()" class="text-green-600">&times;</button>`; chip.classList.remove('hidden'); }
+function clearCust(){ cust=null; document.getElementById('custChip').classList.add('hidden'); }
+async function walkIn(){ try{ if(!walkinId){ const list=await api('/persons?q=مشتری نقدی'); const found=list.find(p=>p.fullname==='مشتری نقدی');
+    if(found) walkinId=found.id; else { const r=await api('/persons',{method:'POST',body:{fullname:'مشتری نقدی',roles:['customer']}}); walkinId=r.id; } }
+  pickCust(walkinId,'مشتری نقدی','—'); }catch(e){ alert(e.message); } }
+function addRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<select class="c-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+    <input class="c-qty input-skeu rounded-lg px-2 py-2 w-20" type="number" step="0.001" placeholder="تعداد" value="1" oninput="calc()">
+    <input class="c-price input-skeu rounded-lg px-2 py-2 w-28" type="number" placeholder="قیمت" oninput="calc()">
+    <button class="text-red-500 px-2" onclick="this.parentElement.remove();calc()">&times;</button>`;
+  document.getElementById('cart').appendChild(div);
+  div.querySelector('.c-prod').onchange=(e)=>{ div.querySelector('.c-price').value=e.target.selectedOptions[0]?.dataset.price||''; calc(); }; }
+function readCart(){ return [...document.getElementById('cart').children].map(r=>({product_id:Number(r.querySelector('.c-prod').value),quantity:Number(r.querySelector('.c-qty').value),unit_price:r.querySelector('.c-price').value===''?null:Number(r.querySelector('.c-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
+function calc(){ const t=[...document.getElementById('cart').children].reduce((s,r)=>{const p=Number(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0); document.getElementById('cartTotal').textContent=fmt(t); }
+function setPay(m){ payMethod=m; document.querySelectorAll('.paybtn').forEach(b=>b.className='paybtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm '+(b.dataset.m===m?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500'));
+  document.getElementById('payHint').textContent='پرداخت: '+({cash:'نقدی',card:'کارت',credit:'نسیه (به حساب مشتری)'}[m]); }
+async function checkout(){ document.getElementById('posErr').textContent='';
+  if(!cust){ document.getElementById('posErr').textContent='مشتری را انتخاب کنید'; return; }
+  const items=readCart(); if(!items.length){ document.getElementById('posErr').textContent='حداقل یک قلم کالا لازم است'; return; }
+  try{ const r=await api('/receipts',{method:'POST',body:{person_id:cust.id, channel:'store', warehouse_id:warehouse, branch_id:branchId, items, paid:(payMethod!=='credit'), payment_method:payMethod}});
+    document.getElementById('cart').innerHTML=''; addRow(); calc(); clearCust();
+    window.open('/receipt.html?id='+r.id,'_blank'); loadSales();
+  }catch(e){ document.getElementById('posErr').textContent=e.message; } }
+async function loadSales(){ const [d, whs, orders]=await Promise.all([api('/dashboard'), api('/inventory/warehouses'), api('/orders?channel=store')]);
+  document.getElementById('todaySales').textContent=fmt(d.store.value);
+  if(!warehouse && whs.length){ const st=whs.find(w=>/فروشگاه|store/i.test(w.name))||whs[0]; warehouse=st.id; }
+  document.getElementById('salesTable').innerHTML=orders.slice(0,30).map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3">${o.receipt_id?`<button onclick="window.open('/receipt.html?id=${o.receipt_id}','_blank')" class="text-blue-600"><i class="fa-solid fa-print"></i></button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="4" class="p-6 text-center text-gray-400">فروشی نیست</td></tr>'; }
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('store','صندوق فروش');
+  branchId=u.branch_id||null; products=await api('/products'); addRow(); setPay('cash'); loadSales(); })();
 </script>
 </body>
 </html>
