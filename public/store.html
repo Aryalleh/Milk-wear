@@ -51,7 +51,7 @@
       <h3 class="font-bold text-gray-700 mb-4">جمع فاکتور</h3>
       <div class="text-3xl font-black text-green-700 mb-1"><span id="cartTotal">۰</span> <span class="text-sm">ریال</span></div>
       <p id="payHint" class="text-xs text-gray-400 mb-4">پرداخت: نقدی</p>
-      <button onclick="checkout()" class="btn-skeu text-white w-full py-3.5 rounded-xl font-black text-lg">ثبت فروش و چاپ فاکتور</button>
+      <button onclick="checkout()" class="btn-skeu text-white w-full py-3.5 rounded-xl font-black text-lg">ثبت فروش و چاپ بارنامه</button>
       <p id="posErr" class="text-red-600 text-xs mt-2"></p>
     </div>
   </div>
@@ -91,12 +91,15 @@ async function checkout(){ document.getElementById('posErr').textContent='';
   const items=readCart(); if(!items.length){ document.getElementById('posErr').textContent='حداقل یک قلم کالا لازم است'; return; }
   try{ const r=await api('/receipts',{method:'POST',body:{person_id:cust.id, channel:'store', warehouse_id:warehouse, branch_id:branchId, items, paid:(payMethod!=='credit'), payment_method:payMethod}});
     document.getElementById('cart').innerHTML=''; addRow(); calc(); clearCust();
-    window.open('/receipt.html?id='+r.id,'_blank'); loadSales();
+    // فروش ثبت شد → فاکتور خودکار به صف چاپِ سرور رفت (پرینت‌ایجنت چاپ می‌کند)
+    toast('فروش ثبت شد و فاکتور به صف چاپ رفت 🖨');
+    loadSales();
   }catch(e){ document.getElementById('posErr').textContent=e.message; } }
+async function reprintReceipt(id){ try{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور دوباره به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
 async function loadSales(){ const [d, whs, orders]=await Promise.all([api('/dashboard'), api('/inventory/warehouses'), api('/orders?channel=store')]);
   document.getElementById('todaySales').textContent=fmt(d.store.value);
   if(!warehouse && whs.length){ const st=whs.find(w=>/فروشگاه|store/i.test(w.name))||whs[0]; warehouse=st.id; }
-  document.getElementById('salesTable').innerHTML=orders.slice(0,30).map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3">${o.receipt_id?`<button onclick="window.open('/receipt.html?id=${o.receipt_id}','_blank')" class="text-blue-600"><i class="fa-solid fa-print"></i></button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="4" class="p-6 text-center text-gray-400">فروشی نیست</td></tr>'; }
+  document.getElementById('salesTable').innerHTML=orders.slice(0,30).map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3">${fmt(o.total_amount)}</td><td class="p-3">${o.receipt_id?`<button onclick="reprintReceipt(${o.receipt_id})" class="text-blue-600" title="چاپ مجدد"><i class="fa-solid fa-print"></i></button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="4" class="p-6 text-center text-gray-400">فروشی نیست</td></tr>'; }
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('store','صندوق فروش');
   branchId=u.branch_id||null; products=await api('/products'); addRow(); setPay('cash'); loadSales(); })();
 </script>

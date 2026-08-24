@@ -58,8 +58,10 @@ function quick(w){ const t=new Date(); const to=today();
   document.getElementById('to').value=to; document.getElementById('month').value=''; loadReports(); }
 function setMonth(){ const m=document.getElementById('month').value; if(!m)return; const [y,mo]=m.split('-'); const last=new Date(y,mo,0).getDate();
   document.getElementById('from').value=`${m}-01`; document.getElementById('to').value=`${m}-${String(last).padStart(2,'0')}`; loadReports(); }
+const JF=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'});
+const jdate=(iso)=>{ try{ return JF.format(new Date(iso+'T00:00:00')); }catch(e){ return iso; } };
 async function loadReports(){ const from=document.getElementById('from').value||today(), to=document.getElementById('to').value||today();
-  document.getElementById('rng').textContent=`بازه: ${from} تا ${to}`;
+  document.getElementById('rng').textContent=`بازه (شمسی): ${jdate(from)} تا ${jdate(to)}`;
   [fin,goods]=await Promise.all([api(`/reports/financial?from=${from}&to=${to}`),api(`/reports/goods?from=${from}&to=${to}`)]);
   // summary
   document.getElementById('finSummary').innerHTML=fin.summary.map(s=>`<div class="bg-gray-50 border border-gray-100 rounded-xl p-3"><p class="text-[11px] text-gray-500 mb-1">${TYPE_FA[s.tx_type]||s.tx_type}</p><p class="font-black text-sm">${s.credit?('+'+fmt(s.credit)):''}${s.debit?(' -'+fmt(s.debit)):''}</p><p class="text-[10px] text-gray-400">${fmt(s.count)} مورد</p></div>`).join('')||'<p class="text-gray-400 text-sm col-span-4">داده‌ای نیست</p>';

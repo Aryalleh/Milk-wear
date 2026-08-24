@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
 import { postTransaction, nextOrderNo } from '../ledger.js';
-import { AppError, wrap, currentJalaliMonth } from '../util.js';
+import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
 
@@ -46,7 +46,11 @@ router.get('/:id', wrap(async (req, res) => {
     `SELECT oi.*, p.name AS product_name, u.symbol AS unit
        FROM order_items oi JOIN products p ON p.id = oi.product_id
        LEFT JOIN units u ON u.id = p.unit_id WHERE oi.order_id = ?`, [order.id]);
-  res.json({ order, person, branch, items });
+  // فاکتور مرتبط با این سفارش (برای QRِ بارنامه که به فاکتور اشاره می‌کند)
+  const [[receipt]] = await pool.query(
+    'SELECT id, receipt_no, public_token FROM receipts WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+  order.ordered_at_jalali = toJalaliDate(order.ordered_at || order.created_at);
+  res.json({ order, person, branch, items, receipt: receipt || null });
 }));
 
 // ثبت فروش/سفارش توسط کارمند → تراکنش خرید (بدهکار شخص) + خروج از انبار

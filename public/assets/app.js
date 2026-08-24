@@ -21,6 +21,18 @@ async function api(path, opts={}) {
 async function currentUser(){ try { return (await api('/auth/me')).user; } catch { return null; } }
 async function logout(){ try { await api('/auth/logout',{method:'POST'}); } catch {} location.href='/login'; }
 
+/* پیام شناور (توست) */
+function toast(msg, kind='ok'){
+  let host=document.getElementById('mwToasts');
+  if(!host){ host=document.createElement('div'); host.id='mwToasts'; host.style.cssText='position:fixed;z-index:9999;bottom:88px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none'; document.body.appendChild(host); }
+  const bg=kind==='err'?'#dc2626':(kind==='warn'?'#d97706':'#16a34a');
+  const el=document.createElement('div');
+  el.style.cssText=`background:${bg};color:#fff;padding:10px 18px;border-radius:14px;font-weight:800;font-size:14px;box-shadow:0 10px 25px -8px rgba(0,0,0,.4);opacity:0;transition:opacity .2s,transform .2s;transform:translateY(8px)`;
+  el.textContent=msg; host.appendChild(el);
+  requestAnimationFrame(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; });
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(8px)'; setTimeout(()=>el.remove(),250); }, 2600);
+}
+
 /* گارد دسترسی: کاربر را می‌گیرد؛ اگر مجاز نبود ری‌دایرکت می‌کند */
 async function guard(kinds){
   const u = await currentUser();

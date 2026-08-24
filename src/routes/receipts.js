@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { pool, withTx } from '../db.js';
 import { postTransaction, resolveMilkPrice, recomputeBalance, nextOrderNo } from '../ledger.js';
 import { notifyReceipt } from '../bale.js';
+import { enqueueReceipt } from '../print.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -125,10 +126,13 @@ router.post('/', wrap(async (req, res) => {
       [branch_id || null, receiptNo, token, person_id, month, milkDeliveryId, orderId,
        milkAmount, purchaseAmount, netAmount, balanceAfter, note || null, uid]
     );
-    return { id: rc.insertId, receipt_no: receiptNo, public_token: token,
+    return { id: rc.insertId, receipt_no: receiptNo, public_token: token, order_id: orderId,
              milk_amount: milkAmount, purchase_amount: purchaseAmount,
              net_amount: netAmount, balance_after: balanceAfter };
   });
+
+  // فاکتور بلافاصله به صف چاپِ سرور می‌رود (پرینت‌ایجنت آن را چاپ می‌کند)
+  enqueueReceipt(receipt.id).catch((e) => console.error('enqueueReceipt:', e.message));
 
   // اطلاع‌رسانی به شخص در بله (در صورت اتصال حساب) + لینک فاکتور — بدون بلاک‌کردن پاسخ
   const [[person]] = await pool.query(

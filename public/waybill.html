@@ -6,6 +6,7 @@
   <title>بارنامه</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap');
     body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; }
@@ -44,13 +45,24 @@
           <p class="text-xs text-slate-400 mt-2">شماره: ${o.waybill_no||o.order_no}</p>
         </div>
         <div class="space-y-3 border-b border-dashed border-slate-200 pb-6 mb-6 text-sm">
+          <div class="flex justify-between"><span class="text-slate-400">تاریخ:</span><span class="font-bold text-slate-800">${o.ordered_at_jalali||'—'}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">تحویل‌گیرنده:</span><span class="font-bold text-slate-800">${d.person.fullname} (${d.person.person_code})</span></div>
-          <div class="flex justify-between"><span class="text-slate-400">تلفن:</span><span class="font-bold text-slate-800">${d.person.mobile||'—'}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">تلفن:</span><span class="font-bold text-slate-800" dir="ltr">${d.person.mobile||'—'}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">مقصد تحویل:</span><span class="font-bold text-slate-800 text-left max-w-[60%]">${o.destination||d.person.address||'—'}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">شماره سفارش:</span><span class="font-bold text-slate-800">${o.order_no}</span></div>
         </div>
         <div class="space-y-4 mb-6">${rows||'<p class="text-center text-slate-400 text-sm">قلمی ثبت نشده</p>'}</div>
-        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">جمع کل:</span><span class="text-lg font-black text-blue-700">${fmt(o.total_amount)} <span class="text-[10px]">ریال</span></span></div>`;
+        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">جمع کل:</span><span class="text-lg font-black text-blue-700">${fmt(o.total_amount)} <span class="text-[10px]">ریال</span></span></div>
+        <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">${d.receipt?'اسکن برای مشاهدهٔ فاکتور · MILKWEAR':'فاکتوری ثبت نشده'}</p></div>`;
+      // QRِ بارنامه به فاکتورِ همین سفارش اشاره می‌کند
+      if(d.receipt&&d.receipt.public_token){ const qrUrl=location.origin+'/r/'+d.receipt.public_token;
+        try{ if(window.QRious){ new QRious({ element:document.getElementById('qr'), value:qrUrl, size:120, foreground:'#000000', background:'#ffffff', level:'M' }); } else { document.getElementById('qrLink').textContent=qrUrl; } }
+        catch(err){ document.getElementById('qrLink').textContent=qrUrl; } }
+      // چاپ مستقیم: با ?print=1 خودکار پرینت می‌گیرد و پنجره بسته می‌شود
+      if(new URLSearchParams(location.search).get('print')==='1'){
+        window.addEventListener('afterprint',()=>{ setTimeout(()=>window.close(),200); });
+        setTimeout(()=>window.print(),350);
+      }
     }catch(e){ card.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
   })();
 </script>

@@ -70,12 +70,21 @@
           <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بدهکار (خرید):</span><span class="font-bold">${fmt(rc.purchase_amount)}</span></div>
           <div class="flex justify-between items-center border-t border-slate-200 pt-3"><span class="font-black text-slate-800">خالص فاکتور:</span><span class="text-xl font-black text-green-700">${fmt(rc.net_amount)} <span class="text-[10px]">ریال</span></span></div>
         </div>
-        <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">اسکن برای مشاهدهٔ فاکتور · MILKWEAR</p></div>`;
+        <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">اسکن برای مشاهدهٔ فاکتور · MILKWEAR</p></div>
+        <div class="mt-6 pt-4 border-t border-dashed border-slate-200 text-center text-[11px] text-slate-500 leading-6">
+          ${d.branch?.phone?`<div dir="ltr"><i class="fa-solid fa-phone ml-1"></i> ${d.branch.phone}</div>`:''}
+          ${d.branch?.address?`<div><i class="fa-solid fa-location-dot ml-1"></i> ${d.branch.address}</div>`:''}
+        </div>`;
       try {
         if(window.QRious){ new QRious({ element:document.getElementById('qr'), value:qrUrl, size:120, foreground:'#000000', background:'#ffffff', level:'M' }); }
         else { document.getElementById('qrLink').textContent = qrUrl; }
       } catch(err){ document.getElementById('qrLink').textContent = qrUrl; }
       if(qid) fetch('/api/receipts/'+qid+'/printed',{method:'POST',credentials:'same-origin'}).catch(()=>{});
+      // چاپ مستقیم: با ?print=1 خودکار پرینت می‌گیرد و پنجره بسته می‌شود
+      if(new URLSearchParams(location.search).get('print')==='1'){
+        window.addEventListener('afterprint',()=>{ setTimeout(()=>window.close(),200); });
+        setTimeout(()=>window.print(),350);
+      }
     }catch(e){ card.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
   })();
 </script>

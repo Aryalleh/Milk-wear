@@ -17,6 +17,7 @@
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
     <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
     <button data-tab="trusted" onclick="tab('trusted')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">اشخاص معتمد</button>
+    <button data-tab="print" onclick="tab('print')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">چاپ و سفارش‌گیری</button>
     <button data-tab="general" onclick="tab('general')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">عمومی</button>
   </div>
 
@@ -28,9 +29,10 @@
         <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">نام</label><input id="siteName" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
         <div><label class="text-xs text-gray-500 block mb-1">نوع</label><select id="siteType" class="input-skeu rounded-lg px-3 py-2"><option value="station">ایستگاه شیر</option><option value="store">فروشگاه</option><option value="distribution">مرکز پخش</option></select></div>
         <div><label class="text-xs text-gray-500 block mb-1">تلفن</label><input id="sitePhone" class="input-skeu rounded-lg px-3 py-2 w-36"></div>
+        <div class="flex-1 min-w-[200px]"><label class="text-xs text-gray-500 block mb-1">آدرس (پای فاکتور چاپ می‌شود)</label><input id="siteAddr" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
         <button onclick="addSite()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700">افزودن</button>
       </div></div>
-    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">کد</th><th class="p-3">نام</th><th class="p-3">نوع</th><th class="p-3">تلفن</th><th class="p-3">انبار</th><th class="p-3">کاربر</th><th class="p-3">متصدی</th></tr></thead><tbody id="sitesTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">کد</th><th class="p-3">نام</th><th class="p-3">نوع</th><th class="p-3">تلفن</th><th class="p-3">آدرس</th><th class="p-3">انبار</th><th class="p-3">کاربر</th><th class="p-3">متصدی</th><th class="p-3"></th></tr></thead><tbody id="sitesTable" class="divide-y divide-gray-100"></tbody></table></div></div>
   </div>
 
   <!-- USERS -->
@@ -71,6 +73,49 @@
   </div>
 
   <!-- GENERAL -->
+  <!-- چاپ سرور + بازهٔ سفارش‌گیری -->
+  <div id="t-print" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-clock text-indigo-600 ml-1"></i> بازهٔ سفارش‌گیری و چاپ خودکار بارنامه</h3>
+      <p class="text-[11px] text-gray-400 mb-4">سفارش‌ها در بازهٔ زیر پذیرفته و صف می‌شوند؛ در «پایان سفارش‌گیری» یا هر چند دقیقه، بارنامه‌ها خودکار برای چاپ به پرینت‌ایجنت فرستاده می‌شوند.</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div><label class="text-xs text-gray-500 block mb-1">شروع سفارش‌گیری</label><input id="owOpen" type="time" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">پایان سفارش‌گیری</label><input id="owClose" type="time" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">روش چاپ</label>
+          <select id="pMode" class="input-skeu rounded-lg px-3 py-2.5 w-full">
+            <option value="on_close">در پایان سفارش‌گیری</option>
+            <option value="every_n">هر چند دقیقه</option>
+            <option value="both">هر دو</option>
+          </select></div>
+        <div><label class="text-xs text-gray-500 block mb-1">فاصلهٔ چاپ (دقیقه)</label><input id="pInterval" type="number" min="1" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+        <div class="flex items-end"><label class="flex items-center gap-2 text-sm text-gray-700 font-bold"><input id="owOutside" type="checkbox" class="w-4 h-4"> پذیرش سفارش خارج از ساعت</label></div>
+      </div>
+      <div class="flex gap-2 mt-5">
+        <button onclick="savePrint()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700">ذخیره</button>
+        <button onclick="runBatch()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-indigo-700"><i class="fa-solid fa-print ml-1"></i> چاپ همهٔ بارنامه‌های صف‌شده الان</button>
+      </div>
+      <p id="printMsg" class="text-green-600 text-xs mt-2"></p>
+    </div>
+
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-network-wired text-cyan-600 ml-1"></i> پرینت‌ایجنت</h3>
+      <p class="text-[11px] text-gray-400 mb-3">برنامهٔ کوچکِ کنارِ پرینتر با این توکن به سرور وصل می‌شود و کارهای چاپ را می‌گیرد. آن را محرمانه نگه دارید.</p>
+      <div class="flex flex-wrap gap-2 items-center">
+        <code id="agentToken" class="bg-gray-100 px-3 py-2 rounded-lg text-xs font-mono break-all flex-1 min-w-[200px]">••••••••</code>
+        <button onclick="copyToken()" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-copy"></i></button>
+        <button onclick="testPrint()" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-amber-600">چاپ آزمایشی</button>
+      </div>
+    </div>
+
+    <div class="skeu-card overflow-hidden">
+      <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+        <h3 class="font-bold text-gray-700">صف چاپ</h3>
+        <span id="pjSummary" class="text-xs text-gray-500"></span>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">#</th><th class="p-3">نوع</th><th class="p-3">مرجع</th><th class="p-3">وضعیت</th><th class="p-3">تلاش</th><th class="p-3">زمان</th></tr></thead><tbody id="pjTable" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+  </div>
+
   <div id="t-general" class="tabc hidden space-y-6">
     <div class="skeu-card p-6 max-w-md">
       <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-database text-cyan-600 ml-1"></i> ظرفیت مخزن شیر خام</h3>
@@ -98,9 +143,41 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+
+const PJ_ST={queued:['در صف','bg-amber-100 text-amber-700'],printing:['در حال چاپ','bg-blue-100 text-blue-700'],done:['چاپ‌شده','bg-green-100 text-green-700'],error:['خطا','bg-red-100 text-red-700']};
+const PJ_KIND={waybill:'بارنامه',receipt:'فاکتور',test:'آزمایشی'};
+let _agentToken='';
+async function loadPrint(){
+  const s=await api('/settings');
+  document.getElementById('owOpen').value=s.order_window_open||'08:00';
+  document.getElementById('owClose').value=s.order_window_close||'14:00';
+  document.getElementById('pMode').value=s.print_mode||'on_close';
+  document.getElementById('pInterval').value=s.print_interval_min||10;
+  document.getElementById('owOutside').checked=!!s.accept_orders_outside_window;
+  try{ const t=await api('/print/agent-token'); _agentToken=t.token; document.getElementById('agentToken').textContent=t.token; }catch{}
+  loadJobs();
+}
+async function loadJobs(){
+  const [jobs,sum]=await Promise.all([api('/print/jobs'),api('/print/summary')]);
+  document.getElementById('pjSummary').textContent=`صف: ${sum.queued} · در حال چاپ: ${sum.printing} · چاپ‌شده: ${sum.done} · خطا: ${sum.error}`;
+  document.getElementById('pjTable').innerHTML=jobs.map(j=>`<tr><td class="p-3 font-bold">${j.id}</td><td class="p-3">${PJ_KIND[j.kind]||j.kind}</td><td class="p-3 text-gray-500">${j.ref_type!=='none'?(j.ref_type+' #'+j.ref_id):'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(PJ_ST[j.status]||['',''])[1]}">${(PJ_ST[j.status]||[j.status])[0]}</span>${j.error?`<span class="block text-[10px] text-red-500 mt-0.5">${j.error}</span>`:''}</td><td class="p-3 text-gray-400">${j.attempts}</td><td class="p-3 text-gray-400 text-xs">${new Date(j.created_at).toLocaleString('fa-IR')}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">صف خالی است</td></tr>';
+}
+async function savePrint(){
+  try{
+    await api('/settings/order_window_open',{method:'PUT',body:{value:document.getElementById('owOpen').value||'08:00'}});
+    await api('/settings/order_window_close',{method:'PUT',body:{value:document.getElementById('owClose').value||'14:00'}});
+    await api('/settings/print_mode',{method:'PUT',body:{value:document.getElementById('pMode').value}});
+    await api('/settings/print_interval_min',{method:'PUT',body:{value:Number(document.getElementById('pInterval').value)||10}});
+    await api('/settings/accept_orders_outside_window',{method:'PUT',body:{value:document.getElementById('owOutside').checked}});
+    document.getElementById('printMsg').textContent='ذخیره شد ✓'; setTimeout(()=>document.getElementById('printMsg').textContent='',2000); toast('تنظیمات چاپ ذخیره شد');
+  }catch(e){ toast(e.message,'err'); }
+}
+async function runBatch(){ try{ const r=await api('/print/run-batch',{method:'POST'}); toast(`${r.printed} بارنامه به صف چاپ رفت 🖨`); loadJobs(); }catch(e){ toast(e.message,'err'); } }
+async function testPrint(){ try{ await api('/print/test',{method:'POST'}); toast('چاپ آزمایشی به صف رفت 🖨'); loadJobs(); }catch(e){ toast(e.message,'err'); } }
+function copyToken(){ if(!_agentToken) return; navigator.clipboard?.writeText(_agentToken).then(()=>toast('توکن کپی شد')).catch(()=>toast('کپی نشد','err')); }
 async function loadTrusted(){ const q=document.getElementById('trQ').value; const rows=await api('/persons'+(q?('?q='+encodeURIComponent(q)):''));
   document.getElementById('trTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.fullname}</td><td class="p-3">${p.person_code}</td><td class="p-3">${p.mobile||'—'}</td><td class="p-3"><button onclick="toggleTrust(${p.id},${p.trusted?0:1})" class="px-3 py-1.5 rounded-full text-xs font-bold ${p.trusted?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}"><i class="fa-solid ${p.trusted?'fa-shield-halved':'fa-shield'} ml-1"></i>${p.trusted?'معتمد':'عادی'}</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">موردی نیست</td></tr>'; }
 async function toggleTrust(id,val){ try{ await api('/persons/'+id+'/trusted',{method:'PUT',body:{trusted:!!val}}); loadTrusted(); }catch(e){alert(e.message);} }
@@ -115,8 +192,13 @@ function openDairy(id,name){ dyPid=id; document.getElementById('dyName').textCon
 async function saveDairy(){ document.getElementById('dyErr').textContent=''; const q=Number(document.getElementById('dyQty').value); if(!q||q<=0){document.getElementById('dyErr').textContent='مقدار لازم است';return;}
   try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(document.getElementById('dyWh').value),product_id:dyPid,quantity:q}}); document.getElementById('dairyModal').classList.add('hidden'); loadDairy(); }catch(e){ document.getElementById('dyErr').textContent=e.message; } }
 async function loadSites(){ branches=await api('/branches'); const T={station:'ایستگاه شیر',store:'فروشگاه',distribution:'مرکز پخش',head:'دفتر مرکزی'};
-  document.getElementById('sitesTable').innerHTML=branches.map(b=>`<tr><td class="p-3">${b.id}</td><td class="p-3">${b.code}</td><td class="p-3 font-bold">${b.name}</td><td class="p-3">${T[b.type]||b.type}</td><td class="p-3">${b.phone||'—'}</td><td class="p-3">${b.warehouse_count}</td><td class="p-3">${b.user_count}</td><td class="p-3"><button onclick="addOperator(${b.id},'${(b.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold">+ متصدی</button></td></tr>`).join(''); }
-async function addSite(){ try{ await api('/branches',{method:'POST',body:{code:document.getElementById('siteCode').value,name:document.getElementById('siteName').value,type:document.getElementById('siteType').value,phone:document.getElementById('sitePhone').value}}); document.getElementById('siteCode').value=document.getElementById('siteName').value=document.getElementById('sitePhone').value=''; loadSites(); }catch(e){alert(e.message);} }
+  window._branches=branches;
+  document.getElementById('sitesTable').innerHTML=branches.map(b=>`<tr><td class="p-3">${b.id}</td><td class="p-3">${b.code}</td><td class="p-3 font-bold">${b.name}</td><td class="p-3">${T[b.type]||b.type}</td><td class="p-3" dir="ltr">${b.phone||'—'}</td><td class="p-3 text-gray-500 text-xs max-w-[200px]">${b.address||'—'}</td><td class="p-3">${b.warehouse_count}</td><td class="p-3">${b.user_count}</td><td class="p-3"><button onclick="addOperator(${b.id},'${(b.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold">+ متصدی</button></td><td class="p-3"><button onclick="editSite(${b.id})" class="text-blue-600 text-xs font-bold">ویرایش</button></td></tr>`).join(''); }
+async function editSite(id){ const b=(window._branches||[]).find(x=>x.id===id); if(!b)return;
+  const phone=prompt('تلفن سایت:', b.phone||''); if(phone===null)return;
+  const address=prompt('آدرس سایت (پای فاکتور چاپ می‌شود):', b.address||''); if(address===null)return;
+  try{ await api('/branches/'+id,{method:'PUT',body:{phone,address}}); loadSites(); }catch(e){alert(e.message);} }
+async function addSite(){ try{ await api('/branches',{method:'POST',body:{code:document.getElementById('siteCode').value,name:document.getElementById('siteName').value,type:document.getElementById('siteType').value,phone:document.getElementById('sitePhone').value,address:document.getElementById('siteAddr').value}}); document.getElementById('siteCode').value=document.getElementById('siteName').value=document.getElementById('sitePhone').value=document.getElementById('siteAddr').value=''; loadSites(); }catch(e){alert(e.message);} }
 async function addOperator(id,name){ const f=prompt('نام متصدی «'+name+'»:'); if(!f)return; const un=prompt('نام کاربری:'); if(!un)return; const pw=prompt('رمز:'); if(!pw)return; try{ await api('/users',{method:'POST',body:{fullname:f,username:un,password:pw,role:'station',branch_id:id}}); alert('متصدی ساخته شد'); loadSites(); }catch(e){alert(e.message);} }
 async function loadUsers(){ const [list,roles]=await Promise.all([api('/users'),api('/users/roles')]); if(!branches.length) branches=await api('/branches');
   document.getElementById('uRole').innerHTML=roles.filter(r=>!['farmer','customer'].includes(r.name)).map(r=>`<option value="${r.name}">${r.title}</option>`).join('');

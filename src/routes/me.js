@@ -1,8 +1,10 @@
 // پنل شخصی دامدار/مشتری — هر کس فقط دادهٔ خودش
+import crypto from 'crypto';
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
 import { personRequired } from '../auth.js';
 import { postTransaction, recomputeBalance, nextOrderNo } from '../ledger.js';
+import { getSettings, withinOrderWindow } from '../print.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -129,6 +131,12 @@ router.post('/orders', wrap(async (req, res) => {
   const pid = req.user.person_id;
   const month = currentJalaliMonth();
 
+  // بازهٔ سفارش‌گیری: خارج از ساعت مجاز، سفارش پذیرفته نمی‌شود (مگر تنظیم اجازه بدهد)
+  const settings = await getSettings();
+  if (!settings.accept_orders_outside_window && !withinOrderWindow(settings)) {
+    throw new AppError(400, `سفارش‌گیری اکنون بسته است. ساعات سفارش‌گیری: ${settings.order_window_open || '—'} تا ${settings.order_window_close || '—'}`);
+  }
+
   const out = await withTx(async (conn) => {
     // انبار پیش‌فرض برای خروج کالا (فروشگاه یا مرکز پخش)
     const [[wh]] = await conn.query(
@@ -147,10 +155,11 @@ router.post('/orders', wrap(async (req, res) => {
 
     const orderNo = await nextOrderNo(conn);
     const waybillNo = orderNo;
+    // status='queued' → توسط زمان‌بندی، بارنامه‌اش خودکار به صف چاپ می‌رود
     const [o] = await conn.query(
       `INSERT INTO orders (branch_id, order_no, waybill_no, person_id, channel, status,
                            warehouse_id, total_amount, note, destination, created_by)
-       VALUES (?,?,?,?, 'distribution', 'confirmed', ?,?,?,?, NULL)`,
+       VALUES (?,?,?,?, 'distribution', 'queued', ?,?,?,?, NULL)`,
       [branchId, orderNo, waybillNo, pid, warehouseId, total, note || null, destination || null]);
     const orderId = o.insertId;
 
@@ -180,11 +189,12 @@ router.post('/orders', wrap(async (req, res) => {
 
     const balanceAfter = await recomputeBalance(conn, pid);
     const receiptNo = `RC${Date.now().toString().slice(-10)}`;
+    const token = crypto.randomBytes(16).toString('hex');
     const [rc] = await conn.query(
-      `INSERT INTO receipts (branch_id, receipt_no, person_id, year_month_jalali, order_id,
+      `INSERT INTO receipts (branch_id, receipt_no, public_token, person_id, year_month_jalali, order_id,
                              milk_amount, purchase_amount, net_amount, balance_after, note)
-       VALUES (?,?,?,?,?, 0, ?, ?, ?, ?)`,
-      [branchId, receiptNo, pid, month, orderId, total, -total, balanceAfter, note || null]);
+       VALUES (?,?,?,?,?,?, 0, ?, ?, ?, ?)`,
+      [branchId, receiptNo, token, pid, month, orderId, total, -total, balanceAfter, note || null]);
 
     return { order_id: orderId, order_no: orderNo, waybill_no: waybillNo,
              receipt_id: rc.insertId, total };

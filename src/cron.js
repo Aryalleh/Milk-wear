@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { pool } from './db.js';
 import { baleSendDocument, baleSendMessage } from './bale.js';
 import { toJalaliDate, currentJalaliMonth } from './util.js';
+import { printTick } from './print.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKUP_DIR = path.join(__dirname, '../backups');
@@ -89,5 +90,12 @@ export function startCron() {
   cron.schedule('0 2 * * *', runBackup);
   // هر روز ساعت ۰۷:۰۰ گزارش روزانه
   cron.schedule('0 7 * * *', runDailyReport);
-  console.log('⏰ کرون فعال شد: بک‌آپ ۰۲:۰۰، گزارش روزانه ۰۷:۰۰');
+  // هر دقیقه: بررسی زمان‌بندی سفارش‌گیری و صف‌کردن بارنامه‌ها برای چاپ خودکار
+  cron.schedule('* * * * *', async () => {
+    try {
+      const r = await printTick();
+      if (r.due && r.printed) console.log(`🖨 ${r.printed} بارنامه به صف چاپ رفت`);
+    } catch (e) { console.error('printTick:', e.message); }
+  });
+  console.log('⏰ کرون فعال شد: بک‌آپ ۰۲:۰۰، گزارش ۰۷:۰۰، تیک چاپ هر دقیقه');
 }

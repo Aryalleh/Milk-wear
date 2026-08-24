@@ -24,6 +24,8 @@ import publicRoutes from './routes/public.js';
 import settingsRoutes from './routes/settings.js';
 import reportsRoutes from './routes/reports.js';
 import submissionsRoutes from './routes/submissions.js';
+import agentRoutes from './routes/agent.js';
+import printRoutes from './routes/print.js';
 import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,6 +91,7 @@ app.get('/store', pub('store.html'));
 app.get('/panel', pub('panel.html'));
 
 app.use('/api/public', publicRoutes);   // بدون احراز هویت (نمایش فاکتور با توکن برای QR)
+app.use('/api/agent', agentRoutes);      // پرینت‌ایجنت (احراز با توکن ایجنت، نه سشن)
 app.use('/api/auth', authRoutes);
 
 // پنل شخصی دامدار/مشتری (فقط دادهٔ خودش)
@@ -114,6 +117,7 @@ app.use('/api/audit', staffRequired, auditRoutes);
 app.use('/api/settings', staffRequired, settingsRoutes);
 app.use('/api/reports', staffRequired, reportsRoutes);
 app.use('/api/submissions', staffRequired, submissionsRoutes);
+app.use('/api/print', staffRequired, printRoutes);
 
 // هندلر خطای مرکزی
 app.use((err, req, res, next) => {
