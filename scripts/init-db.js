@@ -31,16 +31,11 @@ async function main() {
   });
   console.log(`→ دیتابیس: ${process.env.DB_NAME}`);
 
-  // ۱) جداول (فقط اگر هنوز ساخته نشده‌اند)
-  const [[t]] = await conn.query(
-    "SELECT COUNT(*) c FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='roles'");
-  if (!t.c) {
-    console.log('→ ساخت جداول از db/schema.sql …');
-    await conn.query(fs.readFileSync(path.join(root, 'db', 'schema.sql'), 'utf8'));
-    console.log('  ✔ جداول ساخته شد');
-  } else {
-    console.log('→ جداول از قبل وجود دارند؛ فقط دادهٔ پایه بررسی می‌شود');
-  }
+  // ۱) جداول — schema.sql با CREATE TABLE IF NOT EXISTS است، پس همیشه امن اجرا می‌شود
+  //    (جدول‌های نبوده را می‌سازد، موجودها را رد می‌کند؛ حتی روی دیتابیس نیمه‌ساخته)
+  console.log('→ ساخت/بررسی جداول از db/schema.sql …');
+  await conn.query(fs.readFileSync(path.join(root, 'db', 'schema.sql'), 'utf8'));
+  console.log('  ✔ جداول آماده است');
 
   // ۲) نقش‌ها و انواع اشخاص (یکتا → IGNORE)
   await conn.query(`INSERT IGNORE INTO roles (name,title,is_system) VALUES

@@ -1,5 +1,6 @@
 -- اسکیمای کامل و واحدِ سامانه لبنیات (snapshot از دیتابیس فعلی)
--- ساخت روی پروداکشن:  mysql -u <user> <db> < db/schema.sql   یا  node scripts/init-db.js
+-- idempotent: روی دیتابیس خالی یا نیمه‌ساخته امن است. جدول sessions را خودِ اپ می‌سازد.
+-- ساخت روی پروداکشن:  node scripts/init-db.js
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -15,7 +16,7 @@ SET FOREIGN_KEY_CHECKS=0;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `account_balances` (
+CREATE TABLE IF NOT EXISTS `account_balances` (
   `person_id` bigint NOT NULL,
   `current_balance` decimal(18,0) NOT NULL DEFAULT '0',
   `milk_kg_month` decimal(14,3) NOT NULL DEFAULT '0.000',
@@ -35,7 +36,7 @@ CREATE TABLE `account_balances` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `audit_logs` (
+CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `entity_type` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
   `entity_id` bigint DEFAULT NULL,
@@ -52,7 +53,7 @@ CREATE TABLE `audit_logs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `branches` (
+CREATE TABLE IF NOT EXISTS `branches` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -67,7 +68,7 @@ CREATE TABLE `branches` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `milk_deliveries` (
+CREATE TABLE IF NOT EXISTS `milk_deliveries` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `person_id` bigint NOT NULL,
@@ -88,7 +89,7 @@ CREATE TABLE `milk_deliveries` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `milk_price_history` (
+CREATE TABLE IF NOT EXISTS `milk_price_history` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `year_month_jalali` char(7) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -104,7 +105,7 @@ CREATE TABLE `milk_price_history` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `month_closings` (
+CREATE TABLE IF NOT EXISTS `month_closings` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `year_month_jalali` char(7) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -119,7 +120,7 @@ CREATE TABLE `month_closings` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `order_items` (
+CREATE TABLE IF NOT EXISTS `order_items` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `order_id` bigint NOT NULL,
   `product_id` bigint NOT NULL,
@@ -135,7 +136,7 @@ CREATE TABLE `order_items` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `orders` (
+CREATE TABLE IF NOT EXISTS `orders` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `order_no` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -161,7 +162,7 @@ CREATE TABLE `orders` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `payments` (
+CREATE TABLE IF NOT EXISTS `payments` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `person_id` bigint NOT NULL,
@@ -179,7 +180,7 @@ CREATE TABLE `payments` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `person_roles` (
+CREATE TABLE IF NOT EXISTS `person_roles` (
   `person_id` bigint NOT NULL,
   `person_type_id` bigint NOT NULL,
   PRIMARY KEY (`person_id`,`person_type_id`),
@@ -190,7 +191,7 @@ CREATE TABLE `person_roles` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `person_types` (
+CREATE TABLE IF NOT EXISTS `person_types` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `key` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -200,7 +201,7 @@ CREATE TABLE `person_types` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `persons` (
+CREATE TABLE IF NOT EXISTS `persons` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `person_code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `username` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -227,7 +228,7 @@ CREATE TABLE `persons` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `print_jobs` (
+CREATE TABLE IF NOT EXISTS `print_jobs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `kind` enum('waybill','receipt','statement','test') NOT NULL,
@@ -250,7 +251,7 @@ CREATE TABLE `print_jobs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `product_categories` (
+CREATE TABLE IF NOT EXISTS `product_categories` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
@@ -258,7 +259,7 @@ CREATE TABLE `product_categories` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `production_batches` (
+CREATE TABLE IF NOT EXISTS `production_batches` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `batch_code` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -274,7 +275,7 @@ CREATE TABLE `production_batches` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `production_inputs` (
+CREATE TABLE IF NOT EXISTS `production_inputs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `batch_id` bigint NOT NULL,
   `product_id` bigint NOT NULL,
@@ -289,7 +290,7 @@ CREATE TABLE `production_inputs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `production_outputs` (
+CREATE TABLE IF NOT EXISTS `production_outputs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `batch_id` bigint NOT NULL,
   `product_id` bigint NOT NULL,
@@ -304,7 +305,7 @@ CREATE TABLE `production_outputs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `products` (
+CREATE TABLE IF NOT EXISTS `products` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -326,7 +327,7 @@ CREATE TABLE `products` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `purchase_submissions` (
+CREATE TABLE IF NOT EXISTS `purchase_submissions` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `person_id` bigint NOT NULL,
   `amount` decimal(18,0) NOT NULL,
@@ -345,7 +346,7 @@ CREATE TABLE `purchase_submissions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `receipts` (
+CREATE TABLE IF NOT EXISTS `receipts` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `receipt_no` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -374,7 +375,7 @@ CREATE TABLE `receipts` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `roles` (
+CREATE TABLE IF NOT EXISTS `roles` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
   `title` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -385,16 +386,7 @@ CREATE TABLE `roles` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `sessions` (
-  `session_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-  `expires` int unsigned NOT NULL,
-  `data` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  PRIMARY KEY (`session_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `settings` (
+CREATE TABLE IF NOT EXISTS `settings` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `scope` enum('global','branch','user') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'global',
   `scope_id` bigint DEFAULT NULL,
@@ -406,7 +398,7 @@ CREATE TABLE `settings` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `stock_balances` (
+CREATE TABLE IF NOT EXISTS `stock_balances` (
   `warehouse_id` bigint NOT NULL,
   `product_id` bigint NOT NULL,
   `quantity` decimal(14,3) NOT NULL DEFAULT '0.000',
@@ -416,7 +408,7 @@ CREATE TABLE `stock_balances` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `stock_movements` (
+CREATE TABLE IF NOT EXISTS `stock_movements` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `warehouse_id` bigint NOT NULL,
@@ -437,7 +429,7 @@ CREATE TABLE `stock_movements` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `transactions` (
+CREATE TABLE IF NOT EXISTS `transactions` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `person_id` bigint NOT NULL,
@@ -463,7 +455,7 @@ CREATE TABLE `transactions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `units` (
+CREATE TABLE IF NOT EXISTS `units` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `name` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
   `symbol` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -472,7 +464,7 @@ CREATE TABLE `units` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `person_id` bigint DEFAULT NULL,
@@ -497,7 +489,7 @@ CREATE TABLE `users` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `warehouses` (
+CREATE TABLE IF NOT EXISTS `warehouses` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `name` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -510,7 +502,7 @@ CREATE TABLE `warehouses` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `waste_log` (
+CREATE TABLE IF NOT EXISTS `waste_log` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
   `kind` enum('milk','product') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'milk',
