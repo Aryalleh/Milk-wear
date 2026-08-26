@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "db:init": "node scripts/init-db.js",
     "db:reset": "node scripts/reset-db.js",
     "db:seed": "node scripts/seed.js"
   },
