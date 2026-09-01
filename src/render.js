@@ -10,8 +10,11 @@ async function getBrowser() {
   if (_launching) return _launching;
   _launching = (async () => {
     const pp = (await import('puppeteer')).default;
+    // اگر Chromeِ سیستمی نصب است، از آن استفاده کن (PUPPETEER_EXECUTABLE_PATH)، وگرنه Chromeِ خودِ puppeteer
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
     _browser = await pp.launch({
       headless: 'new',
+      executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
     _browser.on('disconnected', () => { _browser = null; });
