@@ -1,6 +1,5 @@
 -- اسکیمای کامل و واحدِ سامانه لبنیات (snapshot از دیتابیس فعلی)
--- idempotent: روی دیتابیس خالی یا نیمه‌ساخته امن است. جدول sessions را خودِ اپ می‌سازد.
--- ساخت روی پروداکشن:  node scripts/init-db.js
+-- idempotent؛ جدول sessions را خودِ اپ می‌سازد.  ساخت:  node scripts/init-db.js
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -159,6 +158,8 @@ CREATE TABLE IF NOT EXISTS `order_items` (
   `quantity` decimal(14,3) NOT NULL,
   `unit_price` decimal(18,0) NOT NULL,
   `amount` decimal(18,0) NOT NULL,
+  `packaging_qty` decimal(14,3) NOT NULL DEFAULT '0.000',
+  `packaging_cost` decimal(18,0) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `fk_oi_order` (`order_id`),
   KEY `fk_oi_prod` (`product_id`),
@@ -191,6 +192,49 @@ CREATE TABLE IF NOT EXISTS `orders` (
   KEY `idx_ord_person` (`person_id`),
   CONSTRAINT `fk_ord_person` FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `packaging_consumptions` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL,
+  `order_item_id` bigint DEFAULT NULL,
+  `layer_id` bigint NOT NULL,
+  `qty` decimal(14,3) NOT NULL,
+  `cost` decimal(18,0) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ord` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `packaging_layers` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `packaging_id` bigint NOT NULL,
+  `qty` decimal(14,3) NOT NULL,
+  `unit_price` decimal(18,0) NOT NULL,
+  `remaining_qty` decimal(14,3) NOT NULL,
+  `purchased_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `note` varchar(255) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pkg` (`packaging_id`,`remaining_qty`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `packagings` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(120) NOT NULL,
+  `unit_id` bigint DEFAULT NULL,
+  `default_price` decimal(18,0) NOT NULL DEFAULT '0',
+  `note` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -343,6 +387,8 @@ CREATE TABLE IF NOT EXISTS `products` (
   `name` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `category_id` bigint DEFAULT NULL,
   `unit_id` bigint DEFAULT NULL,
+  `packaging_id` bigint DEFAULT NULL,
+  `packaging_per_unit` decimal(10,3) NOT NULL DEFAULT '1.000',
   `base_price` decimal(18,0) NOT NULL DEFAULT '0',
   `is_raw_milk` tinyint(1) NOT NULL DEFAULT '0',
   `track_stock` tinyint(1) NOT NULL DEFAULT '1',

@@ -16,6 +16,7 @@
     <button data-tab="users" onclick="tab('users')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">کاربران</button>
     <button data-tab="audit" onclick="tab('audit')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">لاگ‌ها</button>
     <button data-tab="dairy" onclick="tab('dairy')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">شارژ لبنیات</button>
+    <button data-tab="packaging" onclick="tab('packaging')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">بسته‌بندی/ظرف</button>
     <button data-tab="trusted" onclick="tab('trusted')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">اشخاص معتمد</button>
     <button data-tab="access" onclick="tab('access')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">دسترسی نقش‌ها</button>
     <button data-tab="print" onclick="tab('print')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">چاپ و سفارش‌گیری</button>
@@ -90,6 +91,25 @@
   </div>
 
   <!-- GENERAL -->
+  <!-- بسته‌بندی/ظرف با قیمت FIFO -->
+  <div id="t-packaging" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-box text-amber-600 ml-1"></i> بسته‌بندی/ظرف</h3>
+      <p class="text-[11px] text-gray-400 mb-4">هر خریدِ ظرف یک «لایهٔ قیمت» است؛ موقع فروش به‌ترتیب FIFO (قدیمی‌ترین اول) مصرف و هزینه‌اش به فاکتور اضافه می‌شود.</p>
+      <div class="flex flex-wrap gap-2 items-end">
+        <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">نام ظرف</label><input id="pgName" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً لیوان ماست ۵۰۰گرمی"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">قیمت پیش‌فرض</label><input id="pgDefPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+        <button onclick="addPackaging()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">افزودن ظرف</button>
+      </div>
+      <div class="overflow-x-auto mt-4"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ظرف</th><th class="p-2">موجودی</th><th class="p-2">قیمت بعدی (FIFO)</th><th class="p-2">خرید لایه</th></tr></thead><tbody id="pgTable" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+    <div class="skeu-card p-6">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-link text-indigo-600 ml-1"></i> انتساب ظرف به کالاها</h3>
+      <p class="text-[11px] text-gray-400 mb-3">مشخص کنید هر کالا در چه ظرفی می‌رود و چند ظرف به‌ازای هر واحد.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">ظرف</th><th class="p-2">تعداد ظرف/واحد</th><th class="p-2"></th></tr></thead><tbody id="pgAssign" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+  </div>
+
   <!-- دسترسی نقش‌ها به صفحات -->
   <div id="t-access" class="tabc hidden space-y-6">
     <div class="skeu-card p-6">
@@ -190,9 +210,26 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy','access','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','packaging','access','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='packaging') loadPackaging(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+async function loadPackaging(){
+  const [pkgs, prods] = await Promise.all([api('/packagings'), api('/products')]);
+  window._pkgs=pkgs;
+  document.getElementById('pgTable').innerHTML = pkgs.map(g=>`<tr><td class="p-2 font-bold">${g.name}</td><td class="p-2 font-black ${g.on_hand>0?'text-green-600':'text-gray-400'}">${fmt(g.on_hand)} ${g.unit||''}</td><td class="p-2">${g.next_price!=null?fmt(g.next_price):('پیش‌فرض '+fmt(g.default_price))}</td><td class="p-2"><button onclick="buyLayer(${g.id},'${(g.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i>خرید</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">ظرفی تعریف نشده</td></tr>';
+  const opts=(sel)=>`<option value="">— بدون ظرف —</option>`+pkgs.map(g=>`<option value="${g.id}" ${sel==g.id?'selected':''}>${g.name}</option>`).join('');
+  document.getElementById('pgAssign').innerHTML = prods.filter(p=>!p.is_raw_milk).map(p=>`<tr>
+    <td class="p-2 font-bold">${p.name}</td>
+    <td class="p-2"><select class="pa-pkg input-skeu rounded px-2 py-1" data-pid="${p.id}">${opts(p.packaging_id)}</select></td>
+    <td class="p-2"><input class="pa-per input-skeu rounded px-2 py-1 w-20" type="number" step="0.001" value="${p.packaging_per_unit||1}" data-pid="${p.id}"></td>
+    <td class="p-2"><button onclick="saveAssign(${p.id})" class="text-blue-600 text-xs font-bold">ذخیره</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">کالایی نیست</td></tr>';
+}
+async function addPackaging(){ const name=document.getElementById('pgName').value.trim(); if(!name){ toast('نام لازم است','err'); return; }
+  try{ await api('/packagings',{method:'POST',body:{name,default_price:Number(document.getElementById('pgDefPrice').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+async function buyLayer(id,name){ const qty=prompt('تعداد خریداری‌شده از «'+name+'»:'); if(!qty)return; const price=prompt('قیمت هر عدد (ریال):'); if(price===null)return;
+  try{ await api('/packagings/'+id+'/purchase',{method:'POST',body:{qty:Number(qty),unit_price:Number(price)}}); toast('لایهٔ قیمت اضافه شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+async function saveAssign(pid){ const pkg=document.querySelector(`.pa-pkg[data-pid="${pid}"]`).value; const per=document.querySelector(`.pa-per[data-pid="${pid}"]`).value;
+  try{ await api('/packagings/assign/'+pid,{method:'PUT',body:{packaging_id:pkg||null,packaging_per_unit:Number(per)||1}}); toast('ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 
 const ACCESS_PAGES=['dashboard','operations','orders','production','inventory','reports'];
 const ACCESS_ROLE_FA={accountant:'حسابداری',station:'مسئول ایستگاه',store:'فروشگاه',distribution:'مدیر پخش',driver:'کارگر/راننده'};

@@ -40,7 +40,7 @@
 <!-- مودال ساخت سفارش/فروش جدید -->
 <div id="createModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
   <div class="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 max-h-[94vh] overflow-y-auto">
-    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">سفارش / فروش جدید</h3><button onclick="closeCreate()" class="text-gray-400 text-2xl">&times;</button></div>
+    <div class="flex justify-between items-center mb-4"><h3 id="createTitle" class="font-black text-gray-800">سفارش / فروش جدید</h3><button onclick="closeCreate()" class="text-gray-400 text-2xl">&times;</button></div>
     <!-- طرف حساب -->
     <label class="text-xs text-gray-500 block mb-1">طرف حساب</label>
     <div class="flex gap-2">
@@ -118,7 +118,7 @@
 </div>
 
 <script>
-let filter='', products=[], warehouse=null, branchId=null, cust=null, ff='delivery', delId=null;
+let filter='', products=[], warehouse=null, branchId=null, cust=null, ff='delivery', delId=null, editId=null;
 const ST={queued:['در صف بار','bg-purple-100 text-purple-700'],confirmed:['در انتظار','bg-amber-100 text-amber-700'],delivered:['تحویل‌شده','bg-green-100 text-green-700'],settled:['تسویه','bg-blue-100 text-blue-700'],canceled:['لغو','bg-red-100 text-red-700'],draft:['پیش‌نویس','bg-gray-100 text-gray-500']};
 const FF={delivery:'ارسال',pickup:'درجا'};
 function setF(f){ filter=f; document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('active', b.dataset.f===f)); load(); }
@@ -158,7 +158,7 @@ async function details(id){ const d=await api('/orders/'+id); const o=d.order;
     <table class="w-full text-sm text-right border-t border-gray-100"><thead class="text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">تعداد</th><th class="p-2">مبلغ</th></tr></thead>
       <tbody class="divide-y divide-gray-100">${d.items.map(i=>`<tr><td class="p-2 font-bold">${i.product_name}</td><td class="p-2">${fmt(i.quantity)} ${i.unit||''}</td><td class="p-2">${fmt(i.amount)}</td></tr>`).join('')}</tbody></table>
     <div class="flex justify-between font-black mt-2"><span>جمع کل</span><span>${fmt(o.total_amount)} ریال</span></div>
-    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${(o.status==='queued'||o.status==='confirmed')?`<button onclick="document.getElementById('detModal').classList.add('hidden');openDeliver(${o.id})" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل</button>`:''}</div>
+    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${(o.status==='queued'||o.status==='confirmed')?`<button onclick="editOrder(${o.id})" class="flex-1 bg-amber-500 text-white py-2.5 rounded-lg font-bold">ویرایش</button><button onclick="document.getElementById('detModal').classList.add('hidden');openDeliver(${o.id})" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل</button>`:''}</div>
     <div class="flex gap-2 mt-2"><button onclick="custPay(${d.person.id},'in')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">دریافت وجه</button><button onclick="custPay(${d.person.id},'out')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">پرداخت/قرض به مشتری</button></div>`;
   document.getElementById('detModal').classList.remove('hidden'); }
 async function custPay(pid,dir){ const a=prompt(dir==='in'?'مبلغ دریافت از مشتری (ریال):':'مبلغ پرداخت/قرض‌الحسنه به مشتری (ریال):'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:pid,direction:dir,amount:Number(a),note:dir==='out'?'قرض‌الحسنه/پرداخت به مشتری':'دریافت از مشتری',branch_id:branchId||null}}); toast('ثبت شد'); document.getElementById('detModal').classList.add('hidden'); load(); }catch(e){toast(e.message,'err');} }
@@ -174,7 +174,7 @@ async function confirmDeliver(){ try{ const paid=Number(document.getElementById(
 }catch(e){ document.getElementById('delErr').textContent=e.message; } }
 
 // --- ساخت سفارش/فروش ---
-function openCreate(){ cust=null; ff='delivery'; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden');
+function openCreate(){ cust=null; ff='delivery'; editId=null; document.getElementById('createTitle').textContent='سفارش / فروش جدید'; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden');
   document.getElementById('custSearch').value=''; document.getElementById('dest').value=''; document.getElementById('paidAmount').value=''; document.getElementById('doPrint').checked=false; document.getElementById('createErr').textContent='';
   document.getElementById('cart').innerHTML=''; addRow();
   const canDeliver=(window.__user?.role!=='driver');
@@ -197,20 +197,32 @@ function clearCust(){ cust=null; document.getElementById('custChip').classList.a
 async function walkIn(){ try{ const list=await api('/persons?q=مشتری نقدی'); let w=list.find(p=>p.fullname==='مشتری نقدی');
   if(!w){ const r=await api('/persons',{method:'POST',body:{fullname:'مشتری نقدی',roles:['customer']}}); w={id:r.id,fullname:'مشتری نقدی',person_code:'—'}; }
   pickCust(w.id,'مشتری نقدی',w.person_code||'—'); ff='pickup'; setFF('pickup'); }catch(e){ toast(e.message,'err'); } }
-function addRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+function addRow(pre){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
   div.innerHTML=`<select class="c-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>{const s=(window.stockMap||{})[p.id]; const st=s!=null?` — موجودی: ${fmt(s)}`:''; return `<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})${st}</option>`;}).join('')}</select>
     <input class="c-qty input-skeu rounded-lg px-2 py-2 w-16" type="number" step="0.001" value="1" oninput="calc()">
     <input class="c-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت" oninput="calc()">
     <button class="text-red-500 px-1" onclick="this.parentElement.remove();calc()">&times;</button>`;
   document.getElementById('cart').appendChild(div);
-  div.querySelector('.c-prod').onchange=(e)=>{ div.querySelector('.c-price').value=e.target.selectedOptions[0]?.dataset.price||''; calc(); }; }
+  div.querySelector('.c-prod').onchange=(e)=>{ div.querySelector('.c-price').value=e.target.selectedOptions[0]?.dataset.price||''; calc(); };
+  if(pre){ div.querySelector('.c-prod').value=pre.product_id; div.querySelector('.c-qty').value=pre.quantity; div.querySelector('.c-price').value=pre.unit_price; } }
+async function editOrder(id){ const d=await api('/orders/'+id); const o=d.order;
+  document.getElementById('detModal').classList.add('hidden');
+  openCreate(); editId=id;
+  document.getElementById('createTitle').textContent='ویرایش سفارش '+o.order_no;
+  cust={id:d.person.id,name:d.person.fullname,code:d.person.person_code};
+  const chip=document.getElementById('custChip'); chip.innerHTML=`<i class="fa-solid fa-user"></i> ${d.person.fullname} (${d.person.person_code})`; chip.classList.remove('hidden');
+  document.getElementById('dest').value=o.destination||'';
+  document.getElementById('cart').innerHTML=''; (d.items||[]).forEach(i=>addRow({product_id:i.product_id,quantity:Number(i.quantity),unit_price:Number(i.unit_price)})); if(!d.items.length) addRow();
+  calc(); }
 function readCart(){ return [...document.getElementById('cart').children].map(r=>({product_id:Number(r.querySelector('.c-prod').value),quantity:Number(r.querySelector('.c-qty').value),unit_price:r.querySelector('.c-price').value===''?null:Number(r.querySelector('.c-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
 function calc(){ const t=[...document.getElementById('cart').children].reduce((s,r)=>{const p=Number(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0); const el=document.getElementById('cartTotal'); el.textContent=fmt(t); el.dataset.raw=t; }
 async function submitOrder(allowNeg){ const errEl=document.getElementById('createErr'); errEl.textContent='';
   if(!cust){ errEl.textContent='طرف حساب را انتخاب کنید'; return; }
   const items=readCart(); if(!items.length){ errEl.textContent='حداقل یک قلم کالا لازم است'; return; }
   const body={person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:Number(document.getElementById('paidAmount').value||0), payment_method:'cash', print:document.getElementById('doPrint').checked, allow_negative:!!allowNeg};
-  try{ await api('/orders',{method:'POST',body});
+  try{
+    if(editId){ await api('/orders/'+editId+'/edit',{method:'PUT',body:{items,destination:document.getElementById('dest').value||null,allow_negative:!!allowNeg}}); closeCreate(); toast('سفارش ویرایش شد'); load(); return; }
+    await api('/orders',{method:'POST',body});
     closeCreate(); toast(ff==='pickup'?'فروش ثبت شد':'سفارش ثبت و به صف بار رفت'); load();
   }catch(e){
     if(!allowNeg && /کسری موجودی/.test(e.message)){
