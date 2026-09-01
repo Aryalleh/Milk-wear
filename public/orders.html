@@ -198,7 +198,7 @@ async function walkIn(){ try{ const list=await api('/persons?q=مشتری نقد
   if(!w){ const r=await api('/persons',{method:'POST',body:{fullname:'مشتری نقدی',roles:['customer']}}); w={id:r.id,fullname:'مشتری نقدی',person_code:'—'}; }
   pickCust(w.id,'مشتری نقدی',w.person_code||'—'); ff='pickup'; setFF('pickup'); }catch(e){ toast(e.message,'err'); } }
 function addRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
-  div.innerHTML=`<select class="c-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select>
+  div.innerHTML=`<select class="c-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.map(p=>{const s=(window.stockMap||{})[p.id]; const st=s!=null?` — موجودی: ${fmt(s)}`:''; return `<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})${st}</option>`;}).join('')}</select>
     <input class="c-qty input-skeu rounded-lg px-2 py-2 w-16" type="number" step="0.001" value="1" oninput="calc()">
     <input class="c-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت" oninput="calc()">
     <button class="text-red-500 px-1" onclick="this.parentElement.remove();calc()">&times;</button>`;
@@ -206,12 +206,18 @@ function addRow(){ const div=document.createElement('div'); div.className='flex 
   div.querySelector('.c-prod').onchange=(e)=>{ div.querySelector('.c-price').value=e.target.selectedOptions[0]?.dataset.price||''; calc(); }; }
 function readCart(){ return [...document.getElementById('cart').children].map(r=>({product_id:Number(r.querySelector('.c-prod').value),quantity:Number(r.querySelector('.c-qty').value),unit_price:r.querySelector('.c-price').value===''?null:Number(r.querySelector('.c-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
 function calc(){ const t=[...document.getElementById('cart').children].reduce((s,r)=>{const p=Number(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0); const el=document.getElementById('cartTotal'); el.textContent=fmt(t); el.dataset.raw=t; }
-async function submitOrder(){ document.getElementById('createErr').textContent='';
-  if(!cust){ document.getElementById('createErr').textContent='طرف حساب را انتخاب کنید'; return; }
-  const items=readCart(); if(!items.length){ document.getElementById('createErr').textContent='حداقل یک قلم کالا لازم است'; return; }
-  try{ const r=await api('/orders',{method:'POST',body:{person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:Number(document.getElementById('paidAmount').value||0), payment_method:'cash', print:document.getElementById('doPrint').checked}});
+async function submitOrder(allowNeg){ const errEl=document.getElementById('createErr'); errEl.textContent='';
+  if(!cust){ errEl.textContent='طرف حساب را انتخاب کنید'; return; }
+  const items=readCart(); if(!items.length){ errEl.textContent='حداقل یک قلم کالا لازم است'; return; }
+  const body={person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:Number(document.getElementById('paidAmount').value||0), payment_method:'cash', print:document.getElementById('doPrint').checked, allow_negative:!!allowNeg};
+  try{ await api('/orders',{method:'POST',body});
     closeCreate(); toast(ff==='pickup'?'فروش ثبت شد':'سفارش ثبت و به صف بار رفت'); load();
-  }catch(e){ document.getElementById('createErr').textContent=e.message; } }
+  }catch(e){
+    if(!allowNeg && /کسری موجودی/.test(e.message)){
+      if(confirm(e.message+'\n\nبا این‌حال ثبت شود؟ (موجودی منفی می‌شود)')) return submitOrder(true);
+    }
+    errEl.textContent=e.message;
+  } }
 
 // --- مانیفست ---
 async function openManifest(){ const m=await api('/orders/manifest'); window._manCount=m.order_count;
@@ -224,6 +230,7 @@ async function printAllWaybills(){ const c=window._manCount||0; if(!c){ toast('�
 
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('orders','سفارش‌ها'); branchId=u.branch_id||null;
   products=await api('/products'); const whs=await api('/inventory/warehouses'); warehouse=(whs.find(w=>/فروشگاه|store/i.test(w.name))||whs[0])?.id||null;
+  try{ const inv=await api('/inventory'); window.stockMap=Object.fromEntries(inv.map(p=>[p.id, p.on_hand])); }catch{}
   live(load, 15000); })();
 </script>
 </body>

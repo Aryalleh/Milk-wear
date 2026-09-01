@@ -125,17 +125,35 @@ router.post('/', wrap(async (req, res) => {
   if (fulfill === 'delivery' && !canCreateDelivery(req.user.role))
     throw new AppError(403, 'این نقش اجازهٔ ثبت سفارشِ ارسالی ندارد؛ فقط فروش حضوری.');
   const paid = Math.max(0, Math.round(Number(paid_amount || 0)));
+  const allowNegative = req.body.allow_negative === true;   // بای‌پس خطای کسری موجودی
 
   const result = await withTx(async (conn) => {
     let total = 0;
     const lines = [];
+    const shortages = [];
     for (const it of items) {
       const [[prod]] = await conn.query('SELECT * FROM products WHERE id = ?', [it.product_id]);
       if (!prod) throw new AppError(400, `کالا یافت نشد: ${it.product_id}`);
       const price = it.unit_price != null ? Number(it.unit_price) : Number(prod.base_price);
-      const amount = Math.round(price * Number(it.quantity));
+      const qty = Number(it.quantity);
+      const amount = Math.round(price * qty);
       total += amount;
-      lines.push({ prod, quantity: Number(it.quantity), price, amount });
+      lines.push({ prod, quantity: qty, price, amount });
+      // بررسی موجودی برای کالاهای انبارداری‌شده
+      if (prod.track_stock && warehouse_id) {
+        const [[bal]] = await conn.query(
+          'SELECT COALESCE(quantity,0) q FROM stock_balances WHERE warehouse_id=? AND product_id=?',
+          [warehouse_id, prod.id]);
+        const onHand = Number(bal?.q || 0);
+        if (onHand < qty) shortages.push({ product: prod.name, on_hand: onHand, need: qty });
+      }
+    }
+    // اگر کسری موجودی هست و بای‌پس نشده → خطای قابل‌فهم برمی‌گردانیم
+    if (shortages.length && !allowNegative) {
+      const msg = 'کسری موجودی: ' + shortages.map((s) => `${s.product} (موجود ${s.on_hand}، نیاز ${s.need})`).join('، ');
+      const err = new AppError(409, msg);
+      err.shortages = shortages;
+      throw err;
     }
 
     const orderNo = await nextOrderNo(conn);

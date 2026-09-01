@@ -23,6 +23,7 @@ import auditRoutes from './routes/audit.js';
 import publicRoutes from './routes/public.js';
 import settingsRoutes from './routes/settings.js';
 import reportsRoutes from './routes/reports.js';
+import expensesRoutes from './routes/expenses.js';
 import submissionsRoutes from './routes/submissions.js';
 import agentRoutes from './routes/agent.js';
 import printRoutes from './routes/print.js';
@@ -116,6 +117,7 @@ app.use('/api/waste', staffRequired, wasteRoutes);
 app.use('/api/audit', staffRequired, auditRoutes);
 app.use('/api/settings', staffRequired, settingsRoutes);
 app.use('/api/reports', staffRequired, reportsRoutes);
+app.use('/api/expenses', staffRequired, expensesRoutes);
 app.use('/api/submissions', staffRequired, submissionsRoutes);
 app.use('/api/print', staffRequired, printRoutes);
 

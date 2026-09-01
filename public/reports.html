@@ -27,12 +27,37 @@
   </div>
 
   <!-- کارت‌های کلیدی مالی -->
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش کل</p><p id="tSale" class="font-black text-lg text-amber-700">—</p></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش خالص</p><p id="tNetSale" class="font-black text-lg text-amber-800">—</p></div>
-    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">درآمد (دریافتی)</p><p id="tIncome" class="font-black text-lg text-green-700">—</p></div>
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">خرید شیر/کالا</p><p id="tPurch" class="font-black text-lg text-blue-700">—</p></div>
-    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">پرداختی (هزینه)</p><p id="tOut" class="font-black text-lg text-red-600">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">هزینه‌های کسب‌وکار</p><p id="tExp" class="font-black text-lg text-red-600">—</p></div>
+    <div class="skeu-card p-4 text-center ring-2 ring-green-200"><p class="text-[11px] text-gray-500 mb-1">سود</p><p id="tProfit" class="font-black text-lg">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش کل</p><p id="tSale" class="font-black text-base text-amber-700">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">درآمد (دریافتی)</p><p id="tIncome" class="font-black text-base text-green-700">—</p></div>
+    <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">پرداختی نقدی</p><p id="tOut" class="font-black text-base text-slate-600">—</p></div>
+  </div>
+
+  <!-- هزینه‌های کسب‌وکار -->
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-money-bill-wave text-red-500 ml-1"></i> هزینه‌های کسب‌وکار</h3>
+    <p class="text-[11px] text-gray-400 mb-4">حقوق، قبوض (آب/برق/گاز)، خودرو، اجاره، ملزومات… — از سود کم می‌شوند تا محاسبه دقیق باشد.</p>
+    <div class="flex flex-wrap gap-2 items-end">
+      <div><label class="text-xs text-gray-500 block mb-1">نوع</label>
+        <select id="exCat" onchange="exCatChange()" class="input-skeu rounded-lg px-3 py-2">
+          <option value="salary">حقوق کارمند</option><option value="utilities">قبوض (آب/برق/گاز)</option>
+          <option value="rent">اجاره</option><option value="vehicle">خودرو/حمل‌ونقل</option>
+          <option value="supplies">ملزومات</option><option value="tax">مالیات/عوارض</option><option value="other" selected>سایر</option>
+        </select></div>
+      <div id="exUserWrap" class="hidden"><label class="text-xs text-gray-500 block mb-1">کارمند</label>
+        <select id="exUser" class="input-skeu rounded-lg px-3 py-2"></select></div>
+      <div class="flex-1 min-w-[140px]"><label class="text-xs text-gray-500 block mb-1">عنوان</label><input id="exTitle" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً قبض برق مرداد"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">مبلغ (ریال)</label><input id="exAmount" type="number" class="input-skeu rounded-lg px-3 py-2 w-32"></div>
+      <div><label class="text-xs text-gray-500 block mb-1">تاریخ</label><input id="exDateJ" data-jdp data-jdp-target-value-input="#exDateG" data-jdp-target-value-type="gregorian" readonly class="input-skeu rounded-lg px-3 py-2 w-32"><input type="hidden" id="exDateG"></div>
+      <button onclick="addExpense()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">ثبت هزینه</button>
+      <button onclick="saveExpenseTemplate()" class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg font-bold text-sm" title="ذخیره برای دفعهٔ بعد">قالب +</button>
+    </div>
+    <div id="exTemplates" class="flex flex-wrap gap-2 mt-3"></div>
+    <div id="exList" class="mt-4"></div>
   </div>
 
   <!-- خلاصهٔ مالی به تفکیک نوع -->
@@ -93,6 +118,8 @@ async function loadReports(){ const from=document.getElementById('fromG').value|
   [fin,goods]=await Promise.all([api(`/reports/financial?from=${from}&to=${to}`),api(`/reports/goods?from=${from}&to=${to}`)]);
   const T=fin.totals||{};
   set('tSale',fmt(T.total_sale)); set('tNetSale',fmt(T.net_sale)); set('tIncome',fmt(T.received)); set('tPurch',fmt(T.purchases)); set('tOut',fmt(T.paid_out));
+  set('tExp',fmt(T.expenses)); const pe=document.getElementById('tProfit'); if(pe){ pe.textContent=fmt(T.profit); pe.className='font-black text-lg '+((T.profit||0)<0?'text-red-600':'text-green-700'); }
+  loadExpenses();
   // summary
   document.getElementById('finSummary').innerHTML=fin.summary.map(s=>`<div class="bg-gray-50 border border-gray-100 rounded-xl p-3"><p class="text-[11px] text-gray-500 mb-1">${TYPE_FA[s.tx_type]||s.tx_type}</p><p class="font-black text-sm">${s.credit?('+'+fmt(s.credit)):''}${s.debit?(' -'+fmt(s.debit)):''}</p><p class="text-[10px] text-gray-400">${fmt(s.count)} مورد</p></div>`).join('')||'<p class="text-gray-400 text-sm col-span-4">داده‌ای نیست</p>';
   document.getElementById('finRows').innerHTML=fin.rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date}</td><td class="p-3">${r.person}</td><td class="p-3">${TYPE_FA[r.tx_type]||r.tx_type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 text-gray-500">${r.description||''}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>';
@@ -152,9 +179,29 @@ async function stCSV(){ const p=stParams(); if(!p)return; const d=await api('/re
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`statement-${d.person.person_code}.csv`; a.click();
 }
 
+// ---- هزینه‌ها ----
+const EX_CAT_FA={salary:'حقوق',utilities:'قبوض',rent:'اجاره',vehicle:'خودرو',supplies:'ملزومات',tax:'مالیات',other:'سایر'};
+let _exUsersLoaded=false;
+function exCatChange(){ const isSalary=document.getElementById('exCat').value==='salary'; document.getElementById('exUserWrap').classList.toggle('hidden',!isSalary);
+  if(isSalary && !_exUsersLoaded){ api('/users').then(us=>{ document.getElementById('exUser').innerHTML=(us||[]).map(u=>`<option value="${u.id}">${u.fullname}</option>`).join(''); _exUsersLoaded=true; }).catch(()=>{}); } }
+async function loadExpenses(){ const from=document.getElementById('fromG').value||today(), to=document.getElementById('toG').value||today();
+  const [d,tpls]=await Promise.all([api(`/expenses?from=${from}&to=${to}`),api('/expenses/templates').catch(()=>[])]);
+  document.getElementById('exTemplates').innerHTML = tpls.length? ('<span class="text-[11px] text-gray-400 self-center">قالب‌ها:</span>'+tpls.map(t=>`<button onclick="useTemplate('${(t.title||'').replace(/'/g,'')}',${t.default_amount},'${t.category}')" class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold">${t.title} (${fmt(t.default_amount)})</button>`).join('')) : '';
+  document.getElementById('exList').innerHTML = d.rows.length? `<div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">تاریخ</th><th class="p-2">نوع</th><th class="p-2">عنوان</th><th class="p-2">مبلغ</th><th class="p-2"></th></tr></thead><tbody class="divide-y divide-gray-100">${d.rows.map(r=>`<tr><td class="p-2 text-gray-500">${r.spent_jalali}</td><td class="p-2">${EX_CAT_FA[r.category]||r.category}</td><td class="p-2">${r.title}${r.ref_user?(' — '+r.ref_user):''}</td><td class="p-2 font-bold text-red-600">${fmt(r.amount)}</td><td class="p-2"><button onclick="delExpense(${r.id})" class="text-red-500 text-xs">حذف</button></td></tr>`).join('')}</tbody></table></div><div class="flex justify-between font-black mt-2 pt-2 border-t"><span>جمع هزینه‌ها</span><span class="text-red-600">${fmt(d.total)} ریال</span></div>` : '<p class="text-center text-gray-400 py-3 text-sm">هزینه‌ای در این بازه ثبت نشده</p>';
+}
+function exBody(){ const cat=document.getElementById('exCat').value; const b={ category:cat, title:document.getElementById('exTitle').value.trim(), amount:Number(document.getElementById('exAmount').value||0), spent_at:document.getElementById('exDateG').value||undefined }; if(cat==='salary') b.ref_user_id=document.getElementById('exUser').value||null; return b; }
+async function addExpense(){ const b=exBody(); if(!b.title){ toast('عنوان لازم است','err'); return; } if(!(b.amount>0)){ toast('مبلغ لازم است','err'); return; }
+  try{ await api('/expenses',{method:'POST',body:b}); document.getElementById('exTitle').value=''; document.getElementById('exAmount').value=''; toast('هزینه ثبت شد'); loadReports(); }catch(e){ toast(e.message,'err'); } }
+async function saveExpenseTemplate(){ const b=exBody(); if(!b.title){ toast('برای قالب، عنوان لازم است','err'); return; }
+  try{ await api('/expenses/templates',{method:'POST',body:{category:b.category,title:b.title,default_amount:b.amount,ref_user_id:b.ref_user_id}}); toast('قالب ذخیره شد'); loadExpenses(); }catch(e){ toast(e.message,'err'); } }
+function useTemplate(title,amount,cat){ document.getElementById('exCat').value=cat; exCatChange(); document.getElementById('exTitle').value=title; document.getElementById('exAmount').value=amount; toast('قالب بارگذاری شد — تاریخ را بزنید و «ثبت هزینه»'); }
+async function delExpense(id){ if(!confirm('حذف این هزینه؟'))return; try{ await api('/expenses/'+id,{method:'DELETE'}); loadReports(); }catch(e){ toast(e.message,'err'); } }
+
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('reports','گزارش‌ها');
   jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' });
-  const t=today(); setDates(t.slice(0,8)+'01', t); loadReports(); })();
+  const t=today(); setDates(t.slice(0,8)+'01', t);
+  document.getElementById('exDateG').value=t; document.getElementById('exDateJ').value=jdate(t);
+  loadReports(); })();
 </script>
 </body>
 </html>

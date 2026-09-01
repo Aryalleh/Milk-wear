@@ -41,9 +41,15 @@ router.get('/financial', wrap(async (req, res) => {
        COALESCE(SUM(CASE WHEN tx_type IN ('PAYMENT_OUT','CASH_WITHDRAWAL') THEN amount END),0) paid_out,
        COALESCE(SUM(CASE WHEN tx_type IN ('MILK_DELIVERY','PURCHASE','GOODS_IN') THEN amount END),0) purchases
      FROM transactions WHERE status='active' AND DATE(tx_date) BETWEEN ? AND ?`, [from, to]);
+  const [[ex]] = await pool.query(
+    'SELECT COALESCE(SUM(amount),0) total FROM expenses WHERE DATE(spent_at) BETWEEN ? AND ?', [from, to]);
+  const expenses = Number(ex.total);
+  const netSale = Number(t.total_sale) - Number(t.refunds);
   const totals = {
     total_sale: Number(t.total_sale),
-    net_sale: Number(t.total_sale) - Number(t.refunds),
+    net_sale: netSale,
+    expenses,                               // هزینه‌های کسب‌وکار (حقوق/قبوض/…)
+    profit: netSale - Number(t.purchases) - expenses,   // سود = فروش خالص − خرید − هزینه‌ها
     received: Number(t.received),           // درآمد (دریافت نقدی)
     paid_out: Number(t.paid_out),           // هزینه/پرداختی نقدی
     purchases: Number(t.purchases),         // خرید شیر/کالا از اشخاص
