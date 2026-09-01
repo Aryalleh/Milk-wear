@@ -68,6 +68,38 @@ CREATE TABLE IF NOT EXISTS `branches` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `expense_templates` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `category` enum('salary','utilities','rent','vehicle','supplies','tax','other') NOT NULL DEFAULT 'other',
+  `title` varchar(120) NOT NULL,
+  `default_amount` decimal(18,0) NOT NULL DEFAULT '0',
+  `ref_user_id` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `expenses` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `branch_id` bigint DEFAULT NULL,
+  `category` enum('salary','utilities','rent','vehicle','supplies','tax','other') NOT NULL DEFAULT 'other',
+  `title` varchar(120) NOT NULL,
+  `amount` decimal(18,0) NOT NULL DEFAULT '0',
+  `ref_user_id` bigint DEFAULT NULL,
+  `spent_at` date NOT NULL,
+  `year_month_jalali` char(7) NOT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_spent` (`spent_at`),
+  KEY `idx_ym` (`year_month_jalali`),
+  KEY `idx_cat` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `milk_deliveries` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
