@@ -219,19 +219,24 @@ async function editOrder(id){ const d=await api('/orders/'+id); const o=d.order;
   document.getElementById('cart').innerHTML=''; (d.items||[]).forEach(i=>addRow({product_id:i.product_id,quantity:Number(i.quantity),unit_price:Number(i.unit_price)})); if(!d.items.length) addRow();
   calc(); }
 function readCart(){ return [...document.getElementById('cart').children].map(r=>({product_id:Number(r.querySelector('.c-prod').value),quantity:Number(r.querySelector('.c-qty').value),unit_price:r.querySelector('.c-price').value===''?null:Number(r.querySelector('.c-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
+let _quoteTimer=null;
 function calc(){
-  const noPack=document.getElementById('noPack')?.checked;
-  let goods=0, pkg=0;
-  [...document.getElementById('cart').children].forEach(r=>{
-    const pid=Number(r.querySelector('.c-prod').value); const p=Number(r.querySelector('.c-price').value)||0; const q=Number(r.querySelector('.c-qty').value)||0;
-    goods+=Math.round(p*q);
-    if(!noPack && pid){ const pr=(window.prodMap||{})[pid]; if(pr&&pr.packaging_id){ const g=(window.pkgMap||{})[pr.packaging_id]; if(g){ const cap=Number(pr.packaging_capacity)||1; const cont=Math.ceil(q/cap); const up=(g.next_price!=null?g.next_price:g.default_price)||0; pkg+=Math.round(cont*up*(1+(g.margin_pct||0)/100)); } } }
-  });
-  const t=goods+pkg; const el=document.getElementById('cartTotal'); el.textContent=fmt(t); el.dataset.raw=t; el.dataset.pkg=pkg;
-  const h=document.getElementById('pkgHint'); if(h) h.textContent = pkg>0?`شامل هزینهٔ ظرف (تقریبی): ${fmt(pkg)} ریال`:'';
-  if(window._payFull) document.getElementById('paidAmount').value=t;
+  // نمایشِ فوریِ جمع کالا؛ سپس جمع دقیق (با ظرف) از سرور
+  const goods=[...document.getElementById('cart').children].reduce((s,r)=>{const p=Number(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0);
+  const el=document.getElementById('cartTotal'); el.textContent=fmt(goods); el.dataset.raw=goods; el.dataset.pkg=0;
+  clearTimeout(_quoteTimer); _quoteTimer=setTimeout(quoteNow, 350);
 }
-function payFullBtn(){ window._payFull=true; document.getElementById('paidAmount').value=document.getElementById('cartTotal').dataset.raw||0; }
+async function quoteNow(){
+  const items=readCart(); const el=document.getElementById('cartTotal'); const h=document.getElementById('pkgHint');
+  if(!items.length){ if(h) h.textContent=''; return; }
+  try{
+    const q=await api('/orders/quote',{method:'POST',body:{items,no_packaging:document.getElementById('noPack').checked}});
+    el.textContent=fmt(q.grand_total); el.dataset.raw=q.grand_total; el.dataset.pkg=q.packaging_cost;
+    if(h) h.textContent = q.packaging_cost>0?`شامل هزینهٔ ظرف: ${fmt(q.packaging_cost)} ریال (سود ${fmt(q.margin_pct)}٪)`:'';
+    if(window._payFull) document.getElementById('paidAmount').value=q.grand_total;
+  }catch(e){}
+}
+function payFullBtn(){ window._payFull=true; quoteNow().then(()=>{ document.getElementById('paidAmount').value=document.getElementById('cartTotal').dataset.raw||0; }); }
 async function submitOrder(allowNeg){ const errEl=document.getElementById('createErr'); errEl.textContent='';
   if(!cust){ errEl.textContent='طرف حساب را انتخاب کنید'; return; }
   const items=readCart(); if(!items.length){ errEl.textContent='حداقل یک قلم کالا لازم است'; return; }

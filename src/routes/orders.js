@@ -5,6 +5,13 @@ import { postTransaction, nextOrderNo, recomputeBalance } from '../ledger.js';
 import { enqueueReceipt } from '../print.js';
 import { canCreateDelivery } from '../access.js';
 import { consumePackaging, restorePackagingForOrder } from '../packaging.js';
+import { getSettings } from '../print.js';
+
+// درصد سودِ سراسریِ ظرف‌ها (همه یکسان، قابل تنظیم)
+async function packagingMargin() {
+  const s = await getSettings();
+  return Number(s.packaging_margin_pct) || 0;
+}
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -115,6 +122,37 @@ router.get('/:id', wrap(async (req, res) => {
 // ثبت سفارش/فروش توسط کارمند (فروشگاه و سفارش یکی شده‌اند)
 //  fulfillment_type: pickup (درجا می‌گیرد → تحویل‌شده) | delivery (راننده می‌برد → در صف)
 //  paid_amount: مبلغ پرداخت‌شده هنگام ثبت (نقد/کارت) — می‌تواند کمتر/بیشتر/صفر باشد
+
+// پیش‌محاسبهٔ دقیقِ جمع فاکتور (شبیه‌سازی FIFO ظرف، بدون ثبت) — برای نمایش زندهٔ «جمع فاکتور»
+router.post('/quote', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const { items = [], no_packaging } = req.body;
+  const marginPct = await packagingMargin();
+  let goods = 0, packaging = 0;
+  const cache = {};
+  for (const it of items) {
+    const [[prod]] = await pool.query('SELECT * FROM products WHERE id=?', [it.product_id]);
+    if (!prod) continue;
+    const price = it.unit_price != null ? Number(it.unit_price) : Number(prod.base_price);
+    const qty = Number(it.quantity) || 0;
+    goods += Math.round(price * qty);
+    if (!no_packaging && prod.packaging_id && qty > 0) {
+      const cap = Number(prod.packaging_capacity) > 0 ? Number(prod.packaging_capacity) : 1;
+      let need = Math.ceil(qty / cap);
+      if (!cache[prod.packaging_id]) {
+        const [ls] = await pool.query('SELECT remaining_qty rem, unit_price up FROM packaging_layers WHERE packaging_id=? AND remaining_qty>0 ORDER BY purchased_at,id', [prod.packaging_id]);
+        const [[pk]] = await pool.query('SELECT default_price FROM packagings WHERE id=?', [prod.packaging_id]);
+        cache[prod.packaging_id] = { layers: ls.map((l) => ({ rem: Number(l.rem), up: Number(l.up) })), def: Number(pk?.default_price || 0) };
+      }
+      const lc = cache[prod.packaging_id]; let cost = 0, last = lc.def;
+      for (const L of lc.layers) { if (need <= 0) break; last = L.up; const take = Math.min(L.rem, need); cost += Math.round(take * L.up); L.rem -= take; need -= take; }
+      if (need > 0) cost += Math.round(need * last);
+      packaging += Math.round(cost * (1 + marginPct / 100));
+    }
+  }
+  res.json({ goods_total: goods, packaging_cost: packaging, grand_total: goods + packaging, margin_pct: marginPct });
+}));
+
 router.post('/', wrap(async (req, res) => {
   if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فروش ثبت کنند');
   const { person_id, items, warehouse_id, note, branch_id,
@@ -129,6 +167,7 @@ router.post('/', wrap(async (req, res) => {
   const allowNegative = req.body.allow_negative === true;   // بای‌پس خطای کسری موجودی
   const noPackaging = req.body.no_packaging === true;       // مشتری ظرف خودش را آورده
   const paidFull = req.body.paid_full === true;             // «پرداخت کامل» = دقیقاً برابر جمع نهایی (با ظرف)
+  const marginPct = await packagingMargin();
 
   const result = await withTx(async (conn) => {
     let total = 0;
@@ -179,9 +218,9 @@ router.post('/', wrap(async (req, res) => {
       if (ln.prod.packaging_id && !noPackaging) {
         const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
         const need = Math.ceil(ln.quantity / cap);   // تعداد ظرفِ لازم = مقدار ÷ ظرفیت (روبه‌بالا)
-        const [[pkg]] = await conn.query('SELECT default_price, margin_pct FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, orderId, oi.insertId, pkg?.default_price || 0);
-        const charged = Math.round(cost * (1 + (Number(pkg?.margin_pct) || 0) / 100));   // هزینهٔ خرید + سود
+        const charged = Math.round(cost * (1 + marginPct / 100));   // هزینهٔ خرید + سودِ سراسری
         if (charged > 0) {
           await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, charged, oi.insertId]);
           packagingTotal += charged;
@@ -253,6 +292,7 @@ router.put('/:id/edit', wrap(async (req, res) => {
   const { items, destination, note } = req.body;
   if (!Array.isArray(items) || items.length === 0) throw new AppError(400, 'حداقل یک قلم کالا لازم است');
   const allowNegative = req.body.allow_negative === true;
+  const marginPct = await packagingMargin();
 
   const out = await withTx(async (conn) => {
     const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? AND deleted_at IS NULL', [req.params.id]);
@@ -302,9 +342,9 @@ router.put('/:id/edit', wrap(async (req, res) => {
       if (ln.prod.packaging_id && !noPack) {
         const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
         const need = Math.ceil(ln.qty / cap);
-        const [[pkg]] = await conn.query('SELECT default_price, margin_pct FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, order.id, oi.insertId, pkg?.default_price || 0);
-        const charged = Math.round(cost * (1 + (Number(pkg?.margin_pct) || 0) / 100));
+        const charged = Math.round(cost * (1 + marginPct / 100));
         if (charged > 0) { await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, charged, oi.insertId]); packagingTotal += charged; }
       }
       if (ln.prod.track_stock && warehouseId) {

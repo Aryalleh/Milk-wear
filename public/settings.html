@@ -95,14 +95,18 @@
   <div id="t-packaging" class="tabc hidden space-y-6">
     <div class="skeu-card p-6">
       <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-box text-amber-600 ml-1"></i> بسته‌بندی/ظرف</h3>
-      <p class="text-[11px] text-gray-400 mb-4">هر خریدِ ظرف یک «لایهٔ قیمت» است؛ موقع فروش به‌ترتیب FIFO (قدیمی‌ترین اول) مصرف و هزینه‌اش به فاکتور اضافه می‌شود.</p>
+      <p class="text-[11px] text-gray-400 mb-4">هر خریدِ ظرف یک «لایهٔ قیمت» است؛ موقع فروش به‌ترتیب FIFO (قدیمی‌ترین اول) مصرف و هزینه‌اش + درصد سود به فاکتور اضافه می‌شود.</p>
+      <div class="flex items-end gap-2 mb-4 bg-amber-50 rounded-lg p-3">
+        <div><label class="text-xs text-gray-600 block mb-1 font-bold">درصد سودِ همهٔ ظرف‌ها ٪</label><input id="pgGlobalMargin" type="number" step="0.1" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+        <button onclick="saveGlobalMargin()" class="bg-amber-600 text-white px-4 py-2 rounded-lg font-bold">ذخیرهٔ سود</button>
+        <span class="text-[11px] text-gray-500">روی هزینهٔ خریدِ ظرف اعمال می‌شود (یکسان برای همه).</span>
+      </div>
       <div class="flex flex-wrap gap-2 items-end">
         <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">نام ظرف</label><input id="pgName" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً لیوان ماست ۵۰۰گرمی"></div>
         <div><label class="text-xs text-gray-500 block mb-1">قیمت پیش‌فرض</label><input id="pgDefPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
-        <div><label class="text-xs text-gray-500 block mb-1">درصد سود ٪</label><input id="pgMargin" type="number" step="0.1" class="input-skeu rounded-lg px-3 py-2 w-20" placeholder="۰"></div>
         <button onclick="addPackaging()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">افزودن ظرف</button>
       </div>
-      <div class="overflow-x-auto mt-4"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ظرف</th><th class="p-2">موجودی</th><th class="p-2">باقیِ لایه‌ها</th><th class="p-2">سود ٪</th><th class="p-2"></th></tr></thead><tbody id="pgTable" class="divide-y divide-gray-100"></tbody></table></div>
+      <div class="overflow-x-auto mt-4"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ظرف</th><th class="p-2">موجودی</th><th class="p-2">باقیِ لایه‌ها</th><th class="p-2">خرید لایه</th></tr></thead><tbody id="pgTable" class="divide-y divide-gray-100"></tbody></table></div>
     </div>
     <div class="skeu-card p-6">
       <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-link text-indigo-600 ml-1"></i> انتساب ظرف به کالاها</h3>
@@ -215,12 +219,13 @@ function tab(t){ ['sites','users','audit','dairy','packaging','access','print','
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
   if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='packaging') loadPackaging(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
 async function loadPackaging(){
-  const [pkgs, prods] = await Promise.all([api('/packagings'), api('/products')]);
+  const [pkgs, prods, s] = await Promise.all([api('/packagings'), api('/products'), api('/settings')]);
   window._pkgs=pkgs;
+  document.getElementById('pgGlobalMargin').value = s.packaging_margin_pct ?? 0;
   document.getElementById('pgTable').innerHTML = pkgs.map(g=>{
     const lys=(g.layers||[]).map(l=>`<span class="inline-block bg-gray-100 rounded px-2 py-0.5 text-[11px] ml-1 mb-1">${fmt(l.remaining)} از قیمت ${fmt(l.unit_price)}</span>`).join('')||'<span class="text-gray-400 text-xs">لایه‌ای نمانده</span>';
-    return `<tr><td class="p-2 font-bold align-top">${g.name}</td><td class="p-2 font-black align-top ${g.on_hand>0?'text-green-600':'text-gray-400'}">${fmt(g.on_hand)} ${g.unit||''}</td><td class="p-2 align-top">${lys}</td><td class="p-2 align-top"><button onclick="editMargin(${g.id},${g.margin_pct||0})" class="text-indigo-600 font-bold">${fmt(g.margin_pct||0)}٪ ✎</button></td><td class="p-2 align-top"><button onclick="buyLayer(${g.id},'${(g.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i>خرید</button></td></tr>`;
-  }).join('')||'<tr><td colspan="5" class="p-3 text-center text-gray-400">ظرفی تعریف نشده</td></tr>';
+    return `<tr><td class="p-2 font-bold align-top">${g.name}</td><td class="p-2 font-black align-top ${g.on_hand>0?'text-green-600':'text-gray-400'}">${fmt(g.on_hand)} ${g.unit||''}</td><td class="p-2 align-top">${lys}</td><td class="p-2 align-top"><button onclick="buyLayer(${g.id},'${(g.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i>خرید</button></td></tr>`;
+  }).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">ظرفی تعریف نشده</td></tr>';
   const opts=(sel)=>`<option value="">— بدون ظرف —</option>`+pkgs.map(g=>`<option value="${g.id}" ${sel==g.id?'selected':''}>${g.name}</option>`).join('');
   document.getElementById('pgAssign').innerHTML = prods.filter(p=>!p.is_raw_milk).map(p=>`<tr>
     <td class="p-2 font-bold">${p.name} <span class="text-gray-400 text-[10px]">(${p.unit||''})</span></td>
@@ -230,8 +235,8 @@ async function loadPackaging(){
 }
 async function addPackaging(){ const name=document.getElementById('pgName').value.trim(); if(!name){ toast('نام لازم است','err'); return; }
   try{ await api('/packagings',{method:'POST',body:{name,default_price:Number(document.getElementById('pgDefPrice').value||0),margin_pct:Number(document.getElementById('pgMargin').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; document.getElementById('pgMargin').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
-async function editMargin(id,cur){ const v=prompt('درصد سود روی این ظرف (٪):', cur); if(v===null)return;
-  try{ await api('/packagings/'+id,{method:'PUT',body:{margin_pct:Number(v)||0}}); toast('درصد سود ذخیره شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+async function saveGlobalMargin(){ const v=Number(document.getElementById('pgGlobalMargin').value)||0;
+  try{ await api('/settings/packaging_margin_pct',{method:'PUT',body:{value:v}}); toast('درصد سود ظرف‌ها ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 async function buyLayer(id,name){ const qty=prompt('تعداد خریداری‌شده از «'+name+'»:'); if(!qty)return; const price=prompt('قیمت هر عدد (ریال):'); if(price===null)return;
   try{ await api('/packagings/'+id+'/purchase',{method:'POST',body:{qty:Number(qty),unit_price:Number(price)}}); toast('لایهٔ قیمت اضافه شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
 async function saveAssign(pid){ const pkg=document.querySelector(`.pa-pkg[data-pid="${pid}"]`).value; const cap=document.querySelector(`.pa-cap[data-pid="${pid}"]`).value;
