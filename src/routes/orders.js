@@ -4,6 +4,7 @@ import { pool, withTx } from '../db.js';
 import { postTransaction, nextOrderNo, recomputeBalance } from '../ledger.js';
 import { enqueueReceipt } from '../print.js';
 import { canCreateDelivery } from '../access.js';
+import { consumePackaging, restorePackagingForOrder } from '../packaging.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
@@ -167,10 +168,21 @@ router.post('/', wrap(async (req, res) => {
        warehouse_id || null, total, paid, note || null, destination || null, req.user?.uid || null]);
     const orderId = o.insertId;
 
+    let packagingTotal = 0;
     for (const ln of lines) {
-      await conn.query(
+      const [oi] = await conn.query(
         `INSERT INTO order_items (order_id, product_id, quantity, unit_price, amount) VALUES (?,?,?,?,?)`,
         [orderId, ln.prod.id, ln.quantity, ln.price, ln.amount]);
+      // هزینهٔ ظرف (FIFO) اگر کالا بسته‌بندی دارد → به فاکتور اضافه می‌شود
+      if (ln.prod.packaging_id) {
+        const need = ln.quantity * (Number(ln.prod.packaging_per_unit) || 1);
+        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, orderId, oi.insertId, pkg?.default_price || 0);
+        if (cost > 0) {
+          await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, cost, oi.insertId]);
+          packagingTotal += cost;
+        }
+      }
       if (ln.prod.track_stock && warehouse_id) {
         await conn.query(
           `INSERT INTO stock_movements
@@ -184,11 +196,15 @@ router.post('/', wrap(async (req, res) => {
           [warehouse_id, ln.prod.id, -ln.quantity]);
       }
     }
+    // جمع کل شامل هزینهٔ ظرف
+    const grandTotal = total + packagingTotal;
+    if (packagingTotal > 0) await conn.query('UPDATE orders SET total_amount=? WHERE id=?', [grandTotal, orderId]);
 
     const hasFeed = lines.some((l) => l.prod.category_id === 2);
     await postTransaction(conn, {
-      personId: person_id, txType: hasFeed ? 'FEED_SALE' : 'PRODUCT_SALE', amount: total,
-      sourceType: 'order', sourceId: orderId, description: lines.map((l) => `${l.prod.name}×${l.quantity}`).join('، '),
+      personId: person_id, txType: hasFeed ? 'FEED_SALE' : 'PRODUCT_SALE', amount: grandTotal,
+      sourceType: 'order', sourceId: orderId,
+      description: lines.map((l) => `${l.prod.name}×${l.quantity}`).join('، ') + (packagingTotal ? ` + ظرف` : ''),
       branchId: branch_id || null, userId: req.user?.uid, month: currentJalaliMonth(),
     });
 
@@ -213,15 +229,96 @@ router.post('/', wrap(async (req, res) => {
                              milk_amount, purchase_amount, net_amount, balance_after, note, created_by)
        VALUES (?,?,?,?,?,?, 0, ?, ?, ?, ?, ?)`,
       [branch_id || null, receiptNo, token, person_id, currentJalaliMonth(), orderId,
-       total, -total, balanceAfter, note || null, req.user?.uid || null]);
+       grandTotal, -grandTotal, balanceAfter, note || null, req.user?.uid || null]);
 
-    return { id: orderId, order_no: orderNo, total_amount: total, paid_amount: paid,
-             fulfillment_type: fulfill, status, receipt_id: rc.insertId };
+    return { id: orderId, order_no: orderNo, total_amount: grandTotal, paid_amount: paid,
+             fulfillment_type: fulfill, status, receipt_id: rc.insertId, packaging_cost: packagingTotal };
   });
 
   // چاپ رسید دلبخواهی (فروش حضوری معمولاً چاپ می‌خواهد)
   if (print) enqueueReceipt(result.receipt_id).catch((e) => console.error('enqueueReceipt:', e.message));
   res.status(201).json(result);
+}));
+
+// ویرایش سفارشِ تحویل‌نشده: برگردانِ موجودی/ظرف/تراکنشِ قبلی + اعمالِ اقلام جدید
+router.put('/:id/edit', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const { items, destination, note } = req.body;
+  if (!Array.isArray(items) || items.length === 0) throw new AppError(400, 'حداقل یک قلم کالا لازم است');
+  const allowNegative = req.body.allow_negative === true;
+
+  const out = await withTx(async (conn) => {
+    const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? AND deleted_at IS NULL', [req.params.id]);
+    if (!order) throw new AppError(404, 'سفارش یافت نشد');
+    if (!['queued', 'confirmed'].includes(order.status))
+      throw new AppError(400, 'فقط سفارش‌های تحویل‌نشده قابل ویرایش‌اند');
+    const warehouseId = order.warehouse_id, branchId = order.branch_id;
+
+    // ۱) برگردانِ موجودیِ اقلام قبلی
+    const [oldItems] = await conn.query(
+      'SELECT oi.quantity, oi.product_id, p.track_stock FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?', [order.id]);
+    for (const it of oldItems) {
+      if (it.track_stock && warehouseId)
+        await conn.query('UPDATE stock_balances SET quantity=quantity+? WHERE warehouse_id=? AND product_id=?', [it.quantity, warehouseId, it.product_id]);
+    }
+    // ۲) برگردانِ ظرف‌های مصرف‌شده به لایه‌ها
+    await restorePackagingForOrder(conn, order.id);
+    // ۳) باطل‌کردن تراکنشِ فروشِ قبلی
+    await conn.query("UPDATE transactions SET status='voided' WHERE source_type='order' AND source_id=? AND tx_type IN ('PRODUCT_SALE','FEED_SALE') AND status='active'", [order.id]);
+    // ۴) حذف اقلام و حرکت‌های انبارِ قبلی
+    await conn.query("DELETE FROM stock_movements WHERE source_type='sale' AND source_id=?", [order.id]);
+    await conn.query('DELETE FROM order_items WHERE order_id=?', [order.id]);
+
+    // ۵) اقلام جدید + بررسی موجودی
+    let total = 0; const lines = []; const shortages = [];
+    for (const it of items) {
+      const [[prod]] = await conn.query('SELECT * FROM products WHERE id=?', [it.product_id]);
+      if (!prod) throw new AppError(400, `کالا یافت نشد: ${it.product_id}`);
+      const price = it.unit_price != null ? Number(it.unit_price) : Number(prod.base_price);
+      const qty = Number(it.quantity); const amount = Math.round(price * qty);
+      total += amount; lines.push({ prod, qty, price, amount });
+      if (prod.track_stock && warehouseId) {
+        const [[bal]] = await conn.query('SELECT quantity q FROM stock_balances WHERE warehouse_id=? AND product_id=?', [warehouseId, prod.id]);
+        if (Number(bal?.q || 0) < qty) shortages.push({ product: prod.name, on_hand: Number(bal?.q || 0), need: qty });
+      }
+    }
+    if (shortages.length && !allowNegative)
+      throw new AppError(409, 'کسری موجودی: ' + shortages.map((s) => `${s.product} (موجود ${s.on_hand}، نیاز ${s.need})`).join('، '));
+
+    // ۶) اعمال اقلام + ظرف
+    let packagingTotal = 0;
+    for (const ln of lines) {
+      const [oi] = await conn.query('INSERT INTO order_items (order_id,product_id,quantity,unit_price,amount) VALUES (?,?,?,?,?)',
+        [order.id, ln.prod.id, ln.qty, ln.price, ln.amount]);
+      if (ln.prod.packaging_id) {
+        const need = ln.qty * (Number(ln.prod.packaging_per_unit) || 1);
+        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, order.id, oi.insertId, pkg?.default_price || 0);
+        if (cost > 0) { await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, cost, oi.insertId]); packagingTotal += cost; }
+      }
+      if (ln.prod.track_stock && warehouseId) {
+        await conn.query("INSERT INTO stock_movements (branch_id,warehouse_id,product_id,direction,quantity,source_type,source_id,created_by) VALUES (?,?,?, 'out', ?, 'sale', ?, ?)",
+          [branchId, warehouseId, ln.prod.id, ln.qty, order.id, req.user?.uid || null]);
+        await conn.query('UPDATE stock_balances SET quantity=quantity-? WHERE warehouse_id=? AND product_id=?', [ln.qty, warehouseId, ln.prod.id]);
+      }
+    }
+    const grandTotal = total + packagingTotal;
+    await conn.query('UPDATE orders SET total_amount=?, destination=COALESCE(?,destination), note=COALESCE(?,note) WHERE id=?',
+      [grandTotal, destination ?? null, note ?? null, order.id]);
+
+    const hasFeed = lines.some((l) => l.prod.category_id === 2);
+    await postTransaction(conn, {
+      personId: order.person_id, txType: hasFeed ? 'FEED_SALE' : 'PRODUCT_SALE', amount: grandTotal,
+      sourceType: 'order', sourceId: order.id,
+      description: 'ویرایش: ' + lines.map((l) => `${l.prod.name}×${l.qty}`).join('، ') + (packagingTotal ? ' + ظرف' : ''),
+      branchId, userId: req.user?.uid, month: currentJalaliMonth(),
+    });
+    const balanceAfter = await recomputeBalance(conn, order.person_id);
+    await conn.query('UPDATE receipts SET purchase_amount=?, net_amount=?, balance_after=? WHERE order_id=?',
+      [grandTotal, -grandTotal, balanceAfter, order.id]);
+    return { ok: true, total_amount: grandTotal, packaging_cost: packagingTotal };
+  });
+  res.json(out);
 }));
 
 export default router;

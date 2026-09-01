@@ -166,7 +166,8 @@ export async function buildReceiptView(rc) {
          JOIN products p ON p.id = oi.product_id LEFT JOIN units u ON u.id = p.unit_id WHERE oi.order_id = ?`, [rc.order_id]);
     items = rows;
   }
-  return { receipt: { ...rc, issued_at_jalali: toJalaliDate(rc.issued_at) }, person, branch, milk, items };
+  const packaging_total = items.reduce((s, i) => s + Number(i.packaging_cost || 0), 0);
+  return { receipt: { ...rc, issued_at_jalali: toJalaliDate(rc.issued_at) }, person, branch, milk, items, packaging_total };
 }
 
 // دریافت کامل یک فاکتور برای نمایش/پرینت (کارمند یا صاحب)
