@@ -234,7 +234,7 @@ async function loadPackaging(){
     <td class="p-2"><button onclick="saveAssign(${p.id})" class="text-blue-600 text-xs font-bold">ذخیره</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">کالایی نیست</td></tr>';
 }
 async function addPackaging(){ const name=document.getElementById('pgName').value.trim(); if(!name){ toast('نام لازم است','err'); return; }
-  try{ await api('/packagings',{method:'POST',body:{name,default_price:Number(document.getElementById('pgDefPrice').value||0),margin_pct:Number(document.getElementById('pgMargin').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; document.getElementById('pgMargin').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+  try{ await api('/packagings',{method:'POST',body:{name,default_price:Number(document.getElementById('pgDefPrice').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
 async function saveGlobalMargin(){ const v=Number(document.getElementById('pgGlobalMargin').value)||0;
   try{ await api('/settings/packaging_margin_pct',{method:'PUT',body:{value:v}}); toast('درصد سود ظرف‌ها ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 async function buyLayer(id,name){ const qty=prompt('تعداد خریداری‌شده از «'+name+'»:'); if(!qty)return; const price=prompt('قیمت هر عدد (ریال):'); if(price===null)return;
