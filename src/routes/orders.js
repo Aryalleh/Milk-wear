@@ -127,6 +127,7 @@ router.post('/', wrap(async (req, res) => {
     throw new AppError(403, 'این نقش اجازهٔ ثبت سفارشِ ارسالی ندارد؛ فقط فروش حضوری.');
   const paid = Math.max(0, Math.round(Number(paid_amount || 0)));
   const allowNegative = req.body.allow_negative === true;   // بای‌پس خطای کسری موجودی
+  const noPackaging = req.body.no_packaging === true;       // مشتری ظرف خودش را آورده
 
   const result = await withTx(async (conn) => {
     let total = 0;
@@ -161,10 +162,10 @@ router.post('/', wrap(async (req, res) => {
     // حضوری = همان‌جا تحویل شد؛ ارسالی = در صفِ راننده
     const status = fulfill === 'pickup' ? 'delivered' : 'queued';
     const [o] = await conn.query(
-      `INSERT INTO orders (branch_id, order_no, waybill_no, person_id, channel, fulfillment_type, status,
+      `INSERT INTO orders (branch_id, order_no, waybill_no, person_id, channel, fulfillment_type, no_packaging, status,
                            warehouse_id, total_amount, paid_amount, note, destination, created_by)
-       VALUES (?,?,?,?, 'distribution', ?, ?, ?,?,?,?,?,?)`,
-      [branch_id || null, orderNo, orderNo, person_id, fulfill, status,
+       VALUES (?,?,?,?, 'distribution', ?, ?, ?, ?,?,?,?,?,?)`,
+      [branch_id || null, orderNo, orderNo, person_id, fulfill, noPackaging ? 1 : 0, status,
        warehouse_id || null, total, paid, note || null, destination || null, req.user?.uid || null]);
     const orderId = o.insertId;
 
@@ -173,9 +174,10 @@ router.post('/', wrap(async (req, res) => {
       const [oi] = await conn.query(
         `INSERT INTO order_items (order_id, product_id, quantity, unit_price, amount) VALUES (?,?,?,?,?)`,
         [orderId, ln.prod.id, ln.quantity, ln.price, ln.amount]);
-      // هزینهٔ ظرف (FIFO) اگر کالا بسته‌بندی دارد → به فاکتور اضافه می‌شود
-      if (ln.prod.packaging_id) {
-        const need = ln.quantity * (Number(ln.prod.packaging_per_unit) || 1);
+      // هزینهٔ ظرف (FIFO) اگر کالا بسته‌بندی دارد و مشتری ظرف نیاورده
+      if (ln.prod.packaging_id && !noPackaging) {
+        const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
+        const need = Math.ceil(ln.quantity / cap);   // تعداد ظرفِ لازم = مقدار ÷ ظرفیت (روبه‌بالا)
         const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, orderId, oi.insertId, pkg?.default_price || 0);
         if (cost > 0) {
@@ -253,6 +255,8 @@ router.put('/:id/edit', wrap(async (req, res) => {
     if (!['queued', 'confirmed'].includes(order.status))
       throw new AppError(400, 'فقط سفارش‌های تحویل‌نشده قابل ویرایش‌اند');
     const warehouseId = order.warehouse_id, branchId = order.branch_id;
+    const noPack = req.body.no_packaging !== undefined ? req.body.no_packaging === true : !!order.no_packaging;
+    if (req.body.no_packaging !== undefined) await conn.query('UPDATE orders SET no_packaging=? WHERE id=?', [noPack ? 1 : 0, order.id]);
 
     // ۱) برگردانِ موجودیِ اقلام قبلی
     const [oldItems] = await conn.query(
@@ -290,8 +294,9 @@ router.put('/:id/edit', wrap(async (req, res) => {
     for (const ln of lines) {
       const [oi] = await conn.query('INSERT INTO order_items (order_id,product_id,quantity,unit_price,amount) VALUES (?,?,?,?,?)',
         [order.id, ln.prod.id, ln.qty, ln.price, ln.amount]);
-      if (ln.prod.packaging_id) {
-        const need = ln.qty * (Number(ln.prod.packaging_per_unit) || 1);
+      if (ln.prod.packaging_id && !noPack) {
+        const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
+        const need = Math.ceil(ln.qty / cap);
         const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, order.id, oi.insertId, pkg?.default_price || 0);
         if (cost > 0) { await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, cost, oi.insertId]); packagingTotal += cost; }

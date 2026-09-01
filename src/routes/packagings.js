@@ -6,15 +6,24 @@ import { AppError, wrap, toJalaliDate } from '../util.js';
 
 const router = Router();
 
-// فهرست ظرف‌ها + موجودی کل و میانگین قیمت
+// فهرست ظرف‌ها + موجودی کل + لایه‌های باقی‌مانده (باقیِ هر قیمت)
 router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
     `SELECT g.id, g.name, g.default_price, u.symbol AS unit,
-            COALESCE((SELECT SUM(remaining_qty) FROM packaging_layers l WHERE l.packaging_id=g.id),0) AS on_hand,
-            (SELECT unit_price FROM packaging_layers l WHERE l.packaging_id=g.id AND l.remaining_qty>0 ORDER BY purchased_at,id LIMIT 1) AS next_price
+            COALESCE((SELECT SUM(remaining_qty) FROM packaging_layers l WHERE l.packaging_id=g.id),0) AS on_hand
        FROM packagings g LEFT JOIN units u ON u.id=g.unit_id
       WHERE g.is_active=1 ORDER BY g.id`);
-  res.json(rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit || '', default_price: Number(r.default_price), on_hand: Number(r.on_hand), next_price: r.next_price == null ? null : Number(r.next_price) })));
+  const [layers] = await pool.query(
+    'SELECT packaging_id, unit_price, remaining_qty, qty FROM packaging_layers WHERE remaining_qty>0 ORDER BY purchased_at, id');
+  const byPkg = {};
+  for (const l of layers) { (byPkg[l.packaging_id] ||= []).push({ unit_price: Number(l.unit_price), remaining: Number(l.remaining_qty), qty: Number(l.qty) }); }
+  res.json(rows.map((r) => {
+    const ls = byPkg[r.id] || [];
+    return {
+      id: r.id, name: r.name, unit: r.unit || '', default_price: Number(r.default_price),
+      on_hand: Number(r.on_hand), next_price: ls.length ? ls[0].unit_price : null, layers: ls,
+    };
+  }));
 }));
 
 // ساخت ظرف — مدیر/حسابدار
@@ -51,9 +60,9 @@ router.get('/:id/layers', wrap(async (req, res) => {
 
 // انتساب ظرف به یک کالا
 router.put('/assign/:productId', requireRole('admin', 'accountant'), wrap(async (req, res) => {
-  const { packaging_id, packaging_per_unit } = req.body;
-  await pool.query('UPDATE products SET packaging_id=?, packaging_per_unit=? WHERE id=?',
-    [packaging_id || null, Number(packaging_per_unit) || 1, req.params.productId]);
+  const { packaging_id, packaging_capacity } = req.body;
+  await pool.query('UPDATE products SET packaging_id=?, packaging_capacity=? WHERE id=?',
+    [packaging_id || null, Number(packaging_capacity) > 0 ? Number(packaging_capacity) : 1, req.params.productId]);
   res.json({ ok: true });
 }));
 
