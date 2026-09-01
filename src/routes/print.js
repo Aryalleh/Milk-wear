@@ -83,7 +83,7 @@ router.get('/preview', wrap(async (req, res) => {
   let png;
   if (kind === 'receipt') png = await renderElementToPng(`/receipt.html?id=${Number(req.query.id)}`, '#card');
   else if (kind === 'waybill') png = await renderElementToPng(`/waybill.html?id=${Number(req.query.id)}`, '#card');
-  else if (kind === 'manifest') png = await renderElementToPng('/manifest.html', '#receipt');
+  else if (kind === 'manifest') png = await renderElementToPng('/manifest.html', '#card');
   else if (kind === 'statement') {
     const p = new URLSearchParams();
     p.set('person_id', String(Number(req.query.person_id)));

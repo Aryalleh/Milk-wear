@@ -54,7 +54,7 @@ router.get('/jobs/:id/image', wrap(async (req, res) => {
   } else if (job.kind === 'statement') {
     png = await renderElementToPng(`/statement.html?${payload.query || ''}`, '#receipt');
   } else if (job.kind === 'manifest') {
-    png = await renderElementToPng('/manifest.html', '#receipt');
+    png = await renderElementToPng('/manifest.html', '#card');
   } else {
     // test و سایر: از تمپلیت خودبسندهٔ حرارتی
     png = await renderHtmlToPng(await docHTML(payload), 576);
