@@ -141,6 +141,11 @@ export async function enqueueStatement(query, copies = 1) {
   return enqueuePrint({ kind: 'statement', refType: 'none', refId: null, branchId: null, copies, payload: { doc: 'statement', query } });
 }
 
+// مانیفست بارگیری (وضعیت لحظه‌ای؛ ایجنت صفحهٔ manifest.html را رندر می‌کند)
+export async function enqueueManifest(copies = 1) {
+  return enqueuePrint({ kind: 'manifest', refType: 'none', refId: null, branchId: null, copies, payload: { doc: 'manifest' } });
+}
+
 // تیکِ زمان‌بندی: بارنامهٔ سفارش‌های صف‌شده را در ساعت مقرر/بازه‌ای به صف چاپ می‌فرستد
 export async function printTick(now = new Date()) {
   const s = await getSettings();

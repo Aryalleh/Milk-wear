@@ -4,8 +4,9 @@ import { pool } from '../db.js';
 import { requireRole } from '../auth.js';
 import { AppError, wrap } from '../util.js';
 import {
-  enqueueWaybill, enqueueReceipt, enqueueStatement, enqueuePrint, runBatchNow, getAgentToken, getSettings,
+  enqueueWaybill, enqueueReceipt, enqueueStatement, enqueueManifest, enqueuePrint, runBatchNow, getAgentToken, getSettings,
 } from '../print.js';
+import { renderElementToPng } from '../render.js';
 
 const router = Router();
 
@@ -68,6 +69,31 @@ router.post('/statement', wrap(async (req, res) => {
   if (to) p.set('to', to);
   const id = await enqueueStatement(p.toString());
   res.status(201).json({ ok: true, job_id: id });
+}));
+
+// چاپ مانیفست بارگیری (به صف ایجنت)
+router.post('/manifest', wrap(async (req, res) => {
+  const id = await enqueueManifest();
+  res.status(201).json({ ok: true, job_id: id });
+}));
+
+// پیش‌نمایشِ چاپ (همان تصویری که ایجنت چاپ می‌کند) — برای نمایش قبل از ارسال به صف
+router.get('/preview', wrap(async (req, res) => {
+  const kind = req.query.kind;
+  let png;
+  if (kind === 'receipt') png = await renderElementToPng(`/receipt.html?id=${Number(req.query.id)}`, '#card');
+  else if (kind === 'waybill') png = await renderElementToPng(`/waybill.html?id=${Number(req.query.id)}`, '#card');
+  else if (kind === 'manifest') png = await renderElementToPng('/manifest.html', '#receipt');
+  else if (kind === 'statement') {
+    const p = new URLSearchParams();
+    p.set('person_id', String(Number(req.query.person_id)));
+    if (req.query.since) p.set('since', 'settlement'); else if (req.query.from) p.set('from', req.query.from);
+    if (req.query.to) p.set('to', req.query.to);
+    png = await renderElementToPng(`/statement.html?${p.toString()}`, '#receipt');
+  } else throw new AppError(400, 'نوع نامعتبر');
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(png);
 }));
 
 // اجرای دستیِ دستهٔ بارنامه‌ها (بی‌توجه به ساعت) — مدیر

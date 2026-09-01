@@ -110,7 +110,10 @@
     <div class="flex justify-between items-center mb-3"><h3 class="font-black text-gray-800">مانیفست بارگیری</h3><button onclick="document.getElementById('manModal').classList.add('hidden')" class="text-gray-400 text-2xl">&times;</button></div>
     <p class="text-xs text-gray-400 mb-3">مجموع اقلامِ همهٔ سفارش‌های ارسالیِ در انتظار — چقدر چی باید بار بزنید.</p>
     <div id="manBody"></div>
-    <button onclick="printAllWaybills()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-black mt-4"><i class="fa-solid fa-print ml-1"></i>چاپ همهٔ بارنامه‌ها</button>
+    <div class="flex gap-2 mt-4">
+      <button onclick="printManifest()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black"><i class="fa-solid fa-clipboard-list ml-1"></i>چاپ مانیفست</button>
+      <button onclick="printAllWaybills()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black"><i class="fa-solid fa-print ml-1"></i>چاپ همهٔ بارنامه‌ها</button>
+    </div>
   </div>
 </div>
 
@@ -120,8 +123,8 @@ const ST={queued:['در صف بار','bg-purple-100 text-purple-700'],confirmed:
 const FF={delivery:'ارسال',pickup:'درجا'};
 function setF(f){ filter=f; document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('active', b.dataset.f===f)); load(); }
 function debtLabel(bal){ bal=Number(bal||0); if(bal<0) return `<span class="text-red-600 font-bold">${fmt(-bal)} بدهکار</span>`; if(bal>0) return `<span class="text-green-600 font-bold">${fmt(bal)} بستانکار</span>`; return '<span class="text-gray-400">تسویه</span>'; }
-async function printWaybill(id){ try{ await api('/print/waybill/'+id,{method:'POST'}); toast('بارنامه به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
-async function reprintReceipt(id){ try{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
+function printWaybill(id){ previewThermal('/api/print/preview?kind=waybill&id='+id, async()=>{ await api('/print/waybill/'+id,{method:'POST'}); toast('بارنامه به صف چاپ رفت 🖨'); }); }
+function reprintReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
 function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o.receipt_id})" class="text-blue-600" title="فاکتور"><i class="fa-solid fa-receipt"></i></button>`:'';
   const wb=`<button onclick="printWaybill(${o.id})" class="text-blue-600" title="بارنامه"><i class="fa-solid fa-truck"></i></button>`;
   const dl=(o.status==='queued'||o.status==='confirmed')?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
@@ -211,10 +214,13 @@ async function submitOrder(){ document.getElementById('createErr').textContent='
   }catch(e){ document.getElementById('createErr').textContent=e.message; } }
 
 // --- مانیفست ---
-async function openManifest(){ const m=await api('/orders/manifest');
+async function openManifest(){ const m=await api('/orders/manifest'); window._manCount=m.order_count;
   document.getElementById('manBody').innerHTML = m.order_count? `<table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">مقدار کل</th><th class="p-2">ارزش</th></tr></thead><tbody class="divide-y divide-gray-100">${m.items.map(i=>`<tr><td class="p-2 font-bold">${i.product_name}</td><td class="p-2 font-black text-indigo-700">${fmt(i.qty)} ${i.unit}</td><td class="p-2">${fmt(i.amount)}</td></tr>`).join('')}</tbody></table><div class="flex justify-between font-black mt-3 pt-2 border-t"><span>${fmt(m.order_count)} سفارش · جمع کل</span><span>${fmt(m.total)} ریال</span></div>` : '<p class="text-center text-gray-400 py-6">سفارش ارسالیِ در انتظاری نیست</p>';
   document.getElementById('manModal').classList.remove('hidden'); }
-async function printAllWaybills(){ try{ const r=await api('/print/waybills',{method:'POST',body:{}}); toast(`${r.printed} بارنامه به صف چاپ رفت 🖨`); document.getElementById('manModal').classList.add('hidden'); }catch(e){ toast(e.message,'err'); } }
+function printManifest(){ previewThermal('/api/print/preview?kind=manifest', async()=>{ await api('/print/manifest',{method:'POST'}); toast('مانیفست به صف چاپ رفت 🖨'); }); }
+async function printAllWaybills(){ const c=window._manCount||0; if(!c){ toast('سفارشی برای بار نیست','err'); return; }
+  if(!confirm(`چاپ ${c} بارنامه برای بارگیری؟`)) return;
+  try{ const r=await api('/print/waybills',{method:'POST',body:{}}); toast(`${r.printed} بارنامه به صف چاپ رفت 🖨`); document.getElementById('manModal').classList.add('hidden'); }catch(e){ toast(e.message,'err'); } }
 
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('orders','سفارش‌ها'); branchId=u.branch_id||null;
   products=await api('/products'); const whs=await api('/inventory/warehouses'); warehouse=(whs.find(w=>/فروشگاه|store/i.test(w.name))||whs[0])?.id||null;

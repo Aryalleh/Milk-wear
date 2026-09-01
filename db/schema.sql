@@ -231,7 +231,7 @@ CREATE TABLE IF NOT EXISTS `persons` (
 CREATE TABLE IF NOT EXISTS `print_jobs` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `branch_id` bigint DEFAULT NULL,
-  `kind` enum('waybill','receipt','statement','test') NOT NULL,
+  `kind` enum('waybill','receipt','statement','manifest','test') NOT NULL,
   `ref_type` enum('order','receipt','none') NOT NULL DEFAULT 'none',
   `ref_id` bigint DEFAULT NULL,
   `copies` int NOT NULL DEFAULT '1',

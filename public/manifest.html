@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مانیفست بارگیری — MilkWear</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @font-face{font-family:'Vazirmatn';src:url('/assets/fonts/Vazirmatn.ttf') format('truetype');font-weight:100 900;font-display:swap;}
+    body { font-family:'Vazirmatn',sans-serif; background:#f1f5f9; padding:20px; display:flex; justify-content:center; }
+    .thermal-receipt { width:80mm; background:#fff; padding:10mm 4mm; box-shadow:0 10px 25px rgba(0,0,0,.1); border:1px solid #e2e8f0; color:#000; }
+    .dashed-line { border-top:1px dashed #000; margin:8px 0; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th,td { padding:5px 2px; text-align:right; border-bottom:1px solid #eee; }
+    @media print { body { background:#fff; padding:0; margin:0; display:block; } .thermal-receipt { width:100%; box-shadow:none; border:none; padding:0; } .no-print{ display:none; } }
+  </style>
+</head>
+<body>
+  <div class="no-print fixed top-5 left-5">
+    <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold shadow-xl"><i class="fa-solid fa-print"></i> چاپ</button>
+  </div>
+  <div id="receipt" class="thermal-receipt"><div class="text-center text-slate-400 py-16">در حال بارگذاری…</div></div>
+<script>
+  const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  (async()=>{
+    const box=document.getElementById('receipt');
+    try{
+      const [m,branches,LOGO]=await Promise.all([
+        fetch('/api/orders/manifest',{credentials:'same-origin'}).then(r=>{ if(!r.ok) throw new Error('عدم دسترسی'); return r.json(); }),
+        fetch('/api/branches',{credentials:'same-origin'}).then(r=>r.ok?r.json():[]).catch(()=>[]),
+        fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null),
+      ]);
+      const b=branches[0]||{};
+      const rows=(m.items||[]).map(i=>`<tr><td>${i.product_name}</td><td class="text-center font-black">${fmt(i.qty)} ${i.unit}</td></tr>`).join('');
+      box.innerHTML=`
+        <div class="text-center mb-3">
+          ${LOGO?`<img src="${LOGO}" class="w-14 h-14 object-contain mx-auto mb-2">`:`<div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-2"><i class="fa-solid fa-truck-ramp-box text-xl"></i></div>`}
+          <h1 class="text-lg font-black">${b.name||'لبنیات محمدپور'}</h1>
+          <h2 class="text-sm font-black border border-black inline-block px-4 py-0.5 mt-1">مانیفست بارگیری</h2>
+          <p class="text-[10px] mt-1 font-bold">${new Date().toLocaleDateString('fa-IR')} · ${fmt(m.order_count)} سفارش</p>
+        </div>
+        <div class="dashed-line"></div>
+        <table><thead><tr class="bg-gray-100"><th>کالا</th><th class="text-center">مقدار کل</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="2" class="text-center py-3">سفارشی برای بار نیست</td></tr>'}</tbody></table>
+        <div class="dashed-line"></div>
+        <div class="flex justify-between text-xs font-black bg-black text-white p-1.5 mt-2"><span>ارزش کل بار:</span><span>${fmt(m.total)} ریال</span></div>
+        <p class="text-[9px] text-center mt-4 opacity-60">راننده لطفاً اقلام بالا را بار بزند. — MilkWear</p>`;
+    }catch(e){ box.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
+  })();
+</script>
+</body>
+</html>

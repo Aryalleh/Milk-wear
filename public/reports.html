@@ -135,11 +135,14 @@ async function stView(){ const p=stParams(); if(!p)return; const d=await api('/r
     <p class="text-sm mt-2 font-bold">مانده نهایی: <span class="${d.closing<0?'text-red-600':'text-green-600'}">${fmt(Math.abs(d.closing))} ${d.closing<0?'بدهکار':(d.closing>0?'بستانکار':'تسویه')}</span></p>`;
 }
 function stPrint(){ const p=stParams(); if(!p)return; window.open('/statement.html?'+p,'_blank'); }
-async function stThermal(){ if(!stPerson){ toast('ابتدا شخص را انتخاب کنید','err'); return; }
+function stThermal(){ if(!stPerson){ toast('ابتدا شخص را انتخاب کنید','err'); return; }
   const since=document.getElementById('stSince').checked;
-  const body={ person_id:stPerson.id, to:document.getElementById('toG').value||undefined };
-  if(since) body.since=true; else body.from=document.getElementById('fromG').value||undefined;
-  try{ await api('/print/statement',{method:'POST',body}); toast('صورتحساب به صف چاپ حرارتی رفت 🖨'); }catch(e){ toast(e.message,'err'); } }
+  const to=document.getElementById('toG').value||'', from=document.getElementById('fromG').value||'';
+  const q=new URLSearchParams(); q.set('kind','statement'); q.set('person_id',stPerson.id);
+  if(since) q.set('since','1'); else if(from) q.set('from',from);
+  if(to) q.set('to',to);
+  const body={ person_id:stPerson.id, to:to||undefined }; if(since) body.since=true; else body.from=from||undefined;
+  previewThermal('/api/print/preview?'+q.toString(), async()=>{ await api('/print/statement',{method:'POST',body}); toast('صورتحساب به صف چاپ حرارتی رفت 🖨'); }); }
 async function stCSV(){ const p=stParams(); if(!p)return; const d=await api('/reports/statement?'+p);
   const esc=(v)=>`"${String(v??'').replace(/"/g,'""')}"`;
   let csv=`گردش حساب,${d.person.fullname} (${d.person.person_code})\nبازه,${d.from_jalali} تا ${d.to_jalali}\n\nتاریخ,شرح,بدهکار,بستانکار,مانده\n`;

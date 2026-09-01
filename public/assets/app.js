@@ -85,7 +85,7 @@ function mountChrome(active, title){
   // ناوبری پایین موبایل
   const bottom = document.createElement('nav');
   bottom.className = 'md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1';
-  const mItems = items.filter(n => ['dashboard','operations','orders','inventory','settings'].includes(n.key));
+  const mItems = items.filter(n => ['dashboard','operations','orders','inventory','reports','settings'].includes(n.key));
   bottom.innerHTML = `<div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-around px-1 py-1">
     ${mItems.map(n=>`<a href="${n.href}" class="bnav ${n.key===active?'active':''} flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl"><i class="fa-solid ${n.icon} text-lg"></i><span class="text-[10px] font-bold">${n.label}</span></a>`).join('')}
   </div>`;
@@ -104,6 +104,27 @@ function renderLauncher(el){ const items=accessiblePages().filter(n=>n.key!=='da
       <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-700 flex items-center justify-center text-2xl"><i class="fa-solid ${n.icon}"></i></div>
       <span class="font-bold text-gray-800">${n.label}</span>
     </a>`).join('')}</div>`;
+}
+
+/* پیش‌نمایش چاپ حرارتی: تصویرِ دقیقِ خروجی را نشان می‌دهد، سپس دکمهٔ چاپ */
+function previewThermal(imgUrl, onConfirm){
+  let ov=document.getElementById('mwPrev');
+  if(!ov){ ov=document.createElement('div'); ov.id='mwPrev'; ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(ov); }
+  ov.innerHTML=`<div style="background:#fff;border-radius:18px;max-width:360px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:12px 16px;font-weight:800;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee">پیش‌نمایش چاپ<span id="mwPrevX" style="cursor:pointer;color:#888;font-size:22px">&times;</span></div>
+    <div style="flex:1;overflow:auto;background:#f1f5f9;padding:12px;text-align:center"><div id="mwPrevBody" style="color:#94a3b8;padding:40px">در حال آماده‌سازی پیش‌نمایش…</div></div>
+    <div style="padding:12px;display:flex;gap:8px;border-top:1px solid #eee">
+      <button id="mwPrevCancel" style="flex:1;background:#f1f5f9;border-radius:12px;padding:12px;font-weight:800">بستن</button>
+      <button id="mwPrevPrint" style="flex:2;background:#0f172a;color:#fff;border-radius:12px;padding:12px;font-weight:800"><i class="fa-solid fa-print"></i> چاپ حرارتی</button>
+    </div></div>`;
+  ov.style.display='flex';
+  const close=()=>{ ov.style.display='none'; };
+  document.getElementById('mwPrevX').onclick=close; document.getElementById('mwPrevCancel').onclick=close;
+  const img=new Image(); img.style.cssText='max-width:100%;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.15)';
+  img.onload=()=>{ const bd=document.getElementById('mwPrevBody'); bd.innerHTML=''; bd.appendChild(img); };
+  img.onerror=()=>{ document.getElementById('mwPrevBody').innerHTML='<span style="color:#ef4444">خطا در بارگذاری پیش‌نمایش</span>'; };
+  img.src=imgUrl;
+  document.getElementById('mwPrevPrint').onclick=async()=>{ const btn=document.getElementById('mwPrevPrint'); btn.disabled=true; try{ await onConfirm(); close(); }catch(e){ toast(e.message,'err'); btn.disabled=false; } };
 }
 
 /* ---------- آپدیت لایو ---------- */
