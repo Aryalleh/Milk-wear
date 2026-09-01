@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS `packagings` (
   `name` varchar(120) NOT NULL,
   `unit_id` bigint DEFAULT NULL,
   `default_price` decimal(18,0) NOT NULL DEFAULT '0',
+  `margin_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
   `note` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,

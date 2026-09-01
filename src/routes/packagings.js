@@ -9,7 +9,7 @@ const router = Router();
 // فهرست ظرف‌ها + موجودی کل + لایه‌های باقی‌مانده (باقیِ هر قیمت)
 router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT g.id, g.name, g.default_price, u.symbol AS unit,
+    `SELECT g.id, g.name, g.default_price, g.margin_pct, u.symbol AS unit,
             COALESCE((SELECT SUM(remaining_qty) FROM packaging_layers l WHERE l.packaging_id=g.id),0) AS on_hand
        FROM packagings g LEFT JOIN units u ON u.id=g.unit_id
       WHERE g.is_active=1 ORDER BY g.id`);
@@ -20,7 +20,7 @@ router.get('/', wrap(async (req, res) => {
   res.json(rows.map((r) => {
     const ls = byPkg[r.id] || [];
     return {
-      id: r.id, name: r.name, unit: r.unit || '', default_price: Number(r.default_price),
+      id: r.id, name: r.name, unit: r.unit || '', default_price: Number(r.default_price), margin_pct: Number(r.margin_pct),
       on_hand: Number(r.on_hand), next_price: ls.length ? ls[0].unit_price : null, layers: ls,
     };
   }));
@@ -28,11 +28,19 @@ router.get('/', wrap(async (req, res) => {
 
 // ساخت ظرف — مدیر/حسابدار
 router.post('/', requireRole('admin', 'accountant'), wrap(async (req, res) => {
-  const { name, unit_id, default_price = 0 } = req.body;
+  const { name, unit_id, default_price = 0, margin_pct = 0 } = req.body;
   if (!name || !name.trim()) throw new AppError(400, 'نام ظرف لازم است');
-  const [r] = await pool.query('INSERT INTO packagings (name, unit_id, default_price) VALUES (?,?,?)',
-    [name.trim(), unit_id || null, Math.round(Number(default_price) || 0)]);
+  const [r] = await pool.query('INSERT INTO packagings (name, unit_id, default_price, margin_pct) VALUES (?,?,?,?)',
+    [name.trim(), unit_id || null, Math.round(Number(default_price) || 0), Number(margin_pct) || 0]);
   res.status(201).json({ id: r.insertId });
+}));
+
+// ویرایش ظرف (قیمت پیش‌فرض/درصد سود) — مدیر/حسابدار
+router.put('/:id', requireRole('admin', 'accountant'), wrap(async (req, res) => {
+  const { name, default_price, margin_pct } = req.body;
+  await pool.query('UPDATE packagings SET name=COALESCE(?,name), default_price=COALESCE(?,default_price), margin_pct=COALESCE(?,margin_pct) WHERE id=?',
+    [name ?? null, default_price != null ? Math.round(Number(default_price)) : null, margin_pct != null ? Number(margin_pct) : null, req.params.id]);
+  res.json({ ok: true });
 }));
 
 // خرید ظرف = افزودن یک لایهٔ قیمت (FIFO)

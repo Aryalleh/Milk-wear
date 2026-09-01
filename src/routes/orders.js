@@ -128,6 +128,7 @@ router.post('/', wrap(async (req, res) => {
   const paid = Math.max(0, Math.round(Number(paid_amount || 0)));
   const allowNegative = req.body.allow_negative === true;   // بای‌پس خطای کسری موجودی
   const noPackaging = req.body.no_packaging === true;       // مشتری ظرف خودش را آورده
+  const paidFull = req.body.paid_full === true;             // «پرداخت کامل» = دقیقاً برابر جمع نهایی (با ظرف)
 
   const result = await withTx(async (conn) => {
     let total = 0;
@@ -174,15 +175,16 @@ router.post('/', wrap(async (req, res) => {
       const [oi] = await conn.query(
         `INSERT INTO order_items (order_id, product_id, quantity, unit_price, amount) VALUES (?,?,?,?,?)`,
         [orderId, ln.prod.id, ln.quantity, ln.price, ln.amount]);
-      // هزینهٔ ظرف (FIFO) اگر کالا بسته‌بندی دارد و مشتری ظرف نیاورده
+      // هزینهٔ ظرف (FIFO + درصد سود) اگر کالا بسته‌بندی دارد و مشتری ظرف نیاورده
       if (ln.prod.packaging_id && !noPackaging) {
         const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
         const need = Math.ceil(ln.quantity / cap);   // تعداد ظرفِ لازم = مقدار ÷ ظرفیت (روبه‌بالا)
-        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const [[pkg]] = await conn.query('SELECT default_price, margin_pct FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, orderId, oi.insertId, pkg?.default_price || 0);
-        if (cost > 0) {
-          await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, cost, oi.insertId]);
-          packagingTotal += cost;
+        const charged = Math.round(cost * (1 + (Number(pkg?.margin_pct) || 0) / 100));   // هزینهٔ خرید + سود
+        if (charged > 0) {
+          await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, charged, oi.insertId]);
+          packagingTotal += charged;
         }
       }
       if (ln.prod.track_stock && warehouse_id) {
@@ -200,7 +202,10 @@ router.post('/', wrap(async (req, res) => {
     }
     // جمع کل شامل هزینهٔ ظرف
     const grandTotal = total + packagingTotal;
-    if (packagingTotal > 0) await conn.query('UPDATE orders SET total_amount=? WHERE id=?', [grandTotal, orderId]);
+    // «پرداخت کامل» دقیقاً برابرِ جمعِ نهایی (با ظرف) → مشتری بدهکارِ ظرف نمی‌شود
+    const finalPaid = paidFull ? grandTotal : paid;
+    if (packagingTotal > 0 || finalPaid !== paid)
+      await conn.query('UPDATE orders SET total_amount=?, paid_amount=? WHERE id=?', [grandTotal, finalPaid, orderId]);
 
     const hasFeed = lines.some((l) => l.prod.category_id === 2);
     await postTransaction(conn, {
@@ -211,13 +216,13 @@ router.post('/', wrap(async (req, res) => {
     });
 
     // پرداخت هنگام ثبت (نقد/کارت) — دریافت از مشتری
-    if (paid > 0) {
+    if (finalPaid > 0) {
       const [pay] = await conn.query(
         `INSERT INTO payments (branch_id, person_id, direction, method, amount, note, created_by)
          VALUES (?,?, 'in', ?, ?, 'دریافت هنگام فروش', ?)`,
-        [branch_id || null, person_id, payment_method, paid, req.user?.uid || null]);
+        [branch_id || null, person_id, payment_method, finalPaid, req.user?.uid || null]);
       await postTransaction(conn, {
-        personId: person_id, txType: 'PAYMENT_IN', amount: paid,
+        personId: person_id, txType: 'PAYMENT_IN', amount: finalPaid,
         sourceType: 'payment', sourceId: pay.insertId, description: 'دریافت هنگام فروش',
         branchId: branch_id || null, userId: req.user?.uid, month: currentJalaliMonth(),
       });
@@ -233,7 +238,7 @@ router.post('/', wrap(async (req, res) => {
       [branch_id || null, receiptNo, token, person_id, currentJalaliMonth(), orderId,
        grandTotal, -grandTotal, balanceAfter, note || null, req.user?.uid || null]);
 
-    return { id: orderId, order_no: orderNo, total_amount: grandTotal, paid_amount: paid,
+    return { id: orderId, order_no: orderNo, total_amount: grandTotal, paid_amount: finalPaid,
              fulfillment_type: fulfill, status, receipt_id: rc.insertId, packaging_cost: packagingTotal };
   });
 
@@ -297,9 +302,10 @@ router.put('/:id/edit', wrap(async (req, res) => {
       if (ln.prod.packaging_id && !noPack) {
         const cap = Number(ln.prod.packaging_capacity) > 0 ? Number(ln.prod.packaging_capacity) : 1;
         const need = Math.ceil(ln.qty / cap);
-        const [[pkg]] = await conn.query('SELECT default_price FROM packagings WHERE id=?', [ln.prod.packaging_id]);
+        const [[pkg]] = await conn.query('SELECT default_price, margin_pct FROM packagings WHERE id=?', [ln.prod.packaging_id]);
         const { cost } = await consumePackaging(conn, ln.prod.packaging_id, need, order.id, oi.insertId, pkg?.default_price || 0);
-        if (cost > 0) { await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, cost, oi.insertId]); packagingTotal += cost; }
+        const charged = Math.round(cost * (1 + (Number(pkg?.margin_pct) || 0) / 100));
+        if (charged > 0) { await conn.query('UPDATE order_items SET packaging_qty=?, packaging_cost=? WHERE id=?', [need, charged, oi.insertId]); packagingTotal += charged; }
       }
       if (ln.prod.track_stock && warehouseId) {
         await conn.query("INSERT INTO stock_movements (branch_id,warehouse_id,product_id,direction,quantity,source_type,source_id,created_by) VALUES (?,?,?, 'out', ?, 'sale', ?, ?)",
