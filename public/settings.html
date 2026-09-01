@@ -70,7 +70,7 @@
   <!-- AUDIT -->
   <div id="t-audit" class="tabc hidden space-y-6">
     <div class="skeu-card p-6"><div class="flex justify-between items-center flex-wrap gap-3"><h3 class="font-bold text-gray-800">لاگ تغییرات سیستم</h3><input id="auditQ" oninput="loadAudit()" placeholder="جستجو..." class="input-skeu rounded-lg px-3 py-2 w-56"></div></div>
-    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">زمان</th><th class="p-3">کاربر</th><th class="p-3">عملیات</th><th class="p-3">بخش</th><th class="p-3">مسیر</th><th class="p-3">وضعیت</th><th class="p-3">IP</th></tr></thead><tbody id="auditTable" class="divide-y divide-gray-100"></tbody></table></div></div>
+    <div class="skeu-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">زمان</th><th class="p-3">کاربر</th><th class="p-3">رویداد</th><th class="p-3">نوع</th><th class="p-3">مسیر</th><th class="p-3">وضعیت</th><th class="p-3">IP</th></tr></thead><tbody id="auditTable" class="divide-y divide-gray-100"></tbody></table></div></div>
   </div>
 
   <!-- DAIRY RESTOCK (admin exception) -->
@@ -291,7 +291,7 @@ async function addPerson(){ const name=document.getElementById('pName').value.tr
     document.getElementById('pMsg').textContent='افزوده شد ✓'; setTimeout(()=>document.getElementById('pMsg').textContent='',2500); toast('شخص افزوده شد'); }catch(e){ toast(e.message,'err'); } }
 async function linkBale(id){ const v=prompt('شناسهٔ عددی بله (خالی=حذف):'); if(v===null)return; try{ await api('/users/'+id+'/bale',{method:'PUT',body:{bale_user_id:v.trim()||null}}); loadUsers(); }catch(e){alert(e.message);} }
 async function loadAudit(){ const q=document.getElementById('auditQ').value?'?q='+encodeURIComponent(document.getElementById('auditQ').value):''; const rows=await api('/audit'+q);
-  document.getElementById('auditTable').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500 whitespace-nowrap">${r.when}</td><td class="p-3">${r.actor}</td><td class="p-3">${ACTION_FA[r.action]||r.action}</td><td class="p-3">${r.resource||'—'}</td><td class="p-3 text-gray-500">${r.path||''}</td><td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }
+  document.getElementById('auditTable').innerHTML=rows.map(r=>`<tr><td class="p-3 text-gray-500 whitespace-nowrap">${r.when}</td><td class="p-3 font-bold">${r.actor}</td><td class="p-3">${r.label||(ACTION_FA[r.action]||r.action)}</td><td class="p-3 text-xs text-gray-400">${ACTION_FA[r.action]||r.action}</td><td class="p-3 text-gray-500 text-xs">${r.path||''}</td><td class="p-3 ${r.status>=400?'text-red-600':'text-green-600'}">${r.status||''}</td><td class="p-3 text-gray-500">${r.ip||'—'}</td></tr>`).join('')||'<tr><td colspan="7" class="p-4 text-center text-gray-400">لاگی نیست</td></tr>'; }
 (async function(){ const u=await guard(['staff']); if(!u) return; if(u.role!=='admin'){ location.href='/dashboard'; return; } mountChrome('settings','تنظیمات'); loadSites(); })();
 </script>
 </body>

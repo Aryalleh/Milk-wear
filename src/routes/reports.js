@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { staffRequired, requireRole } from '../auth.js';
-import { wrap, toJalaliDate, AppError } from '../util.js';
+import { wrap, toJalaliDate, AppError, currentJalaliMonth } from '../util.js';
 import { runBackup, runDailyReport } from '../cron.js';
 
 const router = Router();
@@ -140,6 +140,45 @@ router.get('/statement', wrap(async (req, res) => {
     current_balance: Number(ab?.current_balance || 0),
     ledger,
   });
+}));
+
+// ---- حساب‌کتاب ماهانه + بستن ماه ----
+router.get('/months', wrap(async (req, res) => {
+  const [tx] = await pool.query(
+    `SELECT year_month_jalali ym,
+       COALESCE(SUM(CASE WHEN tx_type IN('PRODUCT_SALE','FEED_SALE') THEN amount END),0) sales,
+       COALESCE(SUM(CASE WHEN tx_type IN('MILK_DELIVERY','PURCHASE','GOODS_IN') THEN amount END),0) purchases,
+       COALESCE(SUM(CASE WHEN tx_type='PAYMENT_IN' THEN amount END),0) received,
+       COALESCE(SUM(CASE WHEN tx_type IN('PAYMENT_OUT','CASH_WITHDRAWAL') THEN amount END),0) paid_out
+       FROM transactions WHERE status='active' GROUP BY year_month_jalali`);
+  const [ex] = await pool.query('SELECT year_month_jalali ym, COALESCE(SUM(amount),0) expenses FROM expenses GROUP BY year_month_jalali');
+  const [cl] = await pool.query("SELECT year_month_jalali ym, status FROM month_closings WHERE branch_id IS NULL");
+  const map = {};
+  const add = (ym) => { if (!map[ym]) map[ym] = { ym, sales: 0, purchases: 0, received: 0, paid_out: 0, expenses: 0, closed: false }; return map[ym]; };
+  add(currentJalaliMonth());
+  for (const r of tx) { const m = add(r.ym); m.sales = Number(r.sales); m.purchases = Number(r.purchases); m.received = Number(r.received); m.paid_out = Number(r.paid_out); }
+  for (const r of ex) add(r.ym).expenses = Number(r.expenses);
+  for (const r of cl) if (r.status === 'closed') add(r.ym).closed = true;
+  const months = Object.values(map)
+    .map((m) => ({ ...m, profit: m.sales - m.purchases - m.expenses }))
+    .sort((a, b) => b.ym.localeCompare(a.ym)).slice(0, 12);
+  res.json(months);
+}));
+
+// بستن ماه: ثبت تراکنش/هزینه در آن ماه ممنوع می‌شود — فقط مدیر
+router.post('/months/:ym/close', requireRole('admin'), wrap(async (req, res) => {
+  const ym = req.params.ym;
+  if (!/^\d{4}-\d{2}$/.test(ym)) throw new AppError(400, 'ماه نامعتبر');
+  const [[e]] = await pool.query("SELECT id FROM month_closings WHERE year_month_jalali=? AND branch_id IS NULL", [ym]);
+  if (e) await pool.query("UPDATE month_closings SET status='closed', closed_by=?, closed_at=NOW() WHERE id=?", [req.user.uid, e.id]);
+  else await pool.query("INSERT INTO month_closings (branch_id, year_month_jalali, status, closed_by) VALUES (NULL,?,'closed',?)", [ym, req.user.uid]);
+  res.json({ ok: true });
+}));
+
+// بازگشایی ماه — فقط مدیر
+router.post('/months/:ym/reopen', requireRole('admin'), wrap(async (req, res) => {
+  await pool.query("UPDATE month_closings SET status='open', reopened_by=?, reopened_at=NOW() WHERE year_month_jalali=? AND branch_id IS NULL", [req.user.uid, req.params.ym]);
+  res.json({ ok: true });
 }));
 
 export default router;

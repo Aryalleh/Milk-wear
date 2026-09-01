@@ -37,6 +37,13 @@
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">پرداختی نقدی</p><p id="tOut" class="font-black text-base text-slate-600">—</p></div>
   </div>
 
+  <!-- حساب‌کتاب ماهانه + بستن ماه -->
+  <div class="skeu-card p-6">
+    <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-calendar-check text-indigo-600 ml-1"></i> حساب‌کتاب ماهانه</h3>
+    <p class="text-[11px] text-gray-400 mb-3">با «بستن ماه»، ثبت هر تراکنش/هزینه در آن ماه قفل می‌شود تا سود ماه نهایی بماند.</p>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ماه</th><th class="p-2">فروش</th><th class="p-2">خرید</th><th class="p-2">هزینه</th><th class="p-2">سود</th><th class="p-2">وضعیت</th><th class="p-2"></th></tr></thead><tbody id="monthsTable" class="divide-y divide-gray-100"></tbody></table></div>
+  </div>
+
   <!-- هزینه‌های کسب‌وکار -->
   <div class="skeu-card p-6">
     <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-money-bill-wave text-red-500 ml-1"></i> هزینه‌های کسب‌وکار</h3>
@@ -119,7 +126,7 @@ async function loadReports(){ const from=document.getElementById('fromG').value|
   const T=fin.totals||{};
   set('tSale',fmt(T.total_sale)); set('tNetSale',fmt(T.net_sale)); set('tIncome',fmt(T.received)); set('tPurch',fmt(T.purchases)); set('tOut',fmt(T.paid_out));
   set('tExp',fmt(T.expenses)); const pe=document.getElementById('tProfit'); if(pe){ pe.textContent=fmt(T.profit); pe.className='font-black text-lg '+((T.profit||0)<0?'text-red-600':'text-green-700'); }
-  loadExpenses();
+  loadExpenses(); loadMonths();
   // summary
   document.getElementById('finSummary').innerHTML=fin.summary.map(s=>`<div class="bg-gray-50 border border-gray-100 rounded-xl p-3"><p class="text-[11px] text-gray-500 mb-1">${TYPE_FA[s.tx_type]||s.tx_type}</p><p class="font-black text-sm">${s.credit?('+'+fmt(s.credit)):''}${s.debit?(' -'+fmt(s.debit)):''}</p><p class="text-[10px] text-gray-400">${fmt(s.count)} مورد</p></div>`).join('')||'<p class="text-gray-400 text-sm col-span-4">داده‌ای نیست</p>';
   document.getElementById('finRows').innerHTML=fin.rows.map(r=>`<tr><td class="p-3 text-gray-500">${r.date}</td><td class="p-3">${r.person}</td><td class="p-3">${TYPE_FA[r.tx_type]||r.tx_type}</td><td class="p-3 text-red-600">${r.debit?fmt(r.debit):'-'}</td><td class="p-3 text-green-600">${r.credit?fmt(r.credit):'-'}</td><td class="p-3 text-gray-500">${r.description||''}</td></tr>`).join('')||'<tr><td colspan="6" class="p-4 text-center text-gray-400">تراکنشی نیست</td></tr>';
@@ -178,6 +185,21 @@ async function stCSV(){ const p=stParams(); if(!p)return; const d=await api('/re
   csv+=['','جمع',d.total_debit,d.total_credit,d.closing].map(esc).join(',')+'\n';
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`statement-${d.person.person_code}.csv`; a.click();
 }
+
+// ---- حساب‌کتاب ماهانه ----
+const isAdmin=()=> (window.__user||{}).role==='admin';
+async function loadMonths(){ const ms=await api('/reports/months');
+  document.getElementById('monthsTable').innerHTML=ms.map(m=>`<tr>
+    <td class="p-2 font-bold">${m.ym.replace('-','/')}</td>
+    <td class="p-2 text-amber-700">${fmt(m.sales)}</td>
+    <td class="p-2 text-blue-700">${fmt(m.purchases)}</td>
+    <td class="p-2 text-red-600">${fmt(m.expenses)}</td>
+    <td class="p-2 font-black ${m.profit<0?'text-red-600':'text-green-700'}">${fmt(m.profit)}</td>
+    <td class="p-2">${m.closed?'<span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">بسته</span>':'<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">باز</span>'}</td>
+    <td class="p-2">${isAdmin()?(m.closed?`<button onclick="reopenMonth('${m.ym}')" class="text-blue-600 text-xs font-bold">بازگشایی</button>`:`<button onclick="closeMonth('${m.ym}')" class="text-gray-700 text-xs font-bold">بستن ماه</button>`):''}</td>
+  </tr>`).join('')||'<tr><td colspan="7" class="p-3 text-center text-gray-400">ماهی نیست</td></tr>'; }
+async function closeMonth(ym){ if(!confirm(`ماه ${ym.replace('-','/')} بسته شود؟ بعد از این، ثبت در این ماه ممکن نیست.`))return; try{ await api('/reports/months/'+ym+'/close',{method:'POST'}); toast('ماه بسته شد'); loadMonths(); }catch(e){ toast(e.message,'err'); } }
+async function reopenMonth(ym){ if(!confirm(`ماه ${ym.replace('-','/')} بازگشایی شود؟`))return; try{ await api('/reports/months/'+ym+'/reopen',{method:'POST'}); toast('ماه بازگشایی شد'); loadMonths(); }catch(e){ toast(e.message,'err'); } }
 
 // ---- هزینه‌ها ----
 const EX_CAT_FA={salary:'حقوق',utilities:'قبوض',rent:'اجاره',vehicle:'خودرو',supplies:'ملزومات',tax:'مالیات',other:'سایر'};
