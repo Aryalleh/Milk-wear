@@ -135,4 +135,5 @@ const HOST = process.env.HOST || '0.0.0.0';   // روی همهٔ آیپی‌ها
 app.listen(PORT, HOST, () => {
   console.log(`🥛 Milk-wear روی http://${HOST}:${PORT} (همهٔ رابط‌ها) اجرا شد`);
   import('./cron.js').then((m) => m.startCron()).catch((e) => console.error('cron:', e.message));
+  import('./balebot.js').then((m) => m.startBaleBot()).catch((e) => console.error('balebot:', e.message));
 });

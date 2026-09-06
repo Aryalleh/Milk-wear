@@ -34,6 +34,38 @@ export async function baleSendMessage(chatId, text, replyMarkup = null) {
   }
 }
 
+// دریافت آپدیت‌ها (long polling) — برای ربات دوطرفه (اتصال آیدی بله به شخص/کاربر)
+export async function baleGetUpdates(offset = 0, timeout = 30) {
+  const token = process.env.BALE_BOT_TOKEN;
+  if (!token) return { ok: false, skipped: true, result: [] };
+  try {
+    const r = await fetch(`${API}${token}/getUpdates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ offset: offset || undefined, timeout, allowed_updates: ['message', 'callback_query'] }),
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: e.message, result: [] };
+  }
+}
+
+// پاسخ به کلیک روی دکمهٔ شیشه‌ای (حذف حالتِ «در حال بارگذاری»)
+export async function baleAnswerCallback(callbackId, text = '') {
+  const token = process.env.BALE_BOT_TOKEN;
+  if (!token || !callbackId) return { ok: false, skipped: true };
+  try {
+    const r = await fetch(`${API}${token}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackId, text: text || undefined }),
+    });
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // لینک رنگیِ فاکتور (نمایش با توکن هش‌شده) — قابل باز شدن داخل بله
 export function receiptColorLink(token) {
   const base = (process.env.APP_PUBLIC_URL || '').replace(/\/$/, '');
