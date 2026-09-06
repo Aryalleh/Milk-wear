@@ -91,6 +91,20 @@ async function handleMessage(msg) {
     return;
   }
 
+  // دکمهٔ ورود به مینی‌اپ — برای همه (این تنها راهی است که initData ست می‌شود)
+  if (text === '/start' || text === '/login' || text === 'ورود') {
+    const base = (process.env.APP_PUBLIC_URL || '').replace(/\/$/, '');
+    if (base.startsWith('https://')) {
+      await baleSendMessage(chatId, 'برای ورود به سامانهٔ لبنیات، دکمهٔ زیر را بزنید:',
+        { inline_keyboard: [[{ text: '🥛 ورود به سامانه', web_app: { url: `${base}/login` } }]] });
+    } else {
+      await baleSendMessage(chatId,
+        'ورودِ مینی‌اپ نیاز به آدرسِ HTTPS دارد که هنوز در APP_PUBLIC_URL تنظیم نشده است.\n' +
+        'فعلاً می‌توانید با نام‌کاربری/رمز از مرورگر وارد شوید.');
+    }
+    return;
+  }
+
   const admin = await findAdmin(fromId);
   if (!admin) return;   // بقیهٔ قابلیت‌ها فقط برای ادمین
 
