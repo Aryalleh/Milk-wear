@@ -85,11 +85,74 @@ export async function runDailyReport() {
   return { ok: true, managers: managers.length };
 }
 
+// ---- گزارش شبانه (۱۲ شب): ریز خرید/فروش امروز + طلب/بستانکاری هر دامدار و مشتری ----
+export async function buildNightlyText() {
+  const today = toJalaliDate(new Date());
+  const [[s]] = await pool.query(
+    `SELECT COALESCE(SUM(CASE WHEN tx_type IN ('PRODUCT_SALE','FEED_SALE') THEN amount END),0) sales,
+            COALESCE(SUM(CASE WHEN tx_type IN ('MILK_DELIVERY','PURCHASE','GOODS_IN') THEN amount END),0) purchases,
+            COALESCE(SUM(CASE WHEN tx_type='PAYMENT_IN' THEN amount END),0) recv,
+            COALESCE(SUM(CASE WHEN tx_type IN ('PAYMENT_OUT','CASH_WITHDRAWAL') THEN amount END),0) paid
+       FROM transactions WHERE DATE(tx_date)=CURDATE() AND status='active'`);
+  // ریز تراکنش‌های امروز
+  const [rows] = await pool.query(
+    `SELECT p.fullname, t.tx_type, t.amount
+       FROM transactions t JOIN persons p ON p.id=t.person_id
+      WHERE DATE(t.tx_date)=CURDATE() AND t.status='active'
+        AND t.tx_type IN ('PRODUCT_SALE','FEED_SALE','MILK_DELIVERY','PURCHASE','GOODS_IN','PAYMENT_IN','PAYMENT_OUT','CASH_WITHDRAWAL')
+      ORDER BY t.id`);
+  const TL = { PRODUCT_SALE: 'فروش', FEED_SALE: 'فروش خوراک', MILK_DELIVERY: 'شیر', PURCHASE: 'خرید', GOODS_IN: 'دریافت کالا', PAYMENT_IN: 'دریافت', PAYMENT_OUT: 'پرداخت', CASH_WITHDRAWAL: 'برداشت' };
+  // مانده‌ها به تفکیک دامدار/مشتری (فقط ناصفر)
+  const [bals] = await pool.query(
+    `SELECT p.fullname, ab.current_balance,
+            MAX(CASE WHEN pt.\`key\`='farmer' THEN 1 ELSE 0 END) is_farmer
+       FROM account_balances ab JOIN persons p ON p.id=ab.person_id
+       LEFT JOIN person_roles pr ON pr.person_id=p.id
+       LEFT JOIN person_types pt ON pt.id=pr.person_type_id
+      WHERE ab.current_balance <> 0
+      GROUP BY p.id ORDER BY is_farmer DESC, ABS(ab.current_balance) DESC`);
+
+  const lines = [];
+  lines.push(`🌙 گزارش شبانه — ${today}`);
+  lines.push(`🛒 فروش: ${fmt(s.sales)} | 🥛 خرید: ${fmt(s.purchases)}`);
+  lines.push(`💵 دریافت: ${fmt(s.recv)} | 💸 پرداخت: ${fmt(s.paid)}`);
+  lines.push('');
+  lines.push('— ریز امروز —');
+  if (rows.length) for (const r of rows) lines.push(`• ${r.fullname}: ${TL[r.tx_type] || r.tx_type} ${fmt(r.amount)}`);
+  else lines.push('تراکنشی نبود');
+  const farmers = bals.filter((b) => b.is_farmer), customers = bals.filter((b) => !b.is_farmer);
+  lines.push('');
+  lines.push('— دامداران (+ بستانکار = طلب او از ما) —');
+  if (farmers.length) for (const b of farmers) lines.push(`• ${b.fullname}: ${Number(b.current_balance) > 0 ? 'بستانکار ' : 'بدهکار '}${fmt(Math.abs(b.current_balance))}`);
+  else lines.push('—');
+  lines.push('');
+  lines.push('— مشتریان (− بدهکار = بدهی او به ما) —');
+  if (customers.length) for (const b of customers) lines.push(`• ${b.fullname}: ${Number(b.current_balance) < 0 ? 'بدهکار ' : 'بستانکار '}${fmt(Math.abs(b.current_balance))}`);
+  else lines.push('—');
+  return lines.join('\n');
+}
+
+export async function runNightlyReport() {
+  const text = await buildNightlyText();
+  const admins = await baleUsers(['admin']);
+  for (const a of admins) {
+    if (text.length > 3800) {
+      await baleSendDocument(a.bale_user_id, Buffer.from(text, 'utf8'), `nightly-${toJalaliDate(new Date()).replace(/\//g, '-')}.txt`, '🌙 گزارش شبانه');
+    } else {
+      await baleSendMessage(a.bale_user_id, text);
+    }
+  }
+  console.log(`✔ گزارش شبانه برای ${admins.length} مدیر ارسال شد`);
+  return { ok: true, admins: admins.length };
+}
+
 export function startCron() {
+  // هر شب ساعت ۱۲ شب گزارش شبانه (ریز خرید/فروش + مانده‌ها)
+  cron.schedule('0 0 * * *', runNightlyReport);
   // هر شب ساعت ۰۲:۰۰ بک‌آپ
   cron.schedule('0 2 * * *', runBackup);
   // هر روز ساعت ۰۷:۰۰ گزارش روزانه
   cron.schedule('0 7 * * *', runDailyReport);
   // چاپ خودکار بارنامه لغو شد؛ راننده هنگام بارگیری همه را دستی چاپ می‌کند.
-  console.log('⏰ کرون فعال شد: بک‌آپ ۰۲:۰۰، گزارش ۰۷:۰۰');
+  console.log('⏰ کرون فعال شد: گزارش شبانه ۰۰:۰۰، بک‌آپ ۰۲:۰۰، گزارش ۰۷:۰۰');
 }

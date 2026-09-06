@@ -161,6 +161,7 @@
           </select></div>
         <div><label class="text-xs text-gray-500 block mb-1">فاصلهٔ چاپ (دقیقه)</label><input id="pInterval" type="number" min="1" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
         <div class="flex items-end"><label class="flex items-center gap-2 text-sm text-gray-700 font-bold"><input id="owOutside" type="checkbox" class="w-4 h-4"> پذیرش سفارش خارج از ساعت</label></div>
+        <div class="flex items-end"><label class="flex items-center gap-2 text-sm text-gray-700 font-bold"><input id="prPreview" type="checkbox" class="w-4 h-4"> پیش‌نمایش قبل از چاپ حرارتی <span class="font-normal text-[10px] text-gray-400">(خاموش = چاپ مستقیم)</span></label></div>
       </div>
       <div class="flex gap-2 mt-5">
         <button onclick="savePrint()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700">ذخیره</button>
@@ -271,6 +272,7 @@ async function loadPrint(){
   document.getElementById('pMode').value=s.print_mode||'on_close';
   document.getElementById('pInterval').value=s.print_interval_min||10;
   document.getElementById('owOutside').checked=!!s.accept_orders_outside_window;
+  document.getElementById('prPreview').checked = s.print_preview!==false;
   try{ const t=await api('/print/agent-token'); _agentToken=t.token; document.getElementById('agentToken').textContent=t.token; }catch{}
   // لوگوی فعلی
   const lg=s.brand_logo||null;
@@ -300,6 +302,7 @@ async function savePrint(){
     await api('/settings/print_mode',{method:'PUT',body:{value:document.getElementById('pMode').value}});
     await api('/settings/print_interval_min',{method:'PUT',body:{value:Number(document.getElementById('pInterval').value)||10}});
     await api('/settings/accept_orders_outside_window',{method:'PUT',body:{value:document.getElementById('owOutside').checked}});
+    await api('/settings/print_preview',{method:'PUT',body:{value:document.getElementById('prPreview').checked}});
     document.getElementById('printMsg').textContent='ذخیره شد ✓'; setTimeout(()=>document.getElementById('printMsg').textContent='',2000); toast('تنظیمات چاپ ذخیره شد');
   }catch(e){ toast(e.message,'err'); }
 }

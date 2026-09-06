@@ -63,6 +63,7 @@ async function main() {
   await setDefault('accept_orders_outside_window', false);
   await setDefault('silo_capacity_kg', 20000);
   await setDefault('packaging_margin_pct', 0);
+  await setDefault('print_preview', true);
 
   // ۵) شعبه + انبار (اگر هیچ شعبه‌ای نیست)
   let [[br]] = await conn.query('SELECT id FROM branches LIMIT 1');

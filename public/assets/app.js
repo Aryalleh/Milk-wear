@@ -106,8 +106,11 @@ function renderLauncher(el){ const items=accessiblePages().filter(n=>n.key!=='da
     </a>`).join('')}</div>`;
 }
 
-/* پیش‌نمایش چاپ حرارتی: تصویرِ دقیقِ خروجی را نشان می‌دهد، سپس دکمهٔ چاپ */
-function previewThermal(imgUrl, onConfirm){
+/* پیش‌نمایش چاپ حرارتی: تصویرِ دقیقِ خروجی را نشان می‌دهد، سپس دکمهٔ چاپ.
+   اگر تنظیمِ «پیش‌نمایش» خاموش باشد، مستقیم چاپ می‌کند. */
+async function previewThermal(imgUrl, onConfirm){
+  if (window.__printPreview===undefined){ try{ const s=await api('/settings'); window.__printPreview = s.print_preview!==false; }catch{ window.__printPreview=true; } }
+  if (window.__printPreview===false){ try{ await onConfirm(); }catch(e){ toast(e.message,'err'); } return; }
   let ov=document.getElementById('mwPrev');
   if(!ov){ ov=document.createElement('div'); ov.id='mwPrev'; ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(ov); }
   ov.innerHTML=`<div style="background:#fff;border-radius:18px;max-width:360px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
