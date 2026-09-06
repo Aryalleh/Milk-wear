@@ -62,6 +62,7 @@ const sessionStore = new MySQLStore({
   clearExpired: true,
   charset: 'utf8mb4_unicode_ci',
 });
+const secureCookie = process.env.COOKIE_SECURE === 'true';
 app.use(session({
   name: 'mw.sid',
   secret: process.env.SESSION_SECRET || 'milk-wear-dev-secret',
@@ -69,7 +70,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true,                      // با هر درخواست، عمر کوکی تمدید می‌شود
-  cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.COOKIE_SECURE === 'true', maxAge: 12 * 60 * 60 * 1000 },
+  // داخل مینی‌اپِ بله صفحه در iframeِ bale.ai است؛ کوکیِ بین‌سایتی فقط با none+secure ارسال می‌شود.
+  // روی HTTPS (COOKIE_SECURE=true) از none استفاده کن؛ در حالتِ http محلی lax می‌ماند.
+  cookie: { httpOnly: true, sameSite: secureCookie ? 'none' : 'lax', secure: secureCookie, maxAge: 12 * 60 * 60 * 1000 },
 }));
 
 // ثبت خودکار همهٔ عملیات تغییردهنده در لاگ (بعد از session تا کاربر مشخص باشد)
