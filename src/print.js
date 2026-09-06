@@ -136,14 +136,60 @@ export async function enqueueReceipt(receiptId, copies = 1) {
   return enqueuePrint({ kind: 'receipt', refType: 'receipt', refId: receiptId, branchId: b.branch_id, copies, payload: b.payload });
 }
 
-// صورتحساب: کوئریِ صفحهٔ statement.html در payload ذخیره می‌شود؛ ایجنت همان صفحه را چاپ می‌کند
-export async function enqueueStatement(query, copies = 1) {
-  return enqueuePrint({ kind: 'statement', refType: 'none', refId: null, branchId: null, copies, payload: { doc: 'statement', query } });
+// دادهٔ کاملِ صورتحساب (برای رندرِ سبکِ آفلاینِ ایجنت هم قابل‌استفاده است)
+export async function buildStatementPayload(query) {
+  const p = new URLSearchParams(query);
+  const personId = Number(p.get('person_id'));
+  const [[person]] = await pool.query('SELECT id, person_code, fullname, mobile FROM persons WHERE id=?', [personId]);
+  const [[ab]] = await pool.query('SELECT current_balance, last_settlement_at FROM account_balances WHERE person_id=?', [personId]);
+  const to = p.get('to') || new Date().toISOString().slice(0, 10);
+  let from = p.get('from') || null;
+  if (p.get('since') === 'settlement' && ab?.last_settlement_at) from = new Date(ab.last_settlement_at).toISOString().slice(0, 10);
+  if (!from) from = '1300-01-01';
+  const [[op]] = await pool.query("SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) opening FROM transactions WHERE person_id=? AND status='active' AND DATE(tx_date)<?", [personId, from]);
+  let running = Number(op.opening); const opening = running;
+  const [rows] = await pool.query("SELECT tx_date, tx_type, direction, amount, description FROM transactions WHERE person_id=? AND status='active' AND DATE(tx_date) BETWEEN ? AND ? ORDER BY tx_date, id", [personId, from, to]);
+  const ledger = rows.map((r) => { const credit = r.direction === 'credit' ? Number(r.amount) : 0; const debit = r.direction === 'debit' ? Number(r.amount) : 0; running += credit - debit; return { date: toJalaliDate(r.tx_date), tx_type: r.tx_type, description: r.description, debit, credit, balance: running }; });
+  const [[branch]] = await pool.query('SELECT name, phone, address FROM branches ORDER BY id LIMIT 1');
+  return {
+    doc: 'statement', title: 'صورتحساب', query, branch: branch || {}, person,
+    from_jalali: toJalaliDate(from), to_jalali: toJalaliDate(to),
+    opening, closing: running, total_debit: ledger.reduce((s, r) => s + r.debit, 0),
+    total_credit: ledger.reduce((s, r) => s + r.credit, 0), current_balance: Number(ab?.current_balance || 0), ledger,
+  };
 }
 
-// مانیفست بارگیری (وضعیت لحظه‌ای؛ ایجنت صفحهٔ manifest.html را رندر می‌کند)
+// صورتحساب: کوئریِ صفحهٔ statement.html در payload ذخیره می‌شود؛ ایجنت همان صفحه را چاپ می‌کند
+export async function enqueueStatement(query, copies = 1) {
+  const payload = await buildStatementPayload(query);
+  return enqueuePrint({ kind: 'statement', refType: 'none', refId: null, branchId: null, copies, payload });
+}
+
+// دادهٔ کاملِ مانیفست
+export async function buildManifestPayload() {
+  const [orders] = await pool.query("SELECT id FROM orders WHERE deleted_at IS NULL AND fulfillment_type='delivery' AND status IN ('queued','confirmed')");
+  const ids = orders.map((o) => o.id); let items = [];
+  if (ids.length) {
+    const [rows] = await pool.query(
+      `SELECT p.name product_name, u.symbol unit, SUM(oi.quantity) qty, SUM(oi.amount) amount
+         FROM order_items oi JOIN orders o ON o.id=oi.order_id JOIN products p ON p.id=oi.product_id
+         LEFT JOIN units u ON u.id=p.unit_id WHERE oi.order_id IN (${ids.map(() => '?').join(',')}) GROUP BY p.id ORDER BY qty DESC`, ids);
+    items = rows.map((r) => ({ name: r.product_name, unit: r.unit || '', qty: Number(r.qty), amount: Number(r.amount) }));
+  }
+  const [[branch]] = await pool.query('SELECT name, phone, address FROM branches ORDER BY id LIMIT 1');
+  return { doc: 'manifest', title: 'مانیفست', branch: branch || {}, order_count: ids.length, items, total: items.reduce((s, i) => s + i.amount, 0) };
+}
+
+// مانیفست بارگیری (اسنپ‌شات لحظه‌ای)
 export async function enqueueManifest(copies = 1) {
-  return enqueuePrint({ kind: 'manifest', refType: 'none', refId: null, branchId: null, copies, payload: { doc: 'manifest' } });
+  const payload = await buildManifestPayload();
+  return enqueuePrint({ kind: 'manifest', refType: 'none', refId: null, branchId: null, copies, payload });
+}
+
+// آیا موتور چاپ سبک (بدون کروم) است؟ (وقتی پیش‌نمایش خاموش است)
+export async function isLightPrint() {
+  const s = await getSettings();
+  return s.print_preview === false;
 }
 
 // تیکِ زمان‌بندی: بارنامهٔ سفارش‌های صف‌شده را در ساعت مقرر/بازه‌ای به صف چاپ می‌فرستد

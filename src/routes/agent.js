@@ -1,7 +1,7 @@
 // API پرینت‌ایجنت: با توکن (نه سشن) احراز می‌شود. ایجنت کنار پرینتر این‌ها را صدا می‌زند.
 import { Router } from 'express';
 import { pool } from '../db.js';
-import { getAgentToken } from '../print.js';
+import { getAgentToken, isLightPrint } from '../print.js';
 import { docHTML } from '../thermal.js';
 import { renderHtmlToPng, renderElementToPng } from '../render.js';
 import { AppError, wrap } from '../util.js';
@@ -33,7 +33,9 @@ router.post('/poll', wrap(async (req, res) => {
       [req.agentId, job.id]);
     await conn.commit();
     const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
-    res.json({ job: { id: job.id, kind: job.kind, copies: job.copies, payload } });
+    // light=true یعنی ایجنت خودش با PIL رسم کند (بدون کروم/بدون درخواستِ /image)
+    const light = await isLightPrint();
+    res.json({ job: { id: job.id, kind: job.kind, copies: job.copies, light, payload } });
   } catch (e) {
     await conn.rollback(); throw e;
   } finally {
