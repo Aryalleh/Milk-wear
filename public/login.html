@@ -34,6 +34,7 @@
       </div>
       <div class="mt-8 pt-8 border-t border-gray-100 text-center">
         <p class="text-sm text-gray-500">ورود از طریق پیام‌رسان بله به‌صورت خودکار انجام می‌شود</p>
+        <p id="dbg" class="text-[10px] text-gray-400 mt-3 leading-5 dir-ltr" style="direction:ltr"></p>
       </div>
     </div>
     <p class="text-center text-gray-400 text-xs mt-8">سامانه یکپارچه مدیریت زنجیره لبنیات</p>
@@ -51,6 +52,14 @@
   (async function(){
     const wa = window.Bale && window.Bale.WebApp; if(wa){ try{ wa.ready(); wa.expand(); }catch{} }
     if (wa && wa.initData){ try{ const d=await api('/auth/bale',{method:'POST',body:{initData:wa.initData}}); go(d.user); return; }catch(e){ document.getElementById('err').textContent = e.message==='unauthorized'?'':e.message; } }
+    // تشخیصِ ورود بله: چرا لاگین خودکار انجام نشد؟ (فقط وقتی خودکار وارد نشدیم)
+    try {
+      const dbg = document.getElementById('dbg');
+      if (dbg) dbg.textContent = 'وضعیت بله → SDK: ' + (window.Bale ? 'بله' : 'خیر')
+        + ' | WebApp: ' + (wa ? 'بله' : 'خیر')
+        + ' | initData: ' + (wa && wa.initData ? (wa.initData.length + ' نویسه') : 'خالی')
+        + ' | hash: ' + (location.hash ? location.hash.slice(0, 30) : 'ندارد');
+    } catch {}
     const u = await currentUser(); if(u) go(u);
   })();
 </script>
