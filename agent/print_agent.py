@@ -19,32 +19,38 @@
 import os, sys, io, time, base64
 import requests
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
-except Exception:
-    pass
-
 from PIL import Image, ImageDraw, ImageFont
-import arabic_reshaper
-from bidi.algorithm import get_display
+from PIL import features as _pil_features
 
+import config
+import webpanel
 
-def env(k, d=None):
-    v = os.environ.get(k)
-    return v if v not in (None, "") else d
+# اگر Pillow با raqm ساخته شده باشد، خودش شکل‌دهیِ حروف و ترتیبِ راست‌به‌چپ را انجام
+# می‌دهد؛ در این حالت نباید متن را دستی reshape/bidi کنیم (وگرنه دوباره برعکس می‌شود).
+# فقط در نبودِ raqm از arabic_reshaper + python-bidi به‌عنوان فال‌بک استفاده می‌کنیم.
+_HAS_RAQM = False
+try:
+    _HAS_RAQM = _pil_features.check("raqm")
+except Exception:
+    _HAS_RAQM = False
+if not _HAS_RAQM:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
 
+config.load()
 
-SERVER_URL   = env("SERVER_URL", "http://localhost:3000").rstrip("/")
-AGENT_TOKEN  = env("AGENT_TOKEN", "")
-AGENT_ID     = env("AGENT_ID", "shop-agent")
-POLL_SECONDS = float(env("POLL_SECONDS", "3"))
-WIDTH        = int(env("PRINTER_WIDTH", "576"))
-FONT_PATH    = env("FONT_REGULAR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "Vazirmatn.ttf"))
-PRINTER_TYPE = env("PRINTER_TYPE", "file").lower()
+# وضعیتِ زندهٔ ایجنت که پنل وب نمایش می‌دهد.
+STATUS = {"connected": False, "printer_type": config.get("printer_type"),
+          "last_job": None, "last_error": None}
 
-if not AGENT_TOKEN or AGENT_TOKEN.strip().startswith("#"):
-    sys.exit("AGENT_TOKEN تنظیم نشده. آن را از «تنظیمات ← چاپ و سفارش‌گیری» کپی کنید.")
+# دسترسیِ زنده به تنظیمات (پنل ممکن است آن‌ها را حین اجرا عوض کند).
+def server_url():   return (config.get("server_url") or "http://localhost:3000").rstrip("/")
+def agent_token():  return config.get("agent_token") or ""
+def agent_id():     return config.get("agent_id") or "shop-agent"
+def poll_seconds(): return float(config.get("poll_seconds") or 3)
+def width():        return int(config.get("printer_width") or 576)
+def printer_type(): return (config.get("printer_type") or "file").lower()
+def font_path():    return config.font_path()
 
 _FA = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
 def fa_num(n):
@@ -52,11 +58,15 @@ def fa_num(n):
     except Exception: s = str(n)
     return s.translate(_FA)
 def fa_dig(s): return str(s or "").translate(_FA)
-def rt(t): return get_display(arabic_reshaper.reshape(str(t if t is not None else "")))
+def rt(t):
+    """متنِ آمادهٔ رسم. با raqm خام برمی‌گردد (Pillow خودش RTL/شکل‌دهی می‌کند)؛
+    بدونِ raqm دستی reshape+bidi می‌شود."""
+    s = str(t if t is not None else "")
+    return s if _HAS_RAQM else get_display(arabic_reshaper.reshape(s))
 
 def font(size, weight=400):
     try:
-        f = ImageFont.truetype(FONT_PATH, size)
+        f = ImageFont.truetype(font_path(), size)
         try: f.set_variation_by_axes([weight])
         except Exception: pass
         return f
@@ -70,7 +80,7 @@ def get_logo():
     if _logo == "unset":
         _logo = None
         try:
-            r = requests.get(f"{SERVER_URL}/api/public/logo", timeout=8)
+            r = requests.get(f"{server_url()}/api/public/logo", timeout=8)
             uri = (r.json() or {}).get("logo")
             if uri and uri.startswith("data:image") and "," in uri:
                 _logo = Image.open(io.BytesIO(base64.b64decode(uri.split(",", 1)[1]))).convert("RGBA")
@@ -81,8 +91,8 @@ def get_logo():
 
 # ---------------- بوم رسم (۸۰م‌م) ----------------
 class Canvas:
-    def __init__(self, w=WIDTH, pad=16):
-        self.w, self.pad = w, pad
+    def __init__(self, w=None, pad=16):
+        self.w, self.pad = (w or width()), pad
         self.ops = []
     def _h(self, f): a, d = f.getmetrics(); return a + d + 6
     def rl(self, t, f, gap=0): self.ops.append(("rl", t, f, gap))
@@ -233,24 +243,37 @@ def render_light(p):
 
 
 # ---------------- پرینتر ----------------
+def _hexid(v):
+    """'0x0416' یا '0416' → عدد صحیح. مقادیر VID/PID همیشه هگز ذخیره می‌شوند."""
+    s = str(v).strip().lower().replace("0x", "")
+    return int(s or "0", 16)
+
 def make_printer():
     from escpos import printer as P
-    if PRINTER_TYPE == "network":
-        return P.Network(env("PRINTER_HOST", "192.168.1.50"), port=int(env("PRINTER_PORT", "9100")), timeout=15)
-    if PRINTER_TYPE == "usb":
-        return P.Usb(int(env("PRINTER_USB_VENDOR", "0x0416"), 16), int(env("PRINTER_USB_PRODUCT", "0x5011"), 16))
-    if PRINTER_TYPE == "serial":
-        return P.Serial(devfile=env("PRINTER_SERIAL_DEV", "/dev/ttyUSB0"), baudrate=int(env("PRINTER_BAUD", "9600")))
-    raise SystemExit(f"PRINTER_TYPE ناشناخته: {PRINTER_TYPE}")
+    pt = printer_type()
+    if pt == "network":
+        return P.Network(config.get("printer_host"), port=int(config.get("printer_port")), timeout=15)
+    if pt == "usb":
+        return P.Usb(
+            _hexid(config.get("printer_usb_vendor")),
+            _hexid(config.get("printer_usb_product")),
+            interface=int(config.get("printer_usb_interface")),
+            in_ep=_hexid(config.get("printer_usb_in_ep")),
+            out_ep=_hexid(config.get("printer_usb_out_ep")),
+        )
+    if pt == "serial":
+        return P.Serial(devfile=config.get("printer_serial_dev"), baudrate=int(config.get("printer_baud")))
+    raise RuntimeError(f"PRINTER_TYPE ناشناخته: {pt}")
 
 def fetch_image(session, job_id):
-    r = session.get(f"{SERVER_URL}/api/agent/jobs/{job_id}/image", params={"w": WIDTH}, timeout=40)
+    r = session.get(f"{server_url()}/api/agent/jobs/{job_id}/image", params={"w": width()}, timeout=40)
     r.raise_for_status(); return r.content
 
 def to_width(img):
+    w = width()
     if img.mode != "L": img = img.convert("L")
-    if img.width != WIDTH:
-        img = img.resize((WIDTH, max(1, round(img.height * WIDTH / img.width))))
+    if img.width != w:
+        img = img.resize((w, max(1, round(img.height * w / img.width))))
     return img
 
 def print_job(session, job):
@@ -259,7 +282,7 @@ def print_job(session, job):
         img = to_width(render_light(job.get("payload") or {}))         # بدون کروم
     else:
         img = to_width(Image.open(io.BytesIO(fetch_image(session, job["id"]))))  # تصویرِ کرومِ سرور
-    if PRINTER_TYPE == "file":
+    if printer_type() == "file":
         os.makedirs("out", exist_ok=True)
         path = os.path.join("out", f"job-{job['id']}-{job.get('kind','doc')}.png")
         img.save(path); print(f"  [file] {path} ({img.width}×{img.height})"); return
@@ -271,33 +294,65 @@ def print_job(session, job):
         except Exception: pass
 
 
-def main():
+def _session():
+    """سشنِ requests با هدرهای جاری (توکن/شناسه ممکن است از پنل عوض شده باشند)."""
     s = requests.Session()
-    s.headers.update({"x-agent-token": AGENT_TOKEN, "x-agent-id": AGENT_ID})
-    print(f"🖨  اتصال به {SERVER_URL} (پرینتر: {PRINTER_TYPE}) …")
+    s.headers.update({"x-agent-token": agent_token(), "x-agent-id": agent_id()})
+    return s
+
+
+def do_test_print():
+    """چاپ آزمایشی با تنظیماتِ جاری — برای دکمهٔ پنل. (ok, message) برمی‌گرداند."""
+    STATUS["printer_type"] = printer_type()
+    payload = {"doc": "test", "message": "اتصال سالم است ✔",
+               "branch": {"name": "لبنیات محمدپور"}}
+    job = {"id": "test", "kind": "test", "light": True, "payload": payload, "copies": 1}
     try:
-        r = s.get(f"{SERVER_URL}/api/agent/ping", timeout=10)
-        if r.status_code == 401: sys.exit("توکن نامعتبر است.")
-        r.raise_for_status(); print("✅ متصل شد. در حال گوش‌دادن به صف چاپ …")
-    except requests.RequestException as e:
-        print(f"⚠️  اتصال اولیه ناموفق ({e})؛ ادامه می‌دهد …")
+        print_job(_session(), job)
+        if printer_type() == "file":
+            return True, "سند تست در پوشهٔ out/ ذخیره شد."
+        return True, "به پرینتر ارسال شد."
+    except Exception as e:
+        STATUS["last_error"] = str(e)[:120]
+        return False, str(e)
+
+
+def get_status():
+    return dict(STATUS)
+
+
+def main():
+    webpanel.start(test_print_fn=do_test_print, status_fn=get_status)
+    print("🖨  پرینت‌ایجنت آماده است. تنظیمات را از پنل وب انجام دهید.")
     while True:
         try:
-            r = s.post(f"{SERVER_URL}/api/agent/poll", timeout=20)
-            if r.status_code == 401: print("❌ توکن رد شد؛ ۳۰ ثانیه صبر"); time.sleep(30); continue
+            STATUS["printer_type"] = printer_type()
+            if not agent_token():
+                STATUS["connected"] = False
+                time.sleep(2); continue
+            s = _session()
+            r = s.post(f"{server_url()}/api/agent/poll", timeout=20)
+            if r.status_code == 401:
+                STATUS["connected"] = False
+                STATUS["last_error"] = "توکن رد شد"
+                print("❌ توکن رد شد؛ ۱۰ ثانیه صبر"); time.sleep(10); continue
             r.raise_for_status()
+            STATUS["connected"] = True; STATUS["last_error"] = None
             job = r.json().get("job")
-            if not job: time.sleep(POLL_SECONDS); continue
+            if not job: time.sleep(poll_seconds()); continue
             print(f"📄 کار #{job['id']} ({job['kind']}, {'سبک' if job.get('light') else 'دقیق'}) …")
             try:
                 print_job(s, job)
-                s.post(f"{SERVER_URL}/api/agent/jobs/{job['id']}/done", timeout=15); print(f"✔ #{job['id']} چاپ شد")
+                s.post(f"{server_url()}/api/agent/jobs/{job['id']}/done", timeout=15)
+                STATUS["last_job"] = job["id"]; print(f"✔ #{job['id']} چاپ شد")
             except Exception as e:
+                STATUS["last_error"] = str(e)[:120]
                 print(f"✖ خطای #{job['id']}: {e}")
-                try: s.post(f"{SERVER_URL}/api/agent/jobs/{job['id']}/error", json={"error": str(e)[:200]}, timeout=15)
+                try: s.post(f"{server_url()}/api/agent/jobs/{job['id']}/error", json={"error": str(e)[:200]}, timeout=15)
                 except Exception: pass
                 time.sleep(2)
         except requests.RequestException as e:
+            STATUS["connected"] = False; STATUS["last_error"] = "شبکه در دسترس نیست"
             print(f"… شبکه در دسترس نیست ({e})؛ ۵ ثانیه"); time.sleep(5)
         except KeyboardInterrupt:
             print("\nخروج."); break
