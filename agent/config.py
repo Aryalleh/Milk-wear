@@ -22,9 +22,11 @@ BUNDLED_FONT = os.path.join(HERE, "fonts", "Vazirmatn.ttf")
 _STR_KEYS = {
     "server_url", "agent_token", "agent_id", "printer_type",
     "printer_host", "printer_usb_vendor", "printer_usb_product",
+    "printer_usb_in_ep", "printer_usb_out_ep",
     "printer_serial_dev", "font_regular", "panel_host",
 }
-_INT_KEYS = {"printer_width", "printer_port", "printer_baud", "panel_port"}
+_INT_KEYS = {"printer_width", "printer_port", "printer_baud", "panel_port",
+             "printer_usb_interface"}
 _FLOAT_KEYS = {"poll_seconds"}
 
 DEFAULTS = {
@@ -40,6 +42,11 @@ DEFAULTS = {
     "printer_port": 9100,
     "printer_usb_vendor": "0x0416",
     "printer_usb_product": "0x5011",
+    # اندپوینت/اینترفیسِ USB — برای پرینترهایی که مقادیر پیش‌فرض کار نمی‌کند
+    # (از خروجیِ «lsusb -v -d VID:PID» به‌دست می‌آید)
+    "printer_usb_interface": 0,
+    "printer_usb_in_ep": "0x82",
+    "printer_usb_out_ep": "0x02",
     "printer_serial_dev": "/dev/ttyUSB0",
     "printer_baud": 9600,
     # فونت (خالی = فونت همراهِ ایجنت)
@@ -73,6 +80,9 @@ def _from_env():
         "printer_host": "PRINTER_HOST", "printer_port": "PRINTER_PORT",
         "printer_usb_vendor": "PRINTER_USB_VENDOR",
         "printer_usb_product": "PRINTER_USB_PRODUCT",
+        "printer_usb_interface": "PRINTER_USB_INTERFACE",
+        "printer_usb_in_ep": "PRINTER_USB_IN_EP",
+        "printer_usb_out_ep": "PRINTER_USB_OUT_EP",
         "printer_serial_dev": "PRINTER_SERIAL_DEV", "printer_baud": "PRINTER_BAUD",
         "font_regular": "FONT_REGULAR", "panel_host": "PANEL_HOST",
         "panel_port": "PANEL_PORT",

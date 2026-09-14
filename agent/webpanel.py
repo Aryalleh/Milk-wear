@@ -199,6 +199,12 @@ HTML = r"""<!doctype html>
         <div><label>Vendor ID</label><input id="printer_usb_vendor" placeholder="0x0416"></div>
         <div><label>Product ID</label><input id="printer_usb_product" placeholder="0x5011"></div>
       </div>
+      <div class="row">
+        <div><label>Interface</label><input id="printer_usb_interface" type="number" placeholder="0"></div>
+        <div><label>IN endpoint</label><input id="printer_usb_in_ep" placeholder="0x82"></div>
+        <div><label>OUT endpoint</label><input id="printer_usb_out_ep" placeholder="0x02"></div>
+      </div>
+      <div class="hint">مقادیر Interface/IN/OUT را از خروجی <code>lsusb -v -d VID:PID</code> بردارید؛ پیش‌فرض‌ها معمولاً کار می‌کنند.</div>
       <div class="btns"><button class="ghost" onclick="fixUSB()">🔧 رفع دسترسی USB (udev)</button></div>
       <div class="hint">اگر خطای «Access denied» گرفتید، این دکمه قانون udev را می‌سازد یا دستورش را می‌دهد.</div>
     </div>
@@ -239,7 +245,8 @@ HTML = r"""<!doctype html>
 const $ = id => document.getElementById(id);
 const FIELDS = ["server_url","agent_token","agent_id","poll_seconds","printer_type",
   "printer_width","printer_host","printer_port","printer_usb_vendor",
-  "printer_usb_product","printer_serial_dev","printer_baud"];
+  "printer_usb_product","printer_usb_interface","printer_usb_in_ep",
+  "printer_usb_out_ep","printer_serial_dev","printer_baud"];
 
 function msg(t, kind){const m=$("msg"); m.className="msg show "+(kind||"ok"); m.innerHTML=t;}
 function hideMsg(){$("msg").className="msg";}

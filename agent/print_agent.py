@@ -20,11 +20,22 @@ import os, sys, io, time, base64
 import requests
 
 from PIL import Image, ImageDraw, ImageFont
-import arabic_reshaper
-from bidi.algorithm import get_display
+from PIL import features as _pil_features
 
 import config
 import webpanel
+
+# اگر Pillow با raqm ساخته شده باشد، خودش شکل‌دهیِ حروف و ترتیبِ راست‌به‌چپ را انجام
+# می‌دهد؛ در این حالت نباید متن را دستی reshape/bidi کنیم (وگرنه دوباره برعکس می‌شود).
+# فقط در نبودِ raqm از arabic_reshaper + python-bidi به‌عنوان فال‌بک استفاده می‌کنیم.
+_HAS_RAQM = False
+try:
+    _HAS_RAQM = _pil_features.check("raqm")
+except Exception:
+    _HAS_RAQM = False
+if not _HAS_RAQM:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
 
 config.load()
 
@@ -47,7 +58,11 @@ def fa_num(n):
     except Exception: s = str(n)
     return s.translate(_FA)
 def fa_dig(s): return str(s or "").translate(_FA)
-def rt(t): return get_display(arabic_reshaper.reshape(str(t if t is not None else "")))
+def rt(t):
+    """متنِ آمادهٔ رسم. با raqm خام برمی‌گردد (Pillow خودش RTL/شکل‌دهی می‌کند)؛
+    بدونِ raqm دستی reshape+bidi می‌شود."""
+    s = str(t if t is not None else "")
+    return s if _HAS_RAQM else get_display(arabic_reshaper.reshape(s))
 
 def font(size, weight=400):
     try:
@@ -239,7 +254,13 @@ def make_printer():
     if pt == "network":
         return P.Network(config.get("printer_host"), port=int(config.get("printer_port")), timeout=15)
     if pt == "usb":
-        return P.Usb(_hexid(config.get("printer_usb_vendor")), _hexid(config.get("printer_usb_product")))
+        return P.Usb(
+            _hexid(config.get("printer_usb_vendor")),
+            _hexid(config.get("printer_usb_product")),
+            interface=int(config.get("printer_usb_interface")),
+            in_ep=_hexid(config.get("printer_usb_in_ep")),
+            out_ep=_hexid(config.get("printer_usb_out_ep")),
+        )
     if pt == "serial":
         return P.Serial(devfile=config.get("printer_serial_dev"), baudrate=int(config.get("printer_baud")))
     raise RuntimeError(f"PRINTER_TYPE ناشناخته: {pt}")
