@@ -64,6 +64,23 @@ def rt(t):
     s = str(t if t is not None else "")
     return s if _HAS_RAQM else get_display(arabic_reshaper.reshape(s))
 
+# آیا Pillow می‌تواند فونت TrueType (freetype) را لود کند؟ اگر نه، فارسی درست چاپ
+# نمی‌شود و باید Pillow با پشتیبانی freetype نصب شود.
+FONT_ERROR = None
+try:
+    ImageFont.truetype(config.font_path(), 20)
+except Exception as _e:
+    FONT_ERROR = (f"فونت لود نشد ({type(_e).__name__}: {_e}). Pillow با پشتیبانی "
+                  "freetype نصب نیست یا فایل فونت ناقص است.")
+    print("⚠️  " + FONT_ERROR)
+
+def _default_font(size):
+    """فونتِ فال‌بک که getmetrics دارد (تا کد کرش نکند)؛ فارسی را درست نشان نمی‌دهد."""
+    try:
+        return ImageFont.load_default(size=size)   # Pillow ≥ 10.1: فونت واقعی با متریک
+    except Exception:
+        return ImageFont.load_default()
+
 def font(size, weight=400):
     try:
         f = ImageFont.truetype(font_path(), size)
@@ -71,7 +88,7 @@ def font(size, weight=400):
         except Exception: pass
         return f
     except Exception:
-        return ImageFont.load_default()
+        return _default_font(size)
 
 # لوگوی برند (data URI) — یک‌بار از سرور گرفته و کش می‌شود
 _logo = "unset"
@@ -94,7 +111,14 @@ class Canvas:
     def __init__(self, w=None, pad=16):
         self.w, self.pad = (w or width()), pad
         self.ops = []
-    def _h(self, f): a, d = f.getmetrics(); return a + d + 6
+    def _h(self, f):
+        try:
+            a, d = f.getmetrics(); return a + d + 6
+        except AttributeError:
+            try:
+                b = f.getbbox("لبیآگ"); return (b[3] - b[1]) + 6
+            except Exception:
+                return 24
     def rl(self, t, f, gap=0): self.ops.append(("rl", t, f, gap))
     def lr(self, t, f, gap=0): self.ops.append(("lr", t, f, gap))
     def center(self, t, f, gap=0): self.ops.append(("c", t, f, gap))
@@ -309,16 +333,20 @@ def do_test_print():
     job = {"id": "test", "kind": "test", "light": True, "payload": payload, "copies": 1}
     try:
         print_job(_session(), job)
+        note = "  ⚠ " + FONT_ERROR if FONT_ERROR else ""
         if printer_type() == "file":
-            return True, "سند تست در پوشهٔ out/ ذخیره شد."
-        return True, "به پرینتر ارسال شد."
+            return True, "سند تست در پوشهٔ out/ ذخیره شد." + note
+        return True, "به پرینتر ارسال شد." + note
     except Exception as e:
         STATUS["last_error"] = str(e)[:120]
         return False, str(e)
 
 
 def get_status():
-    return dict(STATUS)
+    st = dict(STATUS)
+    if FONT_ERROR and not st.get("last_error"):
+        st["last_error"] = FONT_ERROR
+    return st
 
 
 def main():
