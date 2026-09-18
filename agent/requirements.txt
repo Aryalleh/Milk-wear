@@ -1,7 +1,10 @@
+# Pillow اینجا نیست چون روی رزبری‌پای pip آن را از سورس می‌سازد (کند و سنگین).
+# آن را از بستهٔ آمادهٔ سیستم نصب کنید (شاملِ freetype برای فارسی):
+#   Raspberry Pi / Debian:  sudo apt install -y python3-pil
+#   یا اگر حتماً pip می‌خواهید:  pip install Pillow
 requests>=2.31
 python-dotenv>=1.0
 python-escpos>=3.0
-Pillow>=10.0
 arabic-reshaper>=3.0
 python-bidi>=0.4.2
 qrcode>=7.0

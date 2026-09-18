@@ -22,10 +22,19 @@
 ## نصب
 نیازمند Python 3.9+ .
 
+**Pillow** جداگانه نصب می‌شود (در `requirements.txt` نیست) چون روی رزبری‌پای pip آن را
+از سورس می‌سازد و خیلی کند/سنگین است. از بستهٔ آمادهٔ سیستم استفاده کنید که freetype هم دارد:
+
 ```bash
+# روی رزبری‌پای / دبیان (سریع، با پشتیبانی فارسی):
+sudo apt update && sudo apt install -y python3-pil
+# سپس بقیهٔ وابستگی‌ها:
 pip install -r requirements.txt
 python print_agent.py
 ```
+> روی سیستم‌های دیگر که وزنِ نصب مهم نیست، می‌توانید ساده `pip install Pillow` بزنید.
+> اگر از **venv** استفاده می‌کنید، برای دیده‌شدنِ `python3-pil`ِ سیستم آن را با
+> `python3 -m venv --system-site-packages venv` بسازید (یا همان `pip install Pillow`).
 بعد از اجرا، مرورگر را روی **پنل مدیریت** باز کنید و همهٔ تنظیمات را از آنجا انجام دهید:
 
 ```
