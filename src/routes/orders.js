@@ -19,13 +19,22 @@ const router = Router();
 // فهرست سفارش‌ها (کارمند) — با فیلتر وضعیت/کانال + ماندهٔ حساب طرف
 router.get('/', wrap(async (req, res) => {
   if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
-  const { status, channel, fulfillment, from, to } = req.query;
+  const { status, channel, fulfillment, from, to, include_pending } = req.query;
   const where = ['o.deleted_at IS NULL'], params = [];
   if (status) { where.push('o.status = ?'); params.push(status); }
   if (channel) { where.push('o.channel = ?'); params.push(channel); }
   if (fulfillment) { where.push('o.fulfillment_type = ?'); params.push(fulfillment); }
-  if (from) { where.push('DATE(o.ordered_at) >= ?'); params.push(from); }
-  if (to) { where.push('DATE(o.ordered_at) <= ?'); params.push(to); }
+  // بازهٔ تاریخ روی ordered_at؛ با include_pending سفارش‌های تحویل‌نشدهٔ هر روزی هم دیده می‌شوند
+  const dateConds = [];
+  if (from) { dateConds.push('DATE(o.ordered_at) >= ?'); params.push(from); }
+  if (to) { dateConds.push('DATE(o.ordered_at) <= ?'); params.push(to); }
+  if (dateConds.length) {
+    if (include_pending === '1' && !status) {
+      where.push(`((${dateConds.join(' AND ')}) OR o.status IN ('draft','queued','confirmed'))`);
+    } else {
+      where.push(...dateConds);
+    }
+  }
   const [rows] = await pool.query(
     `SELECT o.id, o.order_no, o.waybill_no, o.channel, o.fulfillment_type, o.status,
             o.total_amount, o.paid_amount, o.ordered_at, o.destination,

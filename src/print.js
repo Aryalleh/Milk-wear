@@ -1,7 +1,7 @@
 // صف چاپ سمت سرور + عکس‌برداری از اسناد برای پرینت‌ایجنت (ESC/POS 80mm)
 import crypto from 'crypto';
 import { pool } from './db.js';
-import { toJalaliDate } from './util.js';
+import { toJalaliDate, toJalaliDateTime } from './util.js';
 
 // ---------- تنظیمات عمومی (کلید/مقدار) ----------
 export async function getSettings() {
@@ -126,7 +126,7 @@ export async function buildReceiptPayload(receiptId) {
       doc: 'receipt', title: 'فاکتور',
       branch: { name: branch?.name || 'سامانه لبنیات', phone: branch?.phone || '', address: branch?.address || '' },
       receipt_no: rc.receipt_no,
-      date_jalali: toJalaliDate(rc.issued_at),
+      date_jalali: toJalaliDateTime(rc.issued_at),
       person: person?.fullname || '', person_code: person?.person_code || '', mobile: person?.mobile || '',
       milk, items,
       milk_amount: Number(rc.milk_amount), purchase_amount: Number(rc.purchase_amount),

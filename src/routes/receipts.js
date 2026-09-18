@@ -4,7 +4,7 @@ import { pool, withTx } from '../db.js';
 import { postTransaction, resolveMilkPrice, recomputeBalance, nextOrderNo } from '../ledger.js';
 import { notifyReceipt } from '../bale.js';
 import { enqueueReceipt } from '../print.js';
-import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
+import { AppError, wrap, currentJalaliMonth, toJalaliDate, toJalaliDateTime } from '../util.js';
 
 const router = Router();
 
@@ -167,7 +167,7 @@ export async function buildReceiptView(rc) {
     items = rows;
   }
   const packaging_total = items.reduce((s, i) => s + Number(i.packaging_cost || 0), 0);
-  return { receipt: { ...rc, issued_at_jalali: toJalaliDate(rc.issued_at) }, person, branch, milk, items, packaging_total };
+  return { receipt: { ...rc, issued_at_jalali: toJalaliDateTime(rc.issued_at) }, person, branch, milk, items, packaging_total };
 }
 
 // دریافت کامل یک فاکتور برای نمایش/پرینت (کارمند یا صاحب)

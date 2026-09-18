@@ -143,15 +143,20 @@ function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o
   const ed=editable?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
   const dl=editable?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
   return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl}</div>`; }
-function orderQuery(){ const q=new URLSearchParams(); if(filter)q.set('status',filter);
+function orderQuery(){ const q=new URLSearchParams();
+  // با انتخابِ فیلترِ وضعیت، همهٔ آن وضعیت بدون قید تاریخ نشان داده می‌شود
+  if(filter){ q.set('status',filter); return '?'+q.toString(); }
   const f=document.getElementById('fromG').value, t=document.getElementById('toG').value;
-  if(f)q.set('from',f); if(t)q.set('to',t); const s=q.toString(); return s?('?'+s):''; }
+  if(f)q.set('from',f); if(t)q.set('to',t);
+  // در نمای «همه» با بازهٔ تاریخ، سفارش‌های تحویل‌نشده هم (از هر روزی) دیده شوند
+  if(f||t) q.set('include_pending','1');
+  const s=q.toString(); return s?('?'+s):''; }
 function applyDate(){ load(); }
-function quickToday(){ const iso=new Date().toISOString().slice(0,10);
+function setDay(iso){
   document.getElementById('fromG').value=iso; document.getElementById('toG').value=iso;
   try{ const j=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso+'T00:00:00'));
-    document.getElementById('fromJ').value=j; document.getElementById('toJ').value=j; }catch(e){}
-  load(); }
+    document.getElementById('fromJ').value=j; document.getElementById('toJ').value=j; }catch(e){} }
+function quickToday(){ setDay(new Date().toISOString().slice(0,10)); load(); }
 function clearDate(){ ['fromG','toG','fromJ','toJ'].forEach(id=>document.getElementById(id).value=''); load(); }
 async function load(){ let rows=await api('/orders'+orderQuery());
   rows=rows.filter(o=>o.channel!=='farmer');   // خریدِ دامدار در «تحویل شیر» است، نه در لیست ارسال
@@ -287,6 +292,7 @@ async function printAllWaybills(){ const c=window._manCount||0; if(!c){ toast('�
   try{ const inv=await api('/inventory'); window.stockMap=Object.fromEntries(inv.map(p=>[p.id, p.on_hand])); }catch{}
   try{ const pk=await api('/packagings'); window.pkgMap=Object.fromEntries(pk.map(g=>[g.id,g])); }catch{}
   try{ jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' }); }catch(e){}
+  setDay(new Date().toISOString().slice(0,10));   // پیش‌فرض: فقط امروز (+ سفارش‌های تحویل‌نشده)
   live(load, 15000); })();
 </script>
 </body>

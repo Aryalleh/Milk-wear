@@ -253,7 +253,7 @@ def render_light(p):
 
     # receipt (پیش‌فرض)
     c.between(p.get("receipt_no",""), "شماره فاکتور:", font(20))
-    c.between(p.get("date_jalali",""), "تاریخ ثبت:", font(22))
+    c.between(p.get("date_jalali",""), "تاریخ و ساعت صدور:", font(20))
     c.between(p.get("person",""), "طرف حساب:", font(22)); c.hr()
     if p.get("milk"):
         m = p["milk"]; lbl = "شیر صبح" if m.get("shift") == "morning" else "شیر شب"

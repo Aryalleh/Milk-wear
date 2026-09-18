@@ -62,7 +62,7 @@
           <p class="text-xs text-slate-400 mt-1">شماره فاکتور: ${rc.receipt_no}</p>
         </div>
         <div class="space-y-4 border-b border-dashed border-slate-200 pb-6 mb-6 text-sm">
-          <div class="flex justify-between"><span class="text-slate-400">تاریخ ثبت:</span><span class="font-bold text-slate-800">${rc.issued_at_jalali}</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">تاریخ و ساعت صدور:</span><span class="font-bold text-slate-800">${rc.issued_at_jalali}</span></div>
           <div class="flex justify-between"><span class="text-slate-400">طرف حساب:</span><span class="font-bold text-slate-800">${d.person.fullname} (${d.person.person_code})</span></div>
         </div>
         <div class="space-y-4 mb-8">${rows||'<p class="text-center text-slate-400 text-sm">قلمی ثبت نشده</p>'}</div>
