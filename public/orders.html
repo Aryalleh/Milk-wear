@@ -8,6 +8,8 @@
   <script src="/assets/app.js"></script>
   <link rel="stylesheet" href="/assets/ui.css">
   <link rel="stylesheet" href="/assets/vendor/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/assets/vendor/jalalidatepicker.min.css">
+  <script src="/assets/vendor/jalalidatepicker.min.js"></script>
 </head>
 <body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
 <main class="max-w-[1200px] mx-auto p-4 md:p-6 space-y-5">
@@ -20,6 +22,14 @@
         <button data-f="delivered" onclick="setF('delivered')" class="fbtn nav-pill bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">تحویل‌شده</button>
       </div>
       <button onclick="openManifest()" class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold"><i class="fa-solid fa-clipboard-list ml-1"></i>مانیفست بارگیری</button>
+    </div>
+    <!-- فیلتر تاریخ (شمسی) -->
+    <div class="flex gap-2 items-end flex-wrap w-full border-t border-gray-100 pt-3 mt-1">
+      <div><label class="text-[11px] text-gray-500 block mb-1">از تاریخ</label><input id="fromJ" data-jdp data-jdp-target-value-input="#fromG" data-jdp-target-value-type="gregorian" placeholder="۱۴۰۵/۰۶/۰۱" class="input-skeu rounded-lg px-3 py-2 w-32 text-sm" readonly><input type="hidden" id="fromG"></div>
+      <div><label class="text-[11px] text-gray-500 block mb-1">تا تاریخ</label><input id="toJ" data-jdp data-jdp-target-value-input="#toG" data-jdp-target-value-type="gregorian" placeholder="۱۴۰۵/۰۶/۳۱" class="input-skeu rounded-lg px-3 py-2 w-32 text-sm" readonly><input type="hidden" id="toG"></div>
+      <button onclick="applyDate()" class="btn-skeu text-white px-4 py-2 rounded-lg text-sm font-bold">اعمال</button>
+      <button onclick="quickToday()" class="bg-white px-3 py-2 rounded-lg text-xs font-bold shadow-sm">امروز</button>
+      <button onclick="clearDate()" class="bg-white px-3 py-2 rounded-lg text-xs font-bold shadow-sm text-gray-500">پاک کردن</button>
     </div>
   </div>
 
@@ -133,7 +143,17 @@ function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o
   const ed=editable?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
   const dl=editable?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
   return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl}</div>`; }
-async function load(){ let rows=await api('/orders'+(filter?('?status='+filter):''));
+function orderQuery(){ const q=new URLSearchParams(); if(filter)q.set('status',filter);
+  const f=document.getElementById('fromG').value, t=document.getElementById('toG').value;
+  if(f)q.set('from',f); if(t)q.set('to',t); const s=q.toString(); return s?('?'+s):''; }
+function applyDate(){ load(); }
+function quickToday(){ const iso=new Date().toISOString().slice(0,10);
+  document.getElementById('fromG').value=iso; document.getElementById('toG').value=iso;
+  try{ const j=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso+'T00:00:00'));
+    document.getElementById('fromJ').value=j; document.getElementById('toJ').value=j; }catch(e){}
+  load(); }
+function clearDate(){ ['fromG','toG','fromJ','toJ'].forEach(id=>document.getElementById(id).value=''); load(); }
+async function load(){ let rows=await api('/orders'+orderQuery());
   rows=rows.filter(o=>o.channel!=='farmer');   // خریدِ دامدار در «تحویل شیر» است، نه در لیست ارسال
   window._rows=rows;
   document.getElementById('ordTable').innerHTML=rows.map(o=>`<tr><td class="p-3 font-bold">${o.order_no}</td><td class="p-3">${o.fullname}</td><td class="p-3 text-gray-500">${o.mobile||'—'}</td><td class="p-3 text-xs">${FF[o.fulfillment_type]||o.fulfillment_type}</td><td class="p-3">${fmt(o.total_amount)}${Number(o.paid_amount)>0?`<span class="block text-[10px] text-green-600">پرداخت ${fmt(o.paid_amount)}</span>`:''}</td><td class="p-3 text-xs">${debtLabel(o.balance)}</td><td class="p-3 text-gray-500">${o.destination||'—'}</td><td class="p-3"><span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span></td><td class="p-3">${actions(o)}</td></tr>`).join('')||'<tr><td colspan="9" class="p-6 text-center text-gray-400">سفارشی نیست</td></tr>';
@@ -266,6 +286,7 @@ async function printAllWaybills(){ const c=window._manCount||0; if(!c){ toast('�
   window.prodMap=Object.fromEntries(products.map(p=>[p.id,p]));
   try{ const inv=await api('/inventory'); window.stockMap=Object.fromEntries(inv.map(p=>[p.id, p.on_hand])); }catch{}
   try{ const pk=await api('/packagings'); window.pkgMap=Object.fromEntries(pk.map(g=>[g.id,g])); }catch{}
+  try{ jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' }); }catch(e){}
   live(load, 15000); })();
 </script>
 </body>
