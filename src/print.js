@@ -55,6 +55,26 @@ export async function buildWaybillPayload(orderId) {
        LEFT JOIN units u ON u.id = p.unit_id WHERE oi.order_id = ?`, [orderId]);
   const [[receipt]] = await pool.query(
     'SELECT public_token FROM receipts WHERE order_id = ? ORDER BY id DESC LIMIT 1', [orderId]);
+
+  // بدهیِ قبل/بعدِ همین بارنامه — از روی تراکنش‌های خودِ این سفارش
+  const [[otx]] = await pool.query(
+    `SELECT MIN(id) minId, MIN(tx_date) minDate,
+            COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) delta
+       FROM transactions WHERE person_id=? AND status='active' AND source_type='order' AND source_id=?`,
+    [order.person_id, orderId]);
+  let balanceBefore = 0, balanceAfter = 0;
+  if (otx && otx.minId != null) {
+    const [[bf]] = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) b
+         FROM transactions WHERE person_id=? AND status='active' AND (tx_date < ? OR (tx_date = ? AND id < ?))`,
+      [order.person_id, otx.minDate, otx.minDate, otx.minId]);
+    balanceBefore = Number(bf.b);
+    balanceAfter = balanceBefore + Number(otx.delta);
+  } else {
+    const [[ab]] = await pool.query('SELECT current_balance FROM account_balances WHERE person_id=?', [order.person_id]);
+    balanceAfter = Number(ab?.current_balance || 0); balanceBefore = balanceAfter;
+  }
+
   return {
     branch_id: order.branch_id,
     payload: {
@@ -71,6 +91,8 @@ export async function buildWaybillPayload(orderId) {
         price: Number(i.unit_price), amount: Number(i.amount),
       })),
       total: Number(order.total_amount),
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
       // QR بارنامه به فاکتورِ همین سفارش اشاره می‌کند
       qr_token: receipt?.public_token || null,
       qr_url: qrUrl(receipt?.public_token),

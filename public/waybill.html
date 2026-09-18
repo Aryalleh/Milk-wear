@@ -36,6 +36,8 @@
   (async()=>{ const card=document.getElementById('card');
     try{ const r=await fetch('/api/orders/'+id,{credentials:'same-origin'}); if(!r.ok) throw new Error('عدم دسترسی به بارنامه'); const d=await r.json(); const o=d.order;
       const rows=(d.items||[]).map(i=>`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">${fmt(i.quantity)} ${i.unit||''} × ${fmt(i.unit_price)}</p></div><span class="font-black text-slate-700 text-sm">${fmt(i.amount)}</span></div>`).join('');
+      // برچسبِ مانده: منفی=بدهکار (به ما بدهکار است)، مثبت=بستانکار، صفر=تسویه
+      const balLbl=(b)=>{ b=Number(b||0); return b<0?`${fmt(-b)} <span class="text-[10px]">بدهکار</span>`:(b>0?`${fmt(b)} <span class="text-[10px]">بستانکار</span>`:'تسویه'); };
       const LOGO=await fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null);
       card.innerHTML=`
         <div class="absolute -top-3 left-0 right-0 flex justify-around">${'<div class="w-6 h-6 rounded-full bg-[#f1f5f9]"></div>'.repeat(5)}</div>
@@ -53,7 +55,11 @@
           <div class="flex justify-between"><span class="text-slate-400">شماره سفارش:</span><span class="font-bold text-slate-800">${o.order_no}</span></div>
         </div>
         <div class="space-y-4 mb-6">${rows||'<p class="text-center text-slate-400 text-sm">قلمی ثبت نشده</p>'}</div>
-        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">جمع کل:</span><span class="text-lg font-black text-blue-700">${fmt(o.total_amount)} <span class="text-[10px]">ریال</span></span></div>
+        <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
+          <div class="flex justify-between text-xs"><span class="text-slate-500">بدهیِ قبل:</span><span class="font-bold text-slate-700">${balLbl(d.balance_before)}</span></div>
+          <div class="flex justify-between text-xs"><span class="text-slate-500">جمعِ این بارنامه:</span><span class="font-bold text-slate-700">${fmt(o.total_amount)}</span></div>
+          <div class="flex justify-between items-center border-t border-slate-200 pt-3"><span class="font-black text-slate-800">بدهیِ بعد:</span><span class="text-lg font-black text-blue-700">${balLbl(d.balance_after)} <span class="text-[10px]">ریال</span></span></div>
+        </div>
         <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">${d.receipt?'اسکن برای مشاهدهٔ فاکتور · MILKWEAR':'فاکتوری ثبت نشده'}</p></div>`;
       // QRِ بارنامه به فاکتورِ همین سفارش اشاره می‌کند
       if(d.receipt&&d.receipt.public_token){ const qrUrl=location.origin+'/r/'+d.receipt.public_token;

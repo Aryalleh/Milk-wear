@@ -218,7 +218,10 @@ def render_light(p):
             c.between(fa_num(it["amount"]), it["name"], font(24, 700))
             c.rl(f"{fa_num(it['qty'])} {it.get('unit','')} × {fa_num(it['price'])}", font(18), gap=4)
         c.hr(dash=False)
-        c.between(fa_num(p.get("total", 0)) + " ریال", "جمع کل:", font(26, 800))
+        _bal = lambda v: (fa_num(-int(v or 0)) + " بدهکار") if int(v or 0) < 0 else ((fa_num(int(v or 0)) + " بستانکار") if int(v or 0) > 0 else "تسویه")
+        c.between(_bal(p.get("balance_before", 0)), "بدهیِ قبل:", font(20))
+        c.between(fa_num(p.get("total", 0)), "جمعِ این بارنامه:", font(22, 700))
+        c.between(_bal(p.get("balance_after", 0)) + " ریال", "بدهیِ بعد:", font(26, 800))
         _qr(c, p.get("qr_url")); _footer(c, b); return c.render()
 
     if doc == "statement":

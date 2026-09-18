@@ -115,8 +115,34 @@ router.get('/:id', wrap(async (req, res) => {
   const [[receipt]] = await pool.query(
     'SELECT id, receipt_no, public_token FROM receipts WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
   const [[bal]] = await pool.query('SELECT current_balance FROM account_balances WHERE person_id = ?', [order.person_id]);
+
+  // بدهیِ قبل/بعدِ همین بارنامه — از روی تراکنش‌های خودِ این سفارش (منبع=order)
+  const [[otx]] = await pool.query(
+    `SELECT MIN(id) minId, MIN(tx_date) minDate,
+            COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) delta
+       FROM transactions
+      WHERE person_id=? AND status='active' AND source_type='order' AND source_id=?`,
+    [order.person_id, order.id]);
+  let balanceBefore, balanceAfter;
+  if (otx && otx.minId != null) {
+    const [[bf]] = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0) b
+         FROM transactions
+        WHERE person_id=? AND status='active' AND (tx_date < ? OR (tx_date = ? AND id < ?))`,
+      [order.person_id, otx.minDate, otx.minDate, otx.minId]);
+    balanceBefore = Number(bf.b);
+    balanceAfter = balanceBefore + Number(otx.delta);
+  } else {
+    balanceAfter = Number(bal?.current_balance || 0);
+    balanceBefore = balanceAfter;
+  }
+
   order.ordered_at_jalali = toJalaliDate(order.ordered_at || order.created_at);
-  res.json({ order, person, branch, items, receipt: receipt || null, balance: Number(bal?.current_balance || 0) });
+  res.json({
+    order, person, branch, items, receipt: receipt || null,
+    balance: Number(bal?.current_balance || 0),
+    balance_before: balanceBefore, balance_after: balanceAfter,
+  });
 }));
 
 // ثبت سفارش/فروش توسط کارمند (فروشگاه و سفارش یکی شده‌اند)
