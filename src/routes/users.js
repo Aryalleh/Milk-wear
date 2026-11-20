@@ -17,8 +17,53 @@ router.get('/', wrap(async (req, res) => {
        FROM users u
        JOIN roles r ON r.id = u.role_id
        LEFT JOIN branches b ON b.id = u.branch_id
+      WHERE u.deleted_at IS NULL
       ORDER BY u.id`);
   res.json(rows);
+}));
+
+// آیا این کاربر در سوابق (تراکنش/شیر/پرداخت/سفارش/فاکتور) استفاده شده؟
+async function userReferenced(id) {
+  for (const t of ['transactions', 'milk_deliveries', 'payments', 'orders', 'receipts']) {
+    const [[r]] = await pool.query(`SELECT COUNT(*) c FROM \`${t}\` WHERE created_by = ?`, [id]);
+    if (r.c > 0) return true;
+  }
+  return false;
+}
+
+// حذف کاربر — اگر در سوابق استفاده شده باشد حذفِ نرم (غیرفعال + مخفی)، وگرنه حذفِ کامل
+router.delete('/:id', wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  if (id === req.user.uid) throw new AppError(400, 'نمی‌توانید حساب خودتان را حذف کنید');
+
+  const [[u]] = await pool.query('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL', [id]);
+  if (!u) throw new AppError(404, 'کاربر یافت نشد');
+  if (u.username === 'aryalleh') throw new AppError(400, 'کاربرِ پشتیبان قابل حذف نیست');
+
+  // جلوگیری از حذفِ آخرین مدیرِ فعال (قفل‌شدنِ سیستم)
+  const [[adminRole]] = await pool.query("SELECT id FROM roles WHERE name = 'admin'");
+  if (adminRole && u.role_id === adminRole.id) {
+    const [[cnt]] = await pool.query(
+      'SELECT COUNT(*) c FROM users WHERE role_id = ? AND is_active = 1 AND deleted_at IS NULL AND id <> ?',
+      [adminRole.id, id]);
+    if (cnt.c === 0) throw new AppError(400, 'آخرین مدیرِ فعال قابل حذف نیست');
+  }
+
+  const referenced = await userReferenced(id);
+  if (referenced) {
+    // حذفِ نرم: غیرفعال، مخفی، و آزادسازیِ نام کاربری برای استفادهٔ مجدد
+    await pool.query(
+      "UPDATE users SET is_active = 0, deleted_at = NOW(), username = CONCAT('del', id, '_', LEFT(username, 40)) WHERE id = ?",
+      [id]);
+  } else {
+    await pool.query('DELETE FROM users WHERE id = ?', [id]);
+  }
+  await pool.query(
+    `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+     VALUES ('users', ?, 'delete', ?, ?, ?)`,
+    [id, JSON.stringify({ id: u.id, username: u.username, fullname: u.fullname, role_id: u.role_id }),
+     req.user.uid, req.body?.reason || null]);
+  res.json({ ok: true, soft: referenced });
 }));
 
 // نقش‌های قابل‌انتخاب

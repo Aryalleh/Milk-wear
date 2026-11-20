@@ -21,6 +21,8 @@ const COLUMNS = [
   ['receipts', 'payment_id', 'ADD COLUMN payment_id BIGINT NULL AFTER order_id'],
   ['receipts', 'voided_at', 'ADD COLUMN voided_at TIMESTAMP NULL DEFAULT NULL AFTER notified_at'],
   ['receipts', 'voided_by', 'ADD COLUMN voided_by BIGINT NULL AFTER voided_at'],
+  // 021 — حذف کاربر (نرم)
+  ['users', 'deleted_at', 'ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL AFTER created_at'],
 ];
 
 // جدول‌های نبوده (CREATE TABLE IF NOT EXISTS — idempotent)
