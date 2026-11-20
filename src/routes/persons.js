@@ -114,21 +114,27 @@ router.get('/:id/ledger', wrap(async (req, res) => {
   const { id } = req.params;
   const [rows] = await pool.query(
     `SELECT t.id, t.tx_date, t.tx_type, t.description, t.direction, t.amount, t.status,
+            rev.tx_type AS reverses_type,
             SUM(CASE WHEN t.direction='credit' THEN t.amount ELSE -t.amount END)
               OVER (ORDER BY t.tx_date, t.id) AS running_balance
        FROM transactions t
+       LEFT JOIN transactions rev ON rev.id = t.reverses_tx_id
       WHERE t.person_id = ? AND t.status='active'
       ORDER BY t.tx_date, t.id`, [id]);
-  res.json(rows.map((r) => ({
-    id: r.id,
-    date: r.tx_date,
-    date_jalali: toJalaliDate(r.tx_date),
-    type: r.tx_type,
-    description: r.description,
-    debit: r.direction === 'debit' ? Number(r.amount) : 0,
-    credit: r.direction === 'credit' ? Number(r.amount) : 0,
-    balance: Number(r.running_balance),
-  })));
+  // تحویل شیر (و ابطالِ تحویل شیر) در بخشِ «تحویل‌های شیر» نشان داده می‌شود، نه در گردش حساب.
+  // مانده رونده روی همهٔ تراکنش‌ها حساب شده تا با ماندهٔ واقعیِ حساب بخواند.
+  res.json(rows
+    .filter((r) => r.tx_type !== 'MILK_DELIVERY' && r.reverses_type !== 'MILK_DELIVERY')
+    .map((r) => ({
+      id: r.id,
+      date: r.tx_date,
+      date_jalali: toJalaliDate(r.tx_date),
+      type: r.tx_type,
+      description: r.description,
+      debit: r.direction === 'debit' ? Number(r.amount) : 0,
+      credit: r.direction === 'credit' ? Number(r.amount) : 0,
+      balance: Number(r.running_balance),
+    })));
 }));
 
 export default router;
