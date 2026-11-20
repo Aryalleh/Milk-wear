@@ -69,7 +69,7 @@
       </div>
 
       <div class="skeu-card overflow-hidden">
-        <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-deliveries',this)"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-truck-droplet text-green-600 ml-1"></i> تحویل‌های شیر (ماه جاری)</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
+        <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-deliveries',this)"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-truck-droplet text-green-600 ml-1"></i> تحویل‌های شیر</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
         <div id="acc-deliveries" class="acc-body hidden p-4 pt-0"><div id="deliveriesBox"></div></div>
       </div>
 
@@ -195,15 +195,15 @@ async function printReceipt(id){ try{ await api('/print/receipt/'+id,{method:'PO
 async function voidReceipt(id){ if(!confirm('این فاکتور باطل شود؟ شیر/فروش/پرداختِ آن برگردانده می‌شود.'))return; try{ await api('/receipts/'+id+'/void',{method:'POST',body:{reason:'ابطال دستی'}}); toast('فاکتور باطل شد'); if(currentPerson){loadReceipts(currentPerson);loadLedger(currentPerson);loadDeliveries(currentPerson);selectPerson(currentPerson);} }catch(e){ toast(e.message,'err'); } }
 
 // ----- تحویل‌های شیر: لیست + ویرایش + حذف -----
-async function loadDeliveries(id){ const rows=await api('/milk/deliveries?person_id='+id);
+async function loadDeliveries(id){ const rows=await api('/milk/deliveries?person_id='+id+'&all=1');
   const box=document.getElementById('deliveriesBox');
-  if(!rows.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">تحویلی در ماه جاری نیست</p>'; return; }
+  if(!rows.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">تحویلی ثبت نشده</p>'; return; }
   const sh=(r)=>r.shift==='morning'?'صبح':'شب';
   const acts=(r)=>{ const locked=!!(r.locked&&Number(r.locked)); return locked
     ? '<span class="w-11 h-11 inline-flex items-center justify-center text-gray-300" title="روز بسته است"><i class="fa-solid fa-lock"></i></span>'
     : `<button onclick="editDelivery(${r.id},${r.weight_kg},${r.price_per_kg})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button><button onclick="deleteDelivery(${r.id})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500" title="حذف"><i class="fa-solid fa-trash"></i></button>`; };
-  const cards=`<div class="md:hidden space-y-2">${rows.map(r=>`<div class="border border-gray-100 rounded-xl p-3 flex items-center justify-between gap-2"><div class="min-w-0"><p class="font-bold text-sm">${sh(r)} · ${fmt(r.weight_kg)} کیلو</p><p class="text-[11px] text-gray-400 mt-0.5">قیمت ${fmt(r.price_per_kg)} · مبلغ <span class="text-green-600 font-bold">${fmt(r.amount)}</span></p></div><div class="flex gap-1.5 shrink-0">${acts(r)}</div></div>`).join('')}</div>`;
-  const table=`<div class="hidden md:block overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">شیفت</th><th class="p-2">وزن</th><th class="p-2">قیمت</th><th class="p-2">مبلغ</th><th class="p-2">عملیات</th></tr></thead><tbody class="divide-y divide-gray-100">${rows.map(r=>`<tr><td class="p-2">${sh(r)}</td><td class="p-2">${fmt(r.weight_kg)}</td><td class="p-2">${fmt(r.price_per_kg)}</td><td class="p-2 font-bold text-green-600">${fmt(r.amount)}</td><td class="p-2 whitespace-nowrap flex gap-1">${acts(r)}</td></tr>`).join('')}</tbody></table></div>`;
+  const cards=`<div class="md:hidden space-y-2">${rows.map(r=>`<div class="border border-gray-100 rounded-xl p-3 flex items-center justify-between gap-2"><div class="min-w-0"><p class="font-bold text-sm">${sh(r)} · ${fmt(r.weight_kg)} کیلو</p><p class="text-[11px] text-gray-400 mt-0.5">${r.date_jalali} · قیمت ${fmt(r.price_per_kg)} · مبلغ <span class="text-green-600 font-bold">${fmt(r.amount)}</span></p></div><div class="flex gap-1.5 shrink-0">${acts(r)}</div></div>`).join('')}</div>`;
+  const table=`<div class="hidden md:block overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">تاریخ</th><th class="p-2">شیفت</th><th class="p-2">وزن</th><th class="p-2">قیمت</th><th class="p-2">مبلغ</th><th class="p-2">عملیات</th></tr></thead><tbody class="divide-y divide-gray-100">${rows.map(r=>`<tr><td class="p-2 text-gray-500">${r.date_jalali}</td><td class="p-2">${sh(r)}</td><td class="p-2">${fmt(r.weight_kg)}</td><td class="p-2">${fmt(r.price_per_kg)}</td><td class="p-2 font-bold text-green-600">${fmt(r.amount)}</td><td class="p-2 whitespace-nowrap flex gap-1">${acts(r)}</td></tr>`).join('')}</tbody></table></div>`;
   box.innerHTML=cards+table; }
 async function editDelivery(id,w,p){
   const nw=prompt('وزن (کیلوگرم):', w); if(nw===null)return;

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool, withTx } from '../db.js';
 import { postTransaction, resolveMilkPrice, recomputeBalance, voidTransactionsBySource } from '../ledger.js';
 import { assertDayOpen, recordDay } from '../dayclose.js';
-import { AppError, wrap, currentJalaliMonth } from '../util.js';
+import { AppError, wrap, currentJalaliMonth, toJalaliDate } from '../util.js';
 
 const router = Router();
 
@@ -110,19 +110,22 @@ router.delete('/deliveries/:id', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// لیست تحویل‌های یک دامدار در ماه جاری
+// لیست تحویل‌های یک دامدار. پیش‌فرض ماه جاری؛ با all=1 همهٔ ماه‌های اخیر (تا ۱۲۰ مورد).
 router.get('/deliveries', wrap(async (req, res) => {
-  const { person_id, month } = req.query;
-  const ym = month || currentJalaliMonth();
+  const { person_id, month, all } = req.query;
+  const params = [person_id];
+  let monthClause = '';
+  if (!all || all === '0') { monthClause = 'AND md.year_month_jalali = ?'; params.push(month || currentJalaliMonth()); }
   const [rows] = await pool.query(
     `SELECT md.*,
             EXISTS(SELECT 1 FROM day_closings dc
                      WHERE dc.day = DATE(md.delivered_at) AND dc.status='closed'
                        AND (dc.branch_id = md.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM milk_deliveries md
-      WHERE md.person_id = ? AND md.year_month_jalali = ? AND md.deleted_at IS NULL
-      ORDER BY md.delivered_at DESC`, [person_id, ym]);
-  res.json(rows);
+      WHERE md.person_id = ? ${monthClause} AND md.deleted_at IS NULL
+      ORDER BY md.delivered_at DESC
+      LIMIT 120`, params);
+  res.json(rows.map((r) => ({ ...r, date_jalali: toJalaliDate(r.delivered_at) })));
 }));
 
 // گزارش کامل ایستگاه شیر — هر دامدار چند لیتر/کیلو داده و هر کیلویش چند بوده
