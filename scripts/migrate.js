@@ -17,6 +17,26 @@ const COLUMNS = [
   ['order_items', 'packaging_qty', 'ADD COLUMN packaging_qty DECIMAL(14,3) NOT NULL DEFAULT 0'],
   ['order_items', 'packaging_cost', 'ADD COLUMN packaging_cost DECIMAL(18,0) NOT NULL DEFAULT 0'],
   ['packagings', 'margin_pct', 'ADD COLUMN margin_pct DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER default_price'],
+  // 020 — ابطال فاکتور + بستنِ روز
+  ['receipts', 'payment_id', 'ADD COLUMN payment_id BIGINT NULL AFTER order_id'],
+  ['receipts', 'voided_at', 'ADD COLUMN voided_at TIMESTAMP NULL DEFAULT NULL AFTER notified_at'],
+  ['receipts', 'voided_by', 'ADD COLUMN voided_by BIGINT NULL AFTER voided_at'],
+];
+
+// جدول‌های نبوده (CREATE TABLE IF NOT EXISTS — idempotent)
+const TABLES = [
+  ['day_closings', `CREATE TABLE IF NOT EXISTS \`day_closings\` (
+    \`id\` bigint NOT NULL AUTO_INCREMENT,
+    \`branch_id\` bigint DEFAULT NULL,
+    \`day\` date NOT NULL,
+    \`status\` enum('open','closed') NOT NULL DEFAULT 'closed',
+    \`closed_by\` bigint DEFAULT NULL,
+    \`closed_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    \`reopened_by\` bigint DEFAULT NULL,
+    \`reopened_at\` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (\`id\`),
+    UNIQUE KEY \`uq_day\` (\`branch_id\`,\`day\`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`],
 ];
 
 // تغییرِ نوعِ ENUM — اجرای دوبارهٔ MODIFY امن است (idempotent)
@@ -47,6 +67,11 @@ async function main() {
       'SELECT COUNT(*) c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?', [db, t, c]);
     return r.c > 0;
   };
+
+  for (const [name, ddl] of TABLES) {
+    await conn.query(ddl);
+    console.log(`  ✔ جدول ${name} بررسی/ساخته شد`);
+  }
 
   let added = 0;
   for (const [table, col, ddl] of COLUMNS) {

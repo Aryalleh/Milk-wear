@@ -11,7 +11,7 @@ const router = Router();
 async function userPayload(u) {
   const pages = u.kind === 'staff' ? await pagesForRole(u.role) : [];
   return {
-    kind: u.kind, id: u.uid, person_id: u.person_id, name: u.name,
+    kind: u.kind, id: u.uid, person_id: u.person_id, name: u.name, username: u.username,
     role: u.role, branch_id: u.branch, branch_name: u.branch_name, pages,
   };
 }
@@ -59,7 +59,7 @@ router.post('/login', wrap(async (req, res) => {
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
     req.session.user = {
       kind: 'staff', uid: user.id, role: user.role_name, branch: user.branch_id,
-      branch_name: user.branch_name, name: user.fullname,
+      branch_name: user.branch_name, name: user.fullname, username: user.username,
     };
     return res.json({ user: await userPayload(req.session.user) });
   }
@@ -115,7 +115,7 @@ router.post('/bale', wrap(async (req, res) => {
       [bale.username || null, staff.id]);
     req.session.user = {
       kind: 'staff', uid: staff.id, role: staff.role_name, branch: staff.branch_id,
-      branch_name: staff.branch_name, name: staff.fullname,
+      branch_name: staff.branch_name, name: staff.fullname, username: staff.username,
     };
     return res.json({ user: await userPayload(req.session.user) });
   }

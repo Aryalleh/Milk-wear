@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { pool, withTx } from '../db.js';
-import { postTransaction, resolveMilkPrice, recomputeBalance, nextOrderNo } from '../ledger.js';
+import { postTransaction, resolveMilkPrice, recomputeBalance, nextOrderNo, voidTransactionsBySource } from '../ledger.js';
+import { assertDayOpen, recordDay } from '../dayclose.js';
 import { notifyReceipt } from '../bale.js';
 import { enqueueReceipt } from '../print.js';
 import { AppError, wrap, currentJalaliMonth, toJalaliDate, toJalaliDateTime } from '../util.js';
@@ -26,7 +27,7 @@ router.post('/', wrap(async (req, res) => {
 
   const receipt = await withTx(async (conn) => {
     let milkAmount = 0, milkDeliveryId = null, milkPrice = null;
-    let purchaseAmount = 0, orderId = null;
+    let purchaseAmount = 0, orderId = null, paymentId = null;
 
     // --- بخش شیر (بستانکار) ---
     if (hasMilk) {
@@ -105,6 +106,7 @@ router.post('/', wrap(async (req, res) => {
           `INSERT INTO payments (branch_id, person_id, direction, method, amount, note, created_by)
            VALUES (?,?, 'in', ?, ?, 'فروش فروشگاهی', ?)`,
           [branch_id || null, person_id, payment_method, purchaseAmount, uid]);
+        paymentId = pay.insertId;
         await postTransaction(conn, {
           personId: person_id, txType: 'PAYMENT_IN', amount: purchaseAmount,
           sourceType: 'payment', sourceId: pay.insertId, description: 'دریافت فروش فروشگاهی',
@@ -121,10 +123,10 @@ router.post('/', wrap(async (req, res) => {
 
     const [rc] = await conn.query(
       `INSERT INTO receipts
-         (branch_id, receipt_no, public_token, person_id, year_month_jalali, milk_delivery_id, order_id,
+         (branch_id, receipt_no, public_token, person_id, year_month_jalali, milk_delivery_id, order_id, payment_id,
           milk_amount, purchase_amount, net_amount, balance_after, note, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [branch_id || null, receiptNo, token, person_id, month, milkDeliveryId, orderId,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [branch_id || null, receiptNo, token, person_id, month, milkDeliveryId, orderId, paymentId,
        milkAmount, purchaseAmount, netAmount, balanceAfter, note || null, uid]
     );
     return { id: rc.insertId, receipt_no: receiptNo, public_token: token, order_id: orderId,
@@ -188,11 +190,85 @@ router.get('/', wrap(async (req, res) => {
   if (branch_id) { where.push('r.branch_id = ?'); params.push(branch_id); }
   const [rows] = await pool.query(
     `SELECT r.id, r.receipt_no, r.issued_at, r.milk_amount, r.purchase_amount,
-            r.net_amount, r.balance_after, p.fullname
+            r.net_amount, r.balance_after, r.voided_at, p.fullname,
+            EXISTS(SELECT 1 FROM day_closings dc
+                     WHERE dc.day = DATE(r.issued_at) AND dc.status='closed'
+                       AND (dc.branch_id = r.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM receipts r JOIN persons p ON p.id = r.person_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY r.id DESC LIMIT 100`, params);
   res.json(rows);
+}));
+
+// ویرایش یادداشتِ فاکتور (ویرایشِ سبک) — فقط تا قبل از «بستن روز»
+router.patch('/:id', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const id = req.params.id;
+  const [[rc]] = await pool.query('SELECT * FROM receipts WHERE id = ?', [id]);
+  if (!rc) throw new AppError(404, 'فاکتور یافت نشد');
+  if (rc.voided_at) throw new AppError(409, 'فاکتورِ باطل‌شده قابل ویرایش نیست');
+  const day = await recordDay(pool, 'receipts', 'issued_at', id);
+  await assertDayOpen(pool, day, rc.branch_id);
+  if (req.body.note !== undefined) {
+    await pool.query('UPDATE receipts SET note = ? WHERE id = ?', [req.body.note || null, id]);
+  }
+  res.json({ ok: true });
+}));
+
+// ابطال کاملِ فاکتور — تراکنش‌های شیر/فروش/پرداخت معکوس و انبار بازگردانده می‌شود.
+// فقط تا قبل از «بستن روز»؛ پس از بستن باید ابتدا توسط پشتیبان بازگشایی شود.
+router.post('/:id/void', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'فقط کارمندان می‌توانند فاکتور باطل کنند');
+  const id = req.params.id;
+  const reason = req.body?.reason || 'ابطال فاکتور';
+  const uid = req.user?.uid || null;
+
+  await withTx(async (conn) => {
+    const [[rc]] = await conn.query('SELECT * FROM receipts WHERE id = ?', [id]);
+    if (!rc) throw new AppError(404, 'فاکتور یافت نشد');
+    if (rc.voided_at) throw new AppError(409, 'این فاکتور قبلاً باطل شده است');
+    const day = await recordDay(conn, 'receipts', 'issued_at', id);
+    await assertDayOpen(conn, day, rc.branch_id);
+
+    // شیر: ابطال تراکنش + حذفِ نرمِ رکورد
+    if (rc.milk_delivery_id) {
+      await voidTransactionsBySource(conn, { sourceType: 'milk_delivery', sourceId: rc.milk_delivery_id, userId: uid, reason });
+      await conn.query('UPDATE milk_deliveries SET deleted_at = NOW() WHERE id = ?', [rc.milk_delivery_id]);
+    }
+
+    // خرید/فروش: ابطال تراکنش + بازگردانیِ انبار + لغو سفارش
+    if (rc.order_id) {
+      await voidTransactionsBySource(conn, { sourceType: 'order', sourceId: rc.order_id, userId: uid, reason });
+      const [moves] = await conn.query(
+        "SELECT * FROM stock_movements WHERE source_type='sale' AND source_id=? AND direction='out'", [rc.order_id]);
+      for (const mv of moves) {
+        await conn.query(
+          `INSERT INTO stock_movements
+             (branch_id, warehouse_id, product_id, direction, quantity, source_type, source_id, created_by)
+           VALUES (?,?,?, 'in', ?, 'sale', ?, ?)`,
+          [mv.branch_id, mv.warehouse_id, mv.product_id, mv.quantity, rc.order_id, uid]);
+        await conn.query(
+          `INSERT INTO stock_balances (warehouse_id, product_id, quantity, last_movement_at)
+           VALUES (?,?,?, NOW())
+           ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity), last_movement_at = NOW()`,
+          [mv.warehouse_id, mv.product_id, mv.quantity]);
+      }
+      await conn.query("UPDATE orders SET status='canceled' WHERE id=?", [rc.order_id]);
+    }
+
+    // پرداختِ هم‌زمان (فروش فروشگاهی): ابطال تراکنش PAYMENT_IN
+    if (rc.payment_id) {
+      await voidTransactionsBySource(conn, { sourceType: 'payment', sourceId: rc.payment_id, userId: uid, reason });
+    }
+
+    await conn.query('UPDATE receipts SET voided_at = NOW(), voided_by = ? WHERE id = ?', [uid, id]);
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+       VALUES ('receipts', ?, 'void', ?, ?, ?)`,
+      [id, JSON.stringify(rc), uid, reason]);
+    await recomputeBalance(conn, rc.person_id);
+  });
+  res.json({ ok: true });
 }));
 
 // ثبت اینکه فاکتور پرینت شد

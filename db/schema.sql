@@ -148,6 +148,20 @@ CREATE TABLE IF NOT EXISTS `month_closings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_month` (`branch_id`,`year_month_jalali`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- بستنِ روز (Tagesabschluss): قفلِ روزانهٔ اسناد
+CREATE TABLE IF NOT EXISTS `day_closings` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `branch_id` bigint DEFAULT NULL,
+  `day` date NOT NULL,
+  `status` enum('open','closed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'closed',
+  `closed_by` bigint DEFAULT NULL,
+  `closed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `reopened_by` bigint DEFAULT NULL,
+  `reopened_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_day` (`branch_id`,`day`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -437,6 +451,7 @@ CREATE TABLE IF NOT EXISTS `receipts` (
   `year_month_jalali` char(7) COLLATE utf8mb4_unicode_ci NOT NULL,
   `milk_delivery_id` bigint DEFAULT NULL,
   `order_id` bigint DEFAULT NULL,
+  `payment_id` bigint DEFAULT NULL,
   `milk_amount` decimal(18,0) NOT NULL DEFAULT '0',
   `purchase_amount` decimal(18,0) NOT NULL DEFAULT '0',
   `net_amount` decimal(18,0) NOT NULL DEFAULT '0',
@@ -444,6 +459,8 @@ CREATE TABLE IF NOT EXISTS `receipts` (
   `note` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `printed_at` timestamp NULL DEFAULT NULL,
   `notified_at` timestamp NULL DEFAULT NULL,
+  `voided_at` timestamp NULL DEFAULT NULL,
+  `voided_by` bigint DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `receipt_no` (`receipt_no`),

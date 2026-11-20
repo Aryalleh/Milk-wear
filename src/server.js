@@ -91,6 +91,7 @@ app.get('/production', pub('production.html'));
 app.get('/inventory', pub('inventory.html'));
 app.get('/settings', pub('settings.html'));
 app.get('/reports', pub('reports.html'));
+app.get('/dayclose', pub('dayclose.html'));
 app.get('/orders', pub('orders.html'));
 app.get('/store', (req, res) => res.redirect('/orders'));   // فروشگاه در سفارش‌ها ادغام شد
 app.get('/panel', pub('panel.html'));
