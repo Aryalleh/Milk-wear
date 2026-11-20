@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { pool, withTx } from '../db.js';
-import { postTransaction, nextOrderNo, recomputeBalance } from '../ledger.js';
+import { postTransaction, nextOrderNo, recomputeBalance, voidTransactionsBySource } from '../ledger.js';
+import { assertDayOpen, recordDay } from '../dayclose.js';
 import { enqueueReceipt } from '../print.js';
 import { canCreateDelivery } from '../access.js';
 import { consumePackaging, restorePackagingForOrder } from '../packaging.js';
@@ -407,6 +408,51 @@ router.put('/:id/edit', wrap(async (req, res) => {
     return { ok: true, total_amount: grandTotal, packaging_cost: packagingTotal };
   });
   res.json(out);
+}));
+
+// لغو/کنسلِ سفارش — تراکنشِ فروش باطل، انبار و ظرف برگردانده، و وضعیت «لغو» می‌شود.
+// فقط تا قبل از «بستن روز».
+router.post('/:id/cancel', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const reason = req.body?.reason || 'لغو سفارش';
+  await withTx(async (conn) => {
+    const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? AND deleted_at IS NULL FOR UPDATE', [req.params.id]);
+    if (!order) throw new AppError(404, 'سفارش یافت نشد');
+    if (order.status === 'canceled') throw new AppError(400, 'سفارش قبلاً لغو شده است');
+    const day = await recordDay(conn, 'orders', 'ordered_at', order.id);
+    await assertDayOpen(conn, day, order.branch_id);
+
+    // برگردانِ موجودیِ انبار (حرکتِ معکوسِ «return» + افزایشِ مانده)
+    const [items] = await conn.query(
+      'SELECT oi.quantity, oi.product_id, p.track_stock FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?',
+      [order.id]);
+    for (const it of items) {
+      if (it.track_stock && order.warehouse_id) {
+        await conn.query(
+          `INSERT INTO stock_movements (branch_id, warehouse_id, product_id, direction, quantity, source_type, source_id, created_by)
+           VALUES (?,?,?, 'in', ?, 'return', ?, ?)`,
+          [order.branch_id, order.warehouse_id, it.product_id, it.quantity, order.id, req.user?.uid || null]);
+        await conn.query('UPDATE stock_balances SET quantity=quantity+? WHERE warehouse_id=? AND product_id=?',
+          [it.quantity, order.warehouse_id, it.product_id]);
+      }
+    }
+    // برگردانِ ظرف‌ها
+    await restorePackagingForOrder(conn, order.id);
+    // ابطالِ تراکنشِ فروش
+    await voidTransactionsBySource(conn, { sourceType: 'order', sourceId: order.id, userId: req.user?.uid, reason });
+    // علامتِ لغو
+    await conn.query("UPDATE orders SET status='canceled' WHERE id=?", [order.id]);
+    // اگر فاکتوری به این سفارش بود، باطل شود
+    await conn.query('UPDATE receipts SET voided_at=NOW(), voided_by=? WHERE order_id=? AND voided_at IS NULL',
+      [req.user?.uid || null, order.id]);
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+       VALUES ('orders', ?, 'cancel', ?, ?, ?)`,
+      [order.id, JSON.stringify({ id: order.id, order_no: order.order_no, total_amount: order.total_amount }),
+       req.user?.uid || null, reason]);
+    await recomputeBalance(conn, order.person_id);
+  });
+  res.json({ ok: true });
 }));
 
 export default router;

@@ -21,6 +21,7 @@
     <button data-tab="access" onclick="tab('access')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">دسترسی نقش‌ها</button>
     <button data-tab="print" onclick="tab('print')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">چاپ و سفارش‌گیری</button>
     <button data-tab="general" onclick="tab('general')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">عمومی</button>
+    <button data-tab="restore" onclick="tab('restore')" class="tabbtn nav-pill bg-white px-4 py-2 rounded-full text-sm shadow-sm">بازگردانی</button>
   </div>
 
   <!-- SITES -->
@@ -201,6 +202,14 @@
     </div>
   </div>
 
+  <div id="t-restore" class="tabc hidden space-y-6">
+    <div class="skeu-card p-4">
+      <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-trash-arrow-up text-green-600 ml-1"></i> بازگردانیِ کالاهای حذف‌شده</h3>
+      <p class="text-[11px] text-gray-400 mb-3">کالاهایی که بایگانی (حذف) شده‌اند؛ می‌توانید دوباره فعالشان کنید تا به انبار و فروش برگردند.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کد</th><th class="p-3">نام</th><th class="p-3">دسته</th><th class="p-3">واحد</th><th class="p-3">عملیات</th></tr></thead><tbody id="restoreTable" class="divide-y divide-gray-100"></tbody></table></div>
+    </div>
+  </div>
+
 <!-- مودال شارژ لبنیات -->
 <div id="dairyModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
   <div class="bg-white w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-5">
@@ -216,9 +225,12 @@
 </div>
 <script>
 let branches=[]; const ACTION_FA={POST:'ثبت',PUT:'ویرایش',PATCH:'ویرایش',DELETE:'حذف'};
-function tab(t){ ['sites','users','audit','dairy','packaging','access','print','general','trusted'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
+function tab(t){ ['sites','users','audit','dairy','packaging','access','print','general','trusted','restore'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hidden', x!==t));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
-  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='packaging') loadPackaging(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); }
+  if(t==='sites') loadSites(); if(t==='users') loadUsers(); if(t==='audit') loadAudit(); if(t==='dairy') loadDairy(); if(t==='packaging') loadPackaging(); if(t==='access') loadAccess(); if(t==='print') loadPrint(); if(t==='general') loadGeneral(); if(t==='trusted') loadTrusted(); if(t==='restore') loadRestore(); }
+async function loadRestore(){ const rows=await api('/products/archived');
+  document.getElementById('restoreTable').innerHTML = rows.length? rows.map(p=>`<tr><td class="p-3 text-gray-500">${p.code||'—'}</td><td class="p-3 font-bold">${p.name}</td><td class="p-3">${p.category||'—'}</td><td class="p-3 text-gray-500">${p.unit||''}</td><td class="p-3"><button onclick="restoreProduct(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="text-green-700 font-bold text-xs"><i class="fa-solid fa-rotate-left ml-1"></i> بازگردانی</button></td></tr>`).join('') : '<tr><td colspan="5" class="p-4 text-center text-gray-400">کالای حذف‌شده‌ای نیست</td></tr>'; }
+async function restoreProduct(id,name){ if(!confirm('کالای «'+name+'» بازگردانده شود؟'))return; try{ await api('/products/'+id+'/restore',{method:'POST'}); toast('کالا بازگردانده شد'); loadRestore(); }catch(e){ toast(e.message,'err'); } }
 async function loadPackaging(){
   const [pkgs, prods, s] = await Promise.all([api('/packagings'), api('/products'), api('/settings')]);
   window._pkgs=pkgs;

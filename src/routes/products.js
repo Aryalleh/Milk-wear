@@ -14,6 +14,25 @@ router.get('/', wrap(async (req, res) => {
   res.json(rows);
 }));
 
+// کالاهای بایگانی/حذف‌شده (برای بازگردانی در تنظیمات)
+router.get('/archived', wrap(async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT p.id, p.code, p.name, c.name AS category, u.symbol AS unit
+       FROM products p
+       LEFT JOIN product_categories c ON c.id = p.category_id
+       LEFT JOIN units u ON u.id = p.unit_id
+      WHERE p.is_active = 0 AND p.is_raw_milk = 0 ORDER BY p.name`);
+  res.json(rows);
+}));
+
+// بازگردانیِ کالای بایگانی‌شده
+router.post('/:id/restore', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const [r] = await pool.query('UPDATE products SET is_active = 1 WHERE id = ? AND is_active = 0', [req.params.id]);
+  if (!r.affectedRows) throw new AppError(404, 'کالای بایگانی‌شده یافت نشد');
+  res.json({ ok: true });
+}));
+
 // دسته‌ها و واحدها (برای فرم تعریف کالای جدید)
 router.get('/meta', wrap(async (req, res) => {
   const [categories] = await pool.query('SELECT id, name FROM product_categories ORDER BY id');

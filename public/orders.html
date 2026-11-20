@@ -142,7 +142,12 @@ function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o
   const editable=(o.status==='queued'||o.status==='confirmed');
   const ed=editable?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
   const dl=editable?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
-  return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl}</div>`; }
+  const canCancel=(o.status!=='canceled'&&o.status!=='settled');
+  const cl=canCancel?`<button onclick="cancelOrder(${o.id})" class="text-red-500" title="لغو سفارش"><i class="fa-solid fa-ban"></i></button>`:'';
+  return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl} ${cl}</div>`; }
+async function cancelOrder(id){ if(!confirm('این سفارش لغو شود؟ فروش باطل و موجودی انبار برگردانده می‌شود.'))return;
+  try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:'لغو دستی'}}); toast('سفارش لغو شد'); load(); }
+  catch(e){ toast(e.message,'err'); } }
 function orderQuery(){ const q=new URLSearchParams();
   // با انتخابِ فیلترِ وضعیت، همهٔ آن وضعیت بدون قید تاریخ نشان داده می‌شود
   if(filter){ q.set('status',filter); return '?'+q.toString(); }
