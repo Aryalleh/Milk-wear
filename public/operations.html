@@ -172,12 +172,18 @@ function setLedgerView(v){ ledgerView=v;
   document.getElementById('lvTable').className='px-3 py-1 rounded-lg text-xs font-bold '+(v==='table'?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600');
   document.getElementById('lvCard').className='px-3 py-1 rounded-lg text-xs font-bold '+(v==='card'?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600');
   renderLedger(); }
+const TX_FA={MILK_DELIVERY:'شیر',PRODUCT_SALE:'خرید',FEED_SALE:'خوراک دام',PAYMENT_IN:'دریافت وجه',PAYMENT_OUT:'پرداخت',CASH_WITHDRAWAL:'برداشت نقدی',REFUND:'بازگشت وجه',GOODS_IN:'دریافت کالا',OPENING_BALANCE:'ماندهٔ اولیه',VOID:'ابطال',PURCHASE:'خرید'};
+function txBadge(r){ const credit=Number(r.credit)>0;
+  const gift=(r.type==='ADJUSTMENT'&&credit);
+  const lbl = r.type==='ADJUSTMENT' ? (credit?'اعتبار/هدیه':'اصلاح (بدهی)') : (TX_FA[r.type]||r.type);
+  const cls = gift?'bg-pink-100 text-pink-700' : (credit?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600');
+  return `<span class="text-[10px] px-1.5 py-0.5 rounded-full ${cls} whitespace-nowrap">${gift?'<i class=\"fa-solid fa-gift ml-0.5\"></i>':''}${lbl}</span>`; }
 function renderLedger(){ const box=document.getElementById('ledgerBox');
   if(!ledgerRows.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">تراکنشی نیست</p>'; return; }
   if(ledgerView==='table'){
-    box.innerHTML=`<div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">تاریخ</th><th class="p-2">شرح</th><th class="p-2">بدهکار</th><th class="p-2">بستانکار</th><th class="p-2">مانده</th></tr></thead><tbody class="divide-y divide-gray-100">${ledgerRows.map(r=>`<tr><td class="p-2 text-gray-500">${r.date_jalali}</td><td class="p-2">${r.description||r.type}</td><td class="p-2 text-red-600 font-bold">${r.debit?fmt(r.debit):'-'}</td><td class="p-2 text-green-600 font-bold">${r.credit?fmt(r.credit):'-'}</td><td class="p-2 font-bold">${fmt(r.balance)}</td></tr>`).join('')}</tbody></table></div>`;
+    box.innerHTML=`<div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">تاریخ</th><th class="p-2">شرح</th><th class="p-2">بدهکار</th><th class="p-2">بستانکار</th><th class="p-2">مانده</th></tr></thead><tbody class="divide-y divide-gray-100">${ledgerRows.map(r=>`<tr><td class="p-2 text-gray-500">${r.date_jalali}</td><td class="p-2">${txBadge(r)} <span class="text-gray-600">${r.description||''}</span></td><td class="p-2 text-red-600 font-bold">${r.debit?fmt(r.debit):'-'}</td><td class="p-2 text-green-600 font-bold">${r.credit?fmt(r.credit):'-'}</td><td class="p-2 font-bold">${fmt(r.balance)}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
-    box.innerHTML=`<div class="space-y-2">${ledgerRows.map(r=>`<div class="border border-gray-100 rounded-xl p-3 flex justify-between items-center"><div><p class="font-bold text-sm">${r.description||r.type}</p><p class="text-[11px] text-gray-400">${r.date_jalali}</p></div><div class="text-left"><p class="font-black ${r.credit?'text-green-600':'text-red-600'}">${r.credit?('+'+fmt(r.credit)):('-'+fmt(r.debit))}</p><p class="text-[11px] text-gray-400">مانده: ${fmt(r.balance)}</p></div></div>`).join('')}</div>`;
+    box.innerHTML=`<div class="space-y-2">${ledgerRows.map(r=>`<div class="border border-gray-100 rounded-xl p-3 flex justify-between items-center"><div class="min-w-0"><p class="font-bold text-sm flex items-center gap-1 flex-wrap">${txBadge(r)} <span>${r.description||''}</span></p><p class="text-[11px] text-gray-400">${r.date_jalali}</p></div><div class="text-left"><p class="font-black ${r.credit?'text-green-600':'text-red-600'}">${r.credit?('+'+fmt(r.credit)):('-'+fmt(r.debit))}</p><p class="text-[11px] text-gray-400">مانده: ${fmt(r.balance)}</p></div></div>`).join('')}</div>`;
   } }
 async function loadLedger(id){ ledgerRows=await api('/persons/'+id+'/ledger'); renderLedger(); }
 async function loadReceipts(id){ const rows=await api('/receipts?person_id='+id);
