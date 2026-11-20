@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool, withTx } from '../db.js';
-import { postTransaction, resolveMilkPrice } from '../ledger.js';
+import { postTransaction, resolveMilkPrice, recomputeBalance, voidTransactionsBySource } from '../ledger.js';
+import { assertDayOpen, recordDay } from '../dayclose.js';
 import { AppError, wrap, currentJalaliMonth } from '../util.js';
 
 const router = Router();
@@ -36,14 +37,91 @@ router.post('/deliveries', wrap(async (req, res) => {
   res.status(201).json(result);
 }));
 
+// ویرایش تحویل شیر (مستقیم) — فقط تا قبل از «بستن روز». تراکنشِ مرتبط هم‌زمان اصلاح می‌شود.
+router.put('/deliveries/:id', wrap(async (req, res) => {
+  const id = req.params.id;
+  const { shift, weight_kg, price_per_kg, fat_pct, note } = req.body;
+
+  await withTx(async (conn) => {
+    const [[md]] = await conn.query('SELECT * FROM milk_deliveries WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!md) throw new AppError(404, 'تحویل شیر یافت نشد');
+    const day = await recordDay(conn, 'milk_deliveries', 'delivered_at', id);
+    await assertDayOpen(conn, day, md.branch_id);
+
+    const newShift = shift || md.shift;
+    const newWeight = weight_kg != null ? Number(weight_kg) : Number(md.weight_kg);
+    const newPrice = price_per_kg != null ? Number(price_per_kg) : Number(md.price_per_kg);
+    if (!(newWeight > 0) || !(newPrice > 0)) throw new AppError(400, 'وزن و قیمت باید بزرگ‌تر از صفر باشد');
+    const newFat = fat_pct !== undefined ? (fat_pct === '' || fat_pct == null ? null : Number(fat_pct)) : md.fat_pct;
+    const newNote = note !== undefined ? (note || null) : md.note;
+    const newAmount = Math.round(newWeight * newPrice);
+
+    await conn.query(
+      'UPDATE milk_deliveries SET shift=?, weight_kg=?, fat_pct=?, price_per_kg=?, amount=?, note=? WHERE id=?',
+      [newShift, newWeight, newFat, newPrice, newAmount, newNote, id]);
+
+    // تراکنشِ فعالِ مرتبط را هم‌زمان اصلاح کن (ویرایشِ مستقیم، نه ابطال)
+    const [[tx]] = await conn.query(
+      "SELECT * FROM transactions WHERE source_type='milk_delivery' AND source_id=? AND status='active' LIMIT 1", [id]);
+    if (tx) {
+      if (tx.is_locked) throw new AppError(409, 'تراکنش در ماه بسته‌شده قابل ویرایش نیست');
+      const label = newShift === 'morning' ? 'شیر صبح' : 'شیر شب';
+      const desc = `${label} — ${newWeight} کیلو × ${newPrice.toLocaleString('fa')}`;
+      await conn.query('UPDATE transactions SET amount=?, description=? WHERE id=?', [newAmount, desc, tx.id]);
+    }
+
+    // اگر این تحویل بخشی از یک فاکتور است، مبلغِ شیر و خالصِ فاکتور را به‌روز کن
+    const [[rc]] = await conn.query('SELECT * FROM receipts WHERE milk_delivery_id=?', [id]);
+    if (rc) {
+      await conn.query('UPDATE receipts SET milk_amount=?, net_amount=? WHERE id=?',
+        [newAmount, Number(newAmount) - Number(rc.purchase_amount), rc.id]);
+    }
+
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+       VALUES ('milk_deliveries', ?, 'update', ?, ?, ?)`,
+      [id, JSON.stringify(md), req.user?.uid || null, 'ویرایش تحویل شیر']);
+    await recomputeBalance(conn, md.person_id);
+  });
+  res.json({ ok: true });
+}));
+
+// حذف/ابطال تحویل شیر — فقط تا قبل از «بستن روز». تراکنش معکوس می‌شود (نه حذف فیزیکی).
+router.delete('/deliveries/:id', wrap(async (req, res) => {
+  const id = req.params.id;
+  const reason = req.body?.reason || 'حذف تحویل شیر';
+  await withTx(async (conn) => {
+    const [[md]] = await conn.query('SELECT * FROM milk_deliveries WHERE id = ? AND deleted_at IS NULL', [id]);
+    if (!md) throw new AppError(404, 'تحویل شیر یافت نشد');
+    const day = await recordDay(conn, 'milk_deliveries', 'delivered_at', id);
+    await assertDayOpen(conn, day, md.branch_id);
+
+    const [[rc]] = await conn.query('SELECT id FROM receipts WHERE milk_delivery_id=? AND voided_at IS NULL', [id]);
+    if (rc) throw new AppError(409, 'این تحویل بخشی از یک فاکتور است؛ به‌جای حذف، فاکتور را باطل کنید');
+
+    await conn.query('UPDATE milk_deliveries SET deleted_at = NOW() WHERE id = ?', [id]);
+    await voidTransactionsBySource(conn, { sourceType: 'milk_delivery', sourceId: id, userId: req.user?.uid, reason });
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+       VALUES ('milk_deliveries', ?, 'delete', ?, ?, ?)`,
+      [id, JSON.stringify(md), req.user?.uid || null, reason]);
+    await recomputeBalance(conn, md.person_id);
+  });
+  res.json({ ok: true });
+}));
+
 // لیست تحویل‌های یک دامدار در ماه جاری
 router.get('/deliveries', wrap(async (req, res) => {
   const { person_id, month } = req.query;
   const ym = month || currentJalaliMonth();
   const [rows] = await pool.query(
-    `SELECT * FROM milk_deliveries
-      WHERE person_id = ? AND year_month_jalali = ? AND deleted_at IS NULL
-      ORDER BY delivered_at DESC`, [person_id, ym]);
+    `SELECT md.*,
+            EXISTS(SELECT 1 FROM day_closings dc
+                     WHERE dc.day = DATE(md.delivered_at) AND dc.status='closed'
+                       AND (dc.branch_id = md.branch_id OR dc.branch_id IS NULL)) AS locked
+       FROM milk_deliveries md
+      WHERE md.person_id = ? AND md.year_month_jalali = ? AND md.deleted_at IS NULL
+      ORDER BY md.delivered_at DESC`, [person_id, ym]);
   res.json(rows);
 }));
 

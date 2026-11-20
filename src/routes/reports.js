@@ -4,9 +4,66 @@ import { pool } from '../db.js';
 import { staffRequired, requireRole } from '../auth.js';
 import { wrap, toJalaliDate, AppError, currentJalaliMonth } from '../util.js';
 import { runBackup, runDailyReport, runNightlyReport } from '../cron.js';
+import { daySummary, isValidDay } from '../dayclose.js';
 
 const router = Router();
 router.use(staffRequired);
+
+// ---------- بستنِ روز (Tagesabschluss) ----------
+// فهرستِ روزهای اخیر با جمع‌بندی و وضعیتِ قفل
+router.get('/days', wrap(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 14, 1), 60);
+  // روزهایی که فعالیت داشته‌اند (شیر/تراکنش) + روزهای بسته‌شده
+  const [rows] = await pool.query(
+    `SELECT DATE_FORMAT(d, '%Y-%m-%d') AS day,
+            EXISTS(SELECT 1 FROM day_closings dc WHERE dc.day=d AND dc.status='closed' AND dc.branch_id IS NULL) AS closed
+       FROM (
+         SELECT DATE(delivered_at) d FROM milk_deliveries WHERE deleted_at IS NULL
+         UNION SELECT DATE(tx_date) FROM transactions WHERE status='active'
+         UNION SELECT day FROM day_closings WHERE branch_id IS NULL
+       ) days
+      WHERE d IS NOT NULL
+      ORDER BY d DESC LIMIT ?`, [limit]);
+  const out = [];
+  for (const r of rows) {
+    const sum = await daySummary(pool, r.day);
+    out.push({ ...sum, day: r.day, jalali: toJalaliDate(r.day), closed: !!r.closed });
+  }
+  res.json(out);
+}));
+
+// خلاصهٔ یک روز
+router.get('/days/:day/summary', wrap(async (req, res) => {
+  const { day } = req.params;
+  if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
+  const [[cl]] = await pool.query(
+    "SELECT status, closed_at, reopened_at FROM day_closings WHERE day=? AND branch_id IS NULL", [day]);
+  res.json({ ...await daySummary(pool, day), jalali: toJalaliDate(day), closed: cl?.status === 'closed', closing: cl || null });
+}));
+
+// بستنِ روز — فقط مدیر
+router.post('/days/:day/close', requireRole('admin'), wrap(async (req, res) => {
+  const { day } = req.params;
+  if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
+  const [[e]] = await pool.query("SELECT id FROM day_closings WHERE day=? AND branch_id IS NULL", [day]);
+  if (e) await pool.query("UPDATE day_closings SET status='closed', closed_by=?, closed_at=NOW(), reopened_by=NULL, reopened_at=NULL WHERE id=?", [req.user.uid, e.id]);
+  else await pool.query("INSERT INTO day_closings (branch_id, day, status, closed_by) VALUES (NULL,?,'closed',?)", [day, req.user.uid]);
+  res.json({ ok: true, day, closed: true });
+}));
+
+// بازگشاییِ روز — فقط کاربرِ پشتیبانِ ویژه «aryalleh»
+router.post('/days/:day/reopen', wrap(async (req, res) => {
+  const { day } = req.params;
+  if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
+  const [[u]] = await pool.query('SELECT username FROM users WHERE id = ?', [req.user?.uid || 0]);
+  if (!u || u.username !== 'aryalleh') {
+    throw new AppError(403, 'بازگشاییِ روزِ بسته‌شده فقط توسط کاربرِ پشتیبان (aryalleh) ممکن است');
+  }
+  await pool.query(
+    "UPDATE day_closings SET status='open', reopened_by=?, reopened_at=NOW() WHERE day=? AND branch_id IS NULL",
+    [req.user.uid, day]);
+  res.json({ ok: true, day, closed: false });
+}));
 
 // اجرای دستی بک‌آپ و گزارش روزانه (برای تست) — فقط مدیر
 router.post('/backup-now', requireRole('admin'), wrap(async (req, res) => { res.json(await runBackup()); }));

@@ -118,6 +118,40 @@ export async function recomputeBalance(conn, personId) {
 }
 
 /**
+ * ابطالِ همهٔ تراکنش‌های فعالِ مرتبط با یک منبع (شیر/سفارش/پرداخت) — به‌جای حذف.
+ * برای هر تراکنش: یک تراکنشِ معکوسِ VOID می‌سازد، اصل را voided می‌کند و در audit_logs ثبت می‌کند.
+ * سپس ماندهٔ همهٔ اشخاصِ درگیر را بازمحاسبه می‌کند. باید داخل withTx اجرا شود.
+ */
+export async function voidTransactionsBySource(conn, { sourceType, sourceId, userId = null, reason = null }) {
+  const [txs] = await conn.query(
+    "SELECT * FROM transactions WHERE source_type = ? AND source_id = ? AND status = 'active'",
+    [sourceType, sourceId]
+  );
+  const persons = new Set();
+  for (const tx of txs) {
+    if (tx.is_locked) throw new Error('تراکنش در ماه بسته‌شده قابل ابطال نیست');
+    const revDir = tx.direction === 'credit' ? 'debit' : 'credit';
+    await conn.query(
+      `INSERT INTO transactions
+         (branch_id, person_id, tx_type, direction, amount, year_month_jalali,
+          source_type, source_id, description, reverses_tx_id, created_by)
+       VALUES (?,?, 'VOID', ?, ?, ?, 'manual', ?, ?, ?, ?)`,
+      [tx.branch_id, tx.person_id, revDir, tx.amount, tx.year_month_jalali,
+       tx.id, `ابطال #${tx.id}: ${reason || ''}`, tx.id, userId]
+    );
+    await conn.query("UPDATE transactions SET status = 'voided' WHERE id = ?", [tx.id]);
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+       VALUES ('transactions', ?, 'void', ?, ?, ?)`,
+      [tx.id, JSON.stringify(tx), userId, reason]
+    );
+    persons.add(tx.person_id);
+  }
+  for (const pid of persons) await recomputeBalance(conn, pid);
+  return txs.length;
+}
+
+/**
  * قیمت شیر برای یک شخص در یک ماه: ابتدا قیمت اختصاصی، سپس قیمت عمومی ماه.
  */
 export async function resolveMilkPrice(conn, personId, month) {
