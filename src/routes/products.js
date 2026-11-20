@@ -59,4 +59,32 @@ router.put('/:id', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// حذف کالا — اگر در سوابق (فروش/انبار/تولید/ضایعات) استفاده شده باشد آرشیو می‌شود
+// (is_active=0 و از لیست‌ها حذف می‌شود)، وگرنه حذفِ کامل. «شیر خام» قابل حذف نیست.
+router.delete('/:id', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
+  const id = Number(req.params.id);
+  const [[p]] = await pool.query('SELECT * FROM products WHERE id = ? AND is_active = 1', [id]);
+  if (!p) throw new AppError(404, 'کالا یافت نشد');
+  if (p.is_raw_milk) throw new AppError(400, 'کالای «شیر خام» قابل حذف نیست');
+
+  let referenced = false;
+  for (const t of ['order_items', 'stock_movements', 'production_inputs', 'production_outputs', 'waste_log']) {
+    const [[c]] = await pool.query(`SELECT COUNT(*) c FROM \`${t}\` WHERE product_id = ?`, [id]);
+    if (c.c > 0) { referenced = true; break; }
+  }
+
+  if (referenced) {
+    await pool.query('UPDATE products SET is_active = 0 WHERE id = ?', [id]);
+  } else {
+    await pool.query('DELETE FROM stock_balances WHERE product_id = ?', [id]);
+    await pool.query('DELETE FROM products WHERE id = ?', [id]);
+  }
+  await pool.query(
+    `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, user_id, reason)
+     VALUES ('products', ?, 'delete', ?, ?, ?)`,
+    [id, JSON.stringify({ id: p.id, code: p.code, name: p.name }), req.user?.uid || null, req.body?.reason || null]);
+  res.json({ ok: true, archived: referenced });
+}));
+
 export default router;
