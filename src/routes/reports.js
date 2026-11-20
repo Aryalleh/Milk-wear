@@ -4,10 +4,27 @@ import { pool } from '../db.js';
 import { staffRequired, requireRole } from '../auth.js';
 import { wrap, toJalaliDate, AppError, currentJalaliMonth } from '../util.js';
 import { runBackup, runDailyReport, runNightlyReport } from '../cron.js';
-import { daySummary, isValidDay } from '../dayclose.js';
+import { daySummary, isValidDay, dayCloseEnabled } from '../dayclose.js';
+import { setSetting } from '../print.js';
 
 const router = Router();
 router.use(staffRequired);
+
+// وضعیتِ کلیِ قابلیتِ «بستن روز» (هر کارمند می‌تواند بخواند)
+router.get('/dayclose-config', wrap(async (req, res) => {
+  res.json({ enabled: await dayCloseEnabled(pool) });
+}));
+
+// روشن/خاموش کردنِ کلِ قابلیتِ «بستن روز» — فقط کاربرِ پشتیبانِ «aryalleh»
+router.post('/dayclose-config', wrap(async (req, res) => {
+  const [[u]] = await pool.query('SELECT username FROM users WHERE id = ?', [req.user?.uid || 0]);
+  if (!u || u.username !== 'aryalleh') {
+    throw new AppError(403, 'تغییرِ این قابلیت فقط توسط کاربرِ پشتیبان (aryalleh) ممکن است');
+  }
+  const enabled = !(req.body?.enabled === false || req.body?.enabled === 'false');
+  await setSetting('dayclose_enabled', enabled);
+  res.json({ enabled });
+}));
 
 // ---------- بستنِ روز (Tagesabschluss) ----------
 // فهرستِ روزهای اخیر با جمع‌بندی و وضعیتِ قفل
@@ -24,10 +41,11 @@ router.get('/days', wrap(async (req, res) => {
        ) days
       WHERE d IS NOT NULL
       ORDER BY d DESC LIMIT ?`, [limit]);
+  const enabled = await dayCloseEnabled(pool);
   const out = [];
   for (const r of rows) {
     const sum = await daySummary(pool, r.day);
-    out.push({ ...sum, day: r.day, jalali: toJalaliDate(r.day), closed: !!r.closed });
+    out.push({ ...sum, day: r.day, jalali: toJalaliDate(r.day), closed: enabled ? !!r.closed : false });
   }
   res.json(out);
 }));
@@ -38,13 +56,15 @@ router.get('/days/:day/summary', wrap(async (req, res) => {
   if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
   const [[cl]] = await pool.query(
     "SELECT status, closed_at, reopened_at FROM day_closings WHERE day=? AND branch_id IS NULL", [day]);
-  res.json({ ...await daySummary(pool, day), jalali: toJalaliDate(day), closed: cl?.status === 'closed', closing: cl || null });
+  const closed = (await dayCloseEnabled(pool)) && cl?.status === 'closed';
+  res.json({ ...await daySummary(pool, day), jalali: toJalaliDate(day), closed, closing: cl || null });
 }));
 
 // بستنِ روز — فقط مدیر
 router.post('/days/:day/close', requireRole('admin'), wrap(async (req, res) => {
   const { day } = req.params;
   if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
+  if (!(await dayCloseEnabled(pool))) throw new AppError(409, 'قابلیتِ «بستن روز» توسط پشتیبان غیرفعال شده است');
   const [[e]] = await pool.query("SELECT id FROM day_closings WHERE day=? AND branch_id IS NULL", [day]);
   if (e) await pool.query("UPDATE day_closings SET status='closed', closed_by=?, closed_at=NOW(), reopened_by=NULL, reopened_at=NULL WHERE id=?", [req.user.uid, e.id]);
   else await pool.query("INSERT INTO day_closings (branch_id, day, status, closed_by) VALUES (NULL,?,'closed',?)", [day, req.user.uid]);

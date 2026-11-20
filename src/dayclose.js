@@ -6,8 +6,21 @@ export function isValidDay(day) {
   return typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day);
 }
 
+// آیا کلِ قابلیتِ «بستن روز» فعال است؟ (پیش‌فرض: فعال). پشتیبان می‌تواند خاموشش کند.
+export async function dayCloseEnabled(runner) {
+  const [[row]] = await runner.query(
+    "SELECT value_json FROM settings WHERE scope='global' AND `key`='dayclose_enabled' LIMIT 1");
+  if (!row) return true;
+  try {
+    const v = typeof row.value_json === 'string' ? JSON.parse(row.value_json) : row.value_json;
+    return v !== false;
+  } catch { return true; }
+}
+
 // آیا این روز بسته شده است؟ (branch خالی = سراسری)
+// اگر کلِ قابلیت خاموش باشد، هیچ روزی قفل‌شده به‌حساب نمی‌آید.
 export async function isDayClosed(runner, day, branchId = null) {
+  if (!(await dayCloseEnabled(runner))) return false;
   const [[row]] = await runner.query(
     `SELECT id FROM day_closings
       WHERE day = ? AND status = 'closed' AND (branch_id = ? OR branch_id IS NULL) LIMIT 1`,

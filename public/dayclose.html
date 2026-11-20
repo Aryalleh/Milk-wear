@@ -20,12 +20,37 @@
     <button onclick="load()" class="bg-gray-100 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-rotate ml-1"></i> بازخوانی</button>
   </div>
 
+  <div id="cfgCard"></div>
   <div id="list" class="space-y-3"><p class="text-center text-gray-400 p-6">در حال بارگذاری…</p></div>
 </main>
 
 <script>
 const fa = n => (Number(n)||0).toLocaleString('fa-IR');
 let IS_ARYALLEH = false;
+let ENABLED = true;
+
+function renderCfg(){
+  const box = document.getElementById('cfgCard');
+  if (!ENABLED) {
+    box.innerHTML = `<div class="skeu-card p-4 bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-amber-800 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation ml-1"></i> قابلیت «بستن روز» غیرفعال است؛ هیچ روزی قفل نمی‌شود و همهٔ اسناد قابل ویرایش‌اند.</div>
+      ${IS_ARYALLEH?`<button onclick="setEnabled(true)" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700"><i class="fa-solid fa-power-off ml-1"></i> فعال‌سازی مجدد (پشتیبان)</button>`:''}
+    </div>`;
+  } else if (IS_ARYALLEH) {
+    box.innerHTML = `<div class="skeu-card p-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-sm text-gray-600"><i class="fa-solid fa-shield-halved ml-1 text-dairy-dark"></i> کنترلِ پشتیبان: می‌توانید کلِ قابلیتِ «بستن روز» را غیرفعال کنید.</div>
+      <button onclick="setEnabled(false)" class="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-600"><i class="fa-solid fa-power-off ml-1"></i> غیرفعال‌سازی کامل</button>
+    </div>`;
+  } else {
+    box.innerHTML = '';
+  }
+}
+
+async function setEnabled(v){
+  if(!confirm(v?'قابلیت «بستن روز» فعال شود؟':'کلِ قابلیت «بستن روز» غیرفعال شود؟ بعد از این هیچ روزی قفل نمی‌شود.')) return;
+  try{ const r = await api('/reports/dayclose-config',{method:'POST',body:{enabled:v}}); ENABLED=r.enabled; toast(ENABLED?'فعال شد':'غیرفعال شد'); renderCfg(); load(); }
+  catch(e){ toast(e.message,'err'); }
+}
 
 function card(d){
   const closed = d.closed;
@@ -34,7 +59,8 @@ function card(d){
     : '<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-bold"><i class="fa-solid fa-lock-open"></i> باز</span>';
   // دکمهٔ اقدام: بستن (اگر باز) یا بازگشایی (اگر بسته و کاربر پشتیبان)
   let action = '';
-  if (!closed) action = `<button onclick="closeDay('${d.day}','${d.jalali}')" class="btn-skeu text-white px-4 py-2 rounded-lg font-bold text-sm"><i class="fa-solid fa-calendar-check ml-1"></i> بستن روز</button>`;
+  if (!ENABLED) action = `<span class="text-xs text-gray-400">قابلیت غیرفعال است</span>`;
+  else if (!closed) action = `<button onclick="closeDay('${d.day}','${d.jalali}')" class="btn-skeu text-white px-4 py-2 rounded-lg font-bold text-sm"><i class="fa-solid fa-calendar-check ml-1"></i> بستن روز</button>`;
   else if (IS_ARYALLEH) action = `<button onclick="reopenDay('${d.day}','${d.jalali}')" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-600"><i class="fa-solid fa-unlock ml-1"></i> بازگشایی (پشتیبان)</button>`;
   else action = `<span class="text-xs text-gray-400">بازگشایی فقط توسط پشتیبان</span>`;
 
@@ -79,7 +105,9 @@ async function reopenDay(day, jalali){
 (async function(){
   const u = await guard(['staff']); if(!u) return;
   mountChrome('dayclose','بستن روز');
-  IS_ARYALLEH = (u.name === 'aryalleh' || u.username === 'aryalleh');
+  IS_ARYALLEH = (u.username === 'aryalleh');
+  try{ const c = await api('/reports/dayclose-config'); ENABLED = c.enabled !== false; }catch(e){}
+  renderCfg();
   load();
 })();
 </script>
