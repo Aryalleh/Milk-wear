@@ -38,7 +38,7 @@ router.get('/', wrap(async (req, res) => {
   }
   const [rows] = await pool.query(
     `SELECT o.id, o.order_no, o.waybill_no, o.channel, o.fulfillment_type, o.status,
-            o.total_amount, o.paid_amount, o.ordered_at, o.destination,
+            o.total_amount, o.paid_amount, o.ordered_at, o.destination, o.person_id,
             p.fullname, p.mobile,
             COALESCE(ab.current_balance,0) AS balance,
             (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id
@@ -335,8 +335,11 @@ router.put('/:id/edit', wrap(async (req, res) => {
   const out = await withTx(async (conn) => {
     const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? AND deleted_at IS NULL', [req.params.id]);
     if (!order) throw new AppError(404, 'سفارش یافت نشد');
-    if (!['queued', 'confirmed'].includes(order.status))
-      throw new AppError(400, 'فقط سفارش‌های تحویل‌نشده قابل ویرایش‌اند');
+    if (order.status === 'canceled') throw new AppError(400, 'سفارشِ لغوشده قابل ویرایش نیست');
+    // ویرایش تا پایان روز مجاز است (حتی تحویل‌شده/پرداخت‌شده)؛ تفاوتِ مبلغ خودکار به‌صورت
+    // اعتبار/بدهیِ دفعهٔ بعد در حساب شخص می‌نشیند. پس از «بستن روز» قفل است.
+    const editDay = await recordDay(conn, 'orders', 'ordered_at', order.id);
+    await assertDayOpen(conn, editDay, order.branch_id);
     const warehouseId = order.warehouse_id, branchId = order.branch_id;
     const noPack = req.body.no_packaging !== undefined ? req.body.no_packaging === true : !!order.no_packaging;
     if (req.body.no_packaging !== undefined) await conn.query('UPDATE orders SET no_packaging=? WHERE id=?', [noPack ? 1 : 0, order.id]);
@@ -405,7 +408,7 @@ router.put('/:id/edit', wrap(async (req, res) => {
     const balanceAfter = await recomputeBalance(conn, order.person_id);
     await conn.query('UPDATE receipts SET purchase_amount=?, net_amount=?, balance_after=? WHERE order_id=?',
       [grandTotal, -grandTotal, balanceAfter, order.id]);
-    return { ok: true, total_amount: grandTotal, packaging_cost: packagingTotal };
+    return { ok: true, total_amount: grandTotal, packaging_cost: packagingTotal, balance: balanceAfter };
   });
   res.json(out);
 }));

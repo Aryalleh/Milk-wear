@@ -139,14 +139,21 @@ function printWaybill(id){ previewThermal('/api/print/preview?kind=waybill&id='+
 function reprintReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
 function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o.receipt_id})" class="text-blue-600" title="فاکتور"><i class="fa-solid fa-receipt"></i></button>`:'';
   const wb=`<button onclick="printWaybill(${o.id})" class="text-blue-600" title="بارنامه"><i class="fa-solid fa-truck"></i></button>`;
-  const editable=(o.status==='queued'||o.status==='confirmed');
-  const ed=editable?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
-  const dl=editable?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
+  const canDeliver=(o.status==='queued'||o.status==='confirmed');
+  const canEdit=(o.status!=='canceled');   // تا پایان روز، حتی تحویل‌شده/پرداخت‌شده (تفاوت مبلغ → اعتبار/بدهیِ دفعهٔ بعد)
+  const ed=canEdit?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
+  const dl=canDeliver?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
   const canCancel=(o.status!=='canceled'&&o.status!=='settled');
   const cl=canCancel?`<button onclick="cancelOrder(${o.id})" class="text-red-500" title="لغو سفارش"><i class="fa-solid fa-ban"></i></button>`:'';
-  return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl} ${cl}</div>`; }
+  const gf=(o.status!=='canceled')?`<button onclick="addCreditOrder(${o.person_id})" class="text-pink-500" title="افزودن اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:'';
+  return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl} ${gf} ${cl}</div>`; }
 async function cancelOrder(id){ if(!confirm('این سفارش لغو شود؟ فروش باطل و موجودی انبار برگردانده می‌شود.'))return;
   try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:'لغو دستی'}}); toast('سفارش لغو شد'); load(); }
+  catch(e){ toast(e.message,'err'); } }
+async function addCreditOrder(pid){ if(!pid){ toast('شخص نامشخص','err'); return; }
+  const a=prompt('مبلغ اعتبار/کارت هدیه (ریال):'); if(a===null)return; const amt=Number(a); if(!(amt>0)){ toast('مبلغ نامعتبر','err'); return; }
+  const note=prompt('بابتِ؟ (مثلاً جبرانِ کسریِ بار):','جبران کسری بار'); if(note===null)return;
+  try{ const r=await api('/payments/adjust',{method:'POST',body:{person_id:pid,direction:'credit',amount:amt,note:note||null}}); toast('اعتبار ثبت شد · ماندهٔ حساب: '+fmt(r.balance)); load(); }
   catch(e){ toast(e.message,'err'); } }
 function orderQuery(){ const q=new URLSearchParams();
   // با انتخابِ فیلترِ وضعیت، همهٔ آن وضعیت بدون قید تاریخ نشان داده می‌شود
@@ -174,7 +181,7 @@ async function load(){ let rows=await api('/orders'+orderQuery());
     </div>
     <div class="flex justify-between items-center pt-2 border-t border-slate-100" onclick="event.stopPropagation()">
       <button onclick="printWaybill(${o.id})" class="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-print ml-1"></i>بارنامه</button>
-      ${(o.status==='queued'||o.status==='confirmed')?`<button onclick="editOrder(${o.id})" class="bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-pen ml-1"></i>ویرایش</button><button onclick="openDeliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل</button>`:'<span class="text-xs text-green-600 font-bold">تحویل‌شده ✓</span>'}
+      ${o.status!=='canceled'?`<button onclick="event.stopPropagation();editOrder(${o.id})" class="bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-pen ml-1"></i>ویرایش</button>`:''}${(o.status==='queued'||o.status==='confirmed')?`<button onclick="event.stopPropagation();openDeliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل</button>`:(o.status==='delivered'?'<span class="text-xs text-green-600 font-bold self-center">تحویل‌شده ✓</span>':'')}${o.status!=='canceled'?`<button onclick="event.stopPropagation();addCreditOrder(${o.person_id})" class="bg-pink-50 text-pink-600 px-3 py-2 rounded-lg text-sm font-bold" title="اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:''}
     </div>
   </div>`).join('')||'<div class="text-center text-gray-400 p-8">سفارشی نیست</div>'; }
 
@@ -192,8 +199,8 @@ async function details(id){ const d=await api('/orders/'+id); const o=d.order;
     <table class="w-full text-sm text-right border-t border-gray-100"><thead class="text-gray-500"><tr><th class="p-2">کالا</th><th class="p-2">تعداد</th><th class="p-2">مبلغ</th></tr></thead>
       <tbody class="divide-y divide-gray-100">${d.items.map(i=>`<tr><td class="p-2 font-bold">${i.product_name}</td><td class="p-2">${fmt(i.quantity)} ${i.unit||''}</td><td class="p-2">${fmt(i.amount)}</td></tr>`).join('')}</tbody></table>
     <div class="flex justify-between font-black mt-2"><span>جمع کل</span><span>${fmt(o.total_amount)} ریال</span></div>
-    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${(o.status==='queued'||o.status==='confirmed')?`<button onclick="editOrder(${o.id})" class="flex-1 bg-amber-500 text-white py-2.5 rounded-lg font-bold">ویرایش</button><button onclick="document.getElementById('detModal').classList.add('hidden');openDeliver(${o.id})" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل</button>`:''}</div>
-    <div class="flex gap-2 mt-2"><button onclick="custPay(${d.person.id},'in')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">دریافت وجه</button><button onclick="custPay(${d.person.id},'out')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">پرداخت/قرض به مشتری</button></div>`;
+    <div class="flex gap-2 mt-4"><button onclick="printWaybill(${o.id})" class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold">چاپ بارنامه</button>${o.status!=='canceled'?`<button onclick="editOrder(${o.id})" class="flex-1 bg-amber-500 text-white py-2.5 rounded-lg font-bold">ویرایش</button>`:''}${(o.status==='queued'||o.status==='confirmed')?`<button onclick="document.getElementById('detModal').classList.add('hidden');openDeliver(${o.id})" class="flex-1 bg-green-600 text-white py-2.5 rounded-lg font-bold">تحویل</button>`:''}</div>
+    <div class="flex gap-2 mt-2"><button onclick="custPay(${d.person.id},'in')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">دریافت وجه</button><button onclick="custPay(${d.person.id},'out')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-lg text-xs font-bold">پرداخت/قرض به مشتری</button><button onclick="addCreditOrder(${d.person.id})" class="flex-1 bg-pink-50 text-pink-600 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-gift ml-1"></i>اعتبار/هدیه</button></div>`;
   document.getElementById('detModal').classList.remove('hidden'); }
 async function custPay(pid,dir){ const a=prompt(dir==='in'?'مبلغ دریافت از مشتری (ریال):':'مبلغ پرداخت/قرض‌الحسنه به مشتری (ریال):'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:pid,direction:dir,amount:Number(a),note:dir==='out'?'قرض‌الحسنه/پرداخت به مشتری':'دریافت از مشتری',branch_id:branchId||null}}); toast('ثبت شد'); document.getElementById('detModal').classList.add('hidden'); load(); }catch(e){toast(e.message,'err');} }
 
@@ -272,7 +279,10 @@ async function submitOrder(allowNeg){ const errEl=document.getElementById('creat
   const items=readCart(); if(!items.length){ errEl.textContent='حداقل یک قلم کالا لازم است'; return; }
   const body={person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:Number(document.getElementById('paidAmount').value||0), paid_full:!!window._payFull, payment_method:'cash', print:document.getElementById('doPrint').checked, allow_negative:!!allowNeg, no_packaging:document.getElementById('noPack').checked};
   try{
-    if(editId){ await api('/orders/'+editId+'/edit',{method:'PUT',body:{items,destination:document.getElementById('dest').value||null,allow_negative:!!allowNeg,no_packaging:document.getElementById('noPack').checked}}); closeCreate(); toast('سفارش ویرایش شد'); load(); return; }
+    if(editId){ const r=await api('/orders/'+editId+'/edit',{method:'PUT',body:{items,destination:document.getElementById('dest').value||null,allow_negative:!!allowNeg,no_packaging:document.getElementById('noPack').checked}}); closeCreate();
+      let msg='سفارش ویرایش شد'; const b=Number(r&&r.balance);
+      if(b>0) msg+=` · اعتبار برای دفعهٔ بعد: ${fmt(b)}`; else if(b<0) msg+=` · بدهیِ دفعهٔ بعد: ${fmt(-b)}`;
+      toast(msg); load(); return; }
     await api('/orders',{method:'POST',body});
     closeCreate(); toast(ff==='pickup'?'فروش ثبت شد':'سفارش ثبت و به صف بار رفت'); load();
   }catch(e){

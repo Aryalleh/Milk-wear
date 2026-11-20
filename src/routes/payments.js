@@ -53,6 +53,31 @@ router.post('/goods-in', wrap(async (req, res) => {
   res.status(201).json(result);
 }));
 
+// افزودن اعتبار/کارت هدیه (یا بدهیِ دستی) به حساب شخص — تراکنش ADJUSTMENT
+//  direction=credit → بستانکاری (اعتبار/هدیه؛ مثلاً جبرانِ کسریِ بار)
+//  direction=debit  → بدهکاری (بدهیِ دفعهٔ بعد)
+router.post('/adjust', wrap(async (req, res) => {
+  const { person_id, direction = 'credit', amount, note, branch_id } = req.body;
+  if (!person_id || !amount || Number(amount) <= 0) throw new AppError(400, 'شخص و مبلغ لازم است');
+  if (!['credit', 'debit'].includes(direction)) throw new AppError(400, 'جهت نامعتبر');
+
+  const result = await withTx(async (conn) => {
+    const txId = await postTransaction(conn, {
+      personId: person_id, txType: 'ADJUSTMENT', amount: Math.round(Number(amount)), direction,
+      sourceType: 'manual', sourceId: null,
+      description: note || (direction === 'credit' ? 'اعتبار/کارت هدیه' : 'بدهیِ دستی'),
+      branchId: branch_id || null, userId: req.user?.uid, month: currentJalaliMonth(),
+    });
+    await conn.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, new_json, user_id, reason)
+       VALUES ('transactions', ?, 'adjust', ?, ?, ?)`,
+      [txId, JSON.stringify({ direction, amount: Math.round(Number(amount)) }), req.user?.uid || null, note || null]);
+    const [[bal]] = await conn.query('SELECT current_balance FROM account_balances WHERE person_id = ?', [person_id]);
+    return { id: txId, balance: Number(bal?.current_balance || 0) };
+  });
+  res.status(201).json(result);
+}));
+
 // تسویهٔ کامل: پرداخت کل ماندهٔ قابل‌پرداخت به دامدار
 router.post('/settle', wrap(async (req, res) => {
   const { person_id, method = 'cash', branch_id } = req.body;

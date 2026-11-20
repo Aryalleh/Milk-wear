@@ -39,6 +39,7 @@
           <button onclick="doPay('out')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">پرداخت/قرض به دامدار</button>
           <button onclick="doPay('in')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">دریافت وجه</button>
           <button onclick="doOnBehalf()" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">ثبت خرید/دریافت کالا از دامدار</button>
+          <button onclick="addCredit()" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm"><i class="fa-solid fa-gift text-pink-500 ml-1"></i> افزودن اعتبار/هدیه</button>
           <button onclick="doSettle()" class="fin-only bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg font-bold text-sm">تسویهٔ کامل</button>
         </div>
       </div>
@@ -214,6 +215,10 @@ async function deleteDelivery(id){ if(!confirm('این تحویل شیر حذف/
 function refresh(){ if(currentPerson) selectPerson(currentPerson); }
 async function doPay(dir){ const a=prompt(dir==='out'?'مبلغ پرداخت به دامدار:':'مبلغ دریافت از مشتری:'); if(!a)return; try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:dir,amount:Number(a),branch_id:myBranch||null}}); refresh(); }catch(e){alert(e.message);} }
 async function doSettle(){ if(!confirm('کل ماندهٔ قابل پرداخت تسویه شود؟'))return; try{ const r=await api('/payments/settle',{method:'POST',body:{person_id:currentPerson,branch_id:myBranch||null}}); alert('تسویه شد: '+fmt(r.paid)); refresh(); }catch(e){alert(e.message);} }
+async function addCredit(pid){ const id=pid||currentPerson; if(!id){ toast('ابتدا شخص را انتخاب کنید','err'); return; }
+  const a=prompt('مبلغ اعتبار/کارت هدیه (ریال):'); if(a===null)return; const amt=Number(a); if(!(amt>0)){ toast('مبلغ نامعتبر','err'); return; }
+  const note=prompt('بابتِ؟ (مثلاً جبرانِ کسریِ بار):','جبران کسری بار'); if(note===null)return;
+  try{ await api('/payments/adjust',{method:'POST',body:{person_id:id,direction:'credit',amount:amt,note:note||null,branch_id:myBranch||null}}); toast('اعتبار ثبت شد'); if(currentPerson)selectPerson(currentPerson); }catch(e){ toast(e.message,'err'); } }
 async function doOnBehalf(){ const a=prompt('ارزش کالای خریداری/دریافت‌شده از این دامدار (ریال):'); if(!a)return; const d=prompt('شرح (نوع کالا):','')||''; try{ await api('/submissions/on-behalf',{method:'POST',body:{person_id:currentPerson,amount:Number(a),description:d}}); toast('ثبت شد — به بستانکاری دامدار اضافه شد'); refresh(); }catch(e){alert(e.message);} }
 let pType='customer';
 function newPerson(){ pType='farmer'; setPType('farmer'); document.getElementById('npFull').value=''; document.getElementById('npMobile').value=''; document.getElementById('npUser').value=''; document.getElementById('npPass').value=''; document.getElementById('npErr').textContent=''; document.getElementById('personModal').classList.remove('hidden'); }
