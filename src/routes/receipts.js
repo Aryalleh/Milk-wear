@@ -191,10 +191,12 @@ router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
     `SELECT r.id, r.receipt_no, r.issued_at, r.milk_amount, r.purchase_amount,
             r.net_amount, r.balance_after, r.voided_at, p.fullname,
+            r.milk_delivery_id, md.weight_kg AS milk_weight_kg, md.price_per_kg AS milk_price_per_kg,
             EXISTS(SELECT 1 FROM day_closings dc
                      WHERE dc.day = DATE(r.issued_at) AND dc.status='closed'
                        AND (dc.branch_id = r.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM receipts r JOIN persons p ON p.id = r.person_id
+       LEFT JOIN milk_deliveries md ON md.id = r.milk_delivery_id
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY r.id DESC LIMIT 100`, params);
   res.json(rows);
