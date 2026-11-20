@@ -47,7 +47,7 @@
 <!-- مودال محصول جدید -->
 <div id="productModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
   <div class="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5">
-    <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">تعریف کالای جدید</h3><button onclick="closeProduct()" class="text-gray-400 text-2xl">&times;</button></div>
+    <div class="flex justify-between items-center mb-4"><h3 id="npTitle" class="font-black text-gray-800">تعریف کالای جدید</h3><button onclick="closeProduct()" class="text-gray-400 text-2xl">&times;</button></div>
     <div class="space-y-3">
       <div><label class="text-xs text-gray-500 block mb-1">نام کالا *</label><input id="npName" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
       <div class="flex gap-2">
@@ -57,7 +57,7 @@
       <div><label class="text-xs text-gray-500 block mb-1">قیمت پایه (ریال)</label><input id="npPrice" type="number" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
       <label class="flex items-center gap-2 text-sm text-gray-600"><input id="npTrack" type="checkbox" checked class="w-4 h-4"> ردیابی موجودی</label>
     </div>
-    <div class="flex justify-end gap-2 mt-5"><button onclick="closeProduct()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button onclick="saveProduct()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">افزودن</button></div>
+    <div class="flex justify-end gap-2 mt-5"><button onclick="closeProduct()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button id="npSaveBtn" onclick="saveProduct()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">افزودن</button></div>
     <p id="npErr" class="text-red-600 text-xs mt-2"></p>
   </div>
 </div>
@@ -68,7 +68,7 @@ const isDairy=(p)=> p.category==='لبنیات';
 async function loadInventory(){ const [rows,whs,m]=await Promise.all([api('/inventory'),api('/inventory/warehouses'),api('/products/meta')]);
   warehouses=whs; meta=m;
   document.getElementById('invTable').innerHTML=rows.map(p=>{ const ok=Number(p.on_hand)>Number(p.reorder_level||0);
-    return `<tr><td class="p-4 font-bold">${p.name}</td><td class="p-4">${p.category||'—'}</td><td class="p-4 text-gray-500">${p.unit||''}</td><td class="p-4">${fmt(p.total_in)}</td><td class="p-4">${fmt(p.total_out)}</td><td class="p-4 font-black ${ok?'text-green-600':'text-red-600'}">${fmt(p.on_hand)}</td><td class="p-4"><input type="number" step="0.001" value="${p.reorder_level}" onchange="setReorder(${p.id},this.value)" class="input-skeu rounded-lg px-2 py-1 w-20 text-sm" title="حد نرمال موجودی"></td><td class="p-4">${isDairy(p)?'<span class="text-[10px] text-gray-400">از تولید</span>':`<button onclick="openRestock(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="text-green-700 font-bold text-xs"><i class="fa-solid fa-bolt ml-1"></i>شارژ</button>`}</td></tr>`; }).join('')||'<tr><td colspan="8" class="p-6 text-center text-gray-400">کالایی نیست</td></tr>';
+    return `<tr><td class="p-4 font-bold">${p.name}</td><td class="p-4">${p.category||'—'}</td><td class="p-4 text-gray-500">${p.unit||''}</td><td class="p-4">${fmt(p.total_in)}</td><td class="p-4">${fmt(p.total_out)}</td><td class="p-4 font-black ${ok?'text-green-600':'text-red-600'}">${fmt(p.on_hand)}</td><td class="p-4"><input type="number" step="0.001" value="${p.reorder_level}" onchange="setReorder(${p.id},this.value)" class="input-skeu rounded-lg px-2 py-1 w-20 text-sm" title="حد نرمال موجودی"></td><td class="p-4 whitespace-nowrap"><button onclick="openProduct(${p.id})" class="text-blue-600 font-bold text-xs ml-3" title="ویرایش"><i class="fa-solid fa-pen"></i></button>${isDairy(p)?'<span class="text-[10px] text-gray-400">از تولید</span>':`<button onclick="openRestock(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="text-green-700 font-bold text-xs"><i class="fa-solid fa-bolt ml-1"></i>شارژ</button>`}</td></tr>`; }).join('')||'<tr><td colspan="8" class="p-6 text-center text-gray-400">کالایی نیست</td></tr>';
   document.getElementById('invCards').innerHTML=rows.map(p=>{ const ok=Number(p.on_hand)>Number(p.reorder_level||0), w=p.total_in>0?Math.max(4,Math.min(100,Math.round(p.on_hand/p.total_in*100))):(p.on_hand>0?100:0);
     return `<div class="skeu-card p-4" style="border-radius:20px">
       <div class="flex justify-between items-start mb-3">
@@ -77,7 +77,10 @@ async function loadInventory(){ const [rows,whs,m]=await Promise.all([api('/inve
         <div class="text-left"><span class="text-xs text-slate-400">موجودی</span><div class="text-lg font-black ${ok?'text-green-600':'text-red-600'}">${fmt(p.on_hand)} <span class="text-[10px]">${p.unit||''}</span></div></div>
       </div>
       <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full ${ok?'bg-green-500':'bg-red-500'} rounded-full" style="width:${w}%"></div></div>
-      ${isDairy(p)?'<p class="text-[10px] text-gray-400 text-center">لبنیات فقط از طریق تولید وارد انبار می‌شود</p>':`<button onclick="openRestock(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="w-full bg-green-50 text-green-700 py-2 rounded-xl font-bold text-sm"><i class="fa-solid fa-bolt ml-1"></i> شارژ انبار</button>`}
+      <div class="flex gap-2">
+        <button onclick="openProduct(${p.id})" class="px-3 bg-blue-50 text-blue-600 py-2 rounded-xl font-bold text-sm" title="ویرایش"><i class="fa-solid fa-pen"></i></button>
+        ${isDairy(p)?'<p class="flex-1 self-center text-[10px] text-gray-400 text-center">لبنیات فقط از طریق تولید وارد انبار می‌شود</p>':`<button onclick="openRestock(${p.id},'${(p.name||'').replace(/'/g,'')}')" class="flex-1 bg-green-50 text-green-700 py-2 rounded-xl font-bold text-sm"><i class="fa-solid fa-bolt ml-1"></i> شارژ انبار</button>`}
+      </div>
     </div>`; }).join('')||'<div class="text-center text-gray-400 p-8">کالایی نیست</div>'; }
 // شارژ
 function openRestock(id,name){ rsPid=id; document.getElementById('rsName').textContent='کالا: '+name; document.getElementById('rsErr').textContent=''; document.getElementById('rsQty').value=''; document.getElementById('rsCost').value='';
@@ -86,14 +89,28 @@ function closeRestock(){ document.getElementById('restockModal').classList.add('
 async function setReorder(id, val){ try{ await api('/products/'+id,{method:'PUT',body:{reorder_level:Number(val)||0}}); loadInventory(); }catch(e){ alert(e.message); } }
 async function saveRestock(){ document.getElementById('rsErr').textContent=''; const q=Number(document.getElementById('rsQty').value); if(!q||q<=0){document.getElementById('rsErr').textContent='مقدار لازم است';return;}
   try{ await api('/inventory/receive',{method:'POST',body:{warehouse_id:Number(document.getElementById('rsWh').value),product_id:rsPid,quantity:q,unit_cost:document.getElementById('rsCost').value||null}}); closeRestock(); loadInventory(); }catch(e){ document.getElementById('rsErr').textContent=e.message; } }
-// محصول جدید
-function openProduct(){ document.getElementById('npErr').textContent=''; document.getElementById('npName').value=''; document.getElementById('npPrice').value=''; document.getElementById('npTrack').checked=true;
-  document.getElementById('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('npUnit').innerHTML=meta.units.map(u=>`<option value="${u.id}">${u.name}</option>`).join(''); document.getElementById('productModal').classList.remove('hidden'); }
+// محصول جدید / ویرایش
+let editId=null;
+function openProduct(id){ editId = id || null;
+  const p = editId ? products.find(x=>x.id===editId) : null;
+  document.getElementById('npErr').textContent='';
+  document.getElementById('npTitle').textContent = p ? 'ویرایش کالا' : 'تعریف کالای جدید';
+  document.getElementById('npSaveBtn').textContent = p ? 'ذخیره' : 'افزودن';
+  document.getElementById('npName').value = p ? (p.name||'') : '';
+  document.getElementById('npPrice').value = p ? (p.base_price||'') : '';
+  document.getElementById('npTrack').checked = p ? !!p.track_stock : true;
+  document.getElementById('npTrack').disabled = !!p;   // تغییر ردیابی بعد از ساخت امن نیست
+  document.getElementById('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}" ${p&&p.category_id===c.id?'selected':''}>${c.name}</option>`).join('');
+  document.getElementById('npUnit').innerHTML=meta.units.map(u=>`<option value="${u.id}" ${p&&p.unit_id===u.id?'selected':''}>${u.name}</option>`).join('');
+  document.getElementById('productModal').classList.remove('hidden'); }
 function closeProduct(){ document.getElementById('productModal').classList.add('hidden'); }
-async function saveProduct(){ document.getElementById('npErr').textContent=''; if(!document.getElementById('npName').value.trim()){document.getElementById('npErr').textContent='نام لازم است';return;}
-  try{ await api('/products',{method:'POST',body:{name:document.getElementById('npName').value.trim(),category_id:Number(document.getElementById('npCat').value)||null,unit_id:Number(document.getElementById('npUnit').value)||null,base_price:document.getElementById('npPrice').value||0,track_stock:document.getElementById('npTrack').checked}});
-    products=await api('/products'); closeProduct(); loadInventory(); }catch(e){ document.getElementById('npErr').textContent=e.message; } }
+async function saveProduct(){ document.getElementById('npErr').textContent=''; const name=document.getElementById('npName').value.trim(); if(!name){document.getElementById('npErr').textContent='نام لازم است';return;}
+  const body={ name, category_id:Number(document.getElementById('npCat').value)||null, unit_id:Number(document.getElementById('npUnit').value)||null, base_price:document.getElementById('npPrice').value||0 };
+  try{
+    if(editId){ await api('/products/'+editId,{method:'PUT',body}); }
+    else { body.track_stock=document.getElementById('npTrack').checked; await api('/products',{method:'POST',body}); }
+    products=await api('/products'); closeProduct(); loadInventory();
+  }catch(e){ document.getElementById('npErr').textContent=e.message; } }
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('inventory','موجودی انبار'); products=await api('/products'); live(loadInventory, 20000); })();
 </script>
 </body>
