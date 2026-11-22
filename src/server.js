@@ -28,6 +28,7 @@ import packagingsRoutes from './routes/packagings.js';
 import submissionsRoutes from './routes/submissions.js';
 import agentRoutes from './routes/agent.js';
 import printRoutes from './routes/print.js';
+import systemRoutes from './routes/system.js';
 import { auditLogger } from './audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -122,6 +123,7 @@ app.use('/api/waste', staffRequired, wasteRoutes);
 app.use('/api/audit', staffRequired, auditRoutes);
 app.use('/api/settings', staffRequired, settingsRoutes);
 app.use('/api/reports', staffRequired, reportsRoutes);
+app.use('/api/system', staffRequired, systemRoutes);
 app.use('/api/expenses', staffRequired, expensesRoutes);
 app.use('/api/packagings', staffRequired, packagingsRoutes);
 app.use('/api/submissions', staffRequired, submissionsRoutes);

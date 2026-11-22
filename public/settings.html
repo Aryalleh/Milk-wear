@@ -200,6 +200,17 @@
       <p class="text-[11px] text-gray-400 mt-2">برای محاسبهٔ «درصد پر بودن مخزن» در داشبورد استفاده می‌شود.</p>
       <p id="siloMsg" class="text-green-600 text-xs mt-2"></p>
     </div>
+
+    <div class="skeu-card p-6 max-w-xl">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <h3 class="font-bold text-gray-800"><i class="fa-solid fa-cloud-arrow-down text-green-600 ml-1"></i> به‌روزرسانی برنامه</h3>
+        <button onclick="checkUpdate()" class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-rotate ml-1"></i> بررسی به‌روزرسانی</button>
+      </div>
+      <div id="verBox" class="text-sm text-gray-600 mb-3">در حال بررسی…</div>
+      <button id="updBtn" onclick="doUpdate()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold w-full disabled:opacity-50"><i class="fa-solid fa-cloud-arrow-down ml-1"></i> به‌روزرسانی و ری‌استارت</button>
+      <pre id="updLog" class="hidden mt-3 bg-gray-900 text-green-200 text-[11px] p-3 rounded-lg overflow-auto max-h-60 whitespace-pre-wrap" dir="ltr"></pre>
+      <p class="text-[11px] text-gray-400 mt-2">نسخهٔ جدید را از گیت می‌گیرد، وابستگی‌ها و مایگریشن را اجرا و سرویس را ری‌استارت می‌کند. فقط مدیر.</p>
+    </div>
   </div>
 
   <div id="t-restore" class="tabc hidden space-y-6">
@@ -324,7 +335,20 @@ function copyToken(){ if(!_agentToken) return; navigator.clipboard?.writeText(_a
 async function loadTrusted(){ const q=document.getElementById('trQ').value; const rows=await api('/persons'+(q?('?q='+encodeURIComponent(q)):''));
   document.getElementById('trTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.fullname}</td><td class="p-3">${p.person_code}</td><td class="p-3">${p.mobile||'—'}</td><td class="p-3"><button onclick="toggleTrust(${p.id},${p.trusted?0:1})" class="px-3 py-1.5 rounded-full text-xs font-bold ${p.trusted?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}"><i class="fa-solid ${p.trusted?'fa-shield-halved':'fa-shield'} ml-1"></i>${p.trusted?'معتمد':'عادی'}</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">موردی نیست</td></tr>'; }
 async function toggleTrust(id,val){ try{ await api('/persons/'+id+'/trusted',{method:'PUT',body:{trusted:!!val}}); loadTrusted(); }catch(e){alert(e.message);} }
-async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; }
+async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; checkUpdate(); }
+async function checkUpdate(){ const box=document.getElementById('verBox'), btn=document.getElementById('updBtn'); box.textContent='در حال بررسی…';
+  try{ const v=await api('/system/version');
+    if(v.behind>0){ box.innerHTML=`<span class="text-amber-700 font-bold"><i class="fa-solid fa-circle-up ml-1"></i> ${v.behind} به‌روزرسانیِ جدید موجود است.</span><div class="text-[11px] text-gray-400 mt-1">فعلی: ${v.current}<br>جدید: ${v.latest}</div>`; btn.disabled=false; btn.classList.remove('opacity-50'); }
+    else{ box.innerHTML=`<span class="text-green-700 font-bold"><i class="fa-solid fa-circle-check ml-1"></i> برنامه به‌روز است.</span><div class="text-[11px] text-gray-400 mt-1">${v.current}</div>`; btn.disabled=true; }
+  }catch(e){ box.innerHTML='<span class="text-red-500">خطا در بررسی نسخه: '+e.message+'</span>'; }
+}
+async function doUpdate(){ if(!confirm('برنامه به‌روزرسانی و ری‌استارت شود؟ ممکن است چند ثانیه قطع شود.'))return;
+  const btn=document.getElementById('updBtn'), log=document.getElementById('updLog');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin ml-1"></i> در حال به‌روزرسانی…'; log.classList.remove('hidden'); log.textContent='…';
+  try{ const r=await api('/system/update',{method:'POST'}); log.textContent=r.log||''; toast('به‌روزرسانی انجام شد؛ ری‌استارت…');
+    setTimeout(()=>location.reload(), 6000);
+  }catch(e){ log.textContent=(e.message||'خطا'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-cloud-arrow-down ml-1"></i> تلاش مجدد'; toast('به‌روزرسانی ناموفق','err'); }
+}
 async function saveSilo(){ try{ await api('/settings/silo_capacity_kg',{method:'PUT',body:{value:Number(document.getElementById('siloCap').value)||20000}}); document.getElementById('siloMsg').textContent='ذخیره شد ✓'; setTimeout(()=>document.getElementById('siloMsg').textContent='',2000); }catch(e){ alert(e.message); } }
 let dyWhs=[], dyPid=null;
 async function loadDairy(){ const [rows,whs]=await Promise.all([api('/inventory'),api('/inventory/warehouses')]); dyWhs=whs;
