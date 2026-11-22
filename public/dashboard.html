@@ -145,6 +145,48 @@ function drawCharts(d){
   if(spEl){ chSpark=new ApexCharts(spEl,{chart:{type:'area',height:56,sparkline:{enabled:true},fontFamily:'Vazirmatn'},series:[{name:'شیر',data:d.week.milk}],stroke:{curve:'smooth',width:2},colors:['#ffffff'],fill:{type:'gradient',gradient:{opacityFrom:.35,opacityTo:0}},tooltip:{theme:'dark',x:{show:false},y:{formatter:v=>Number(v).toLocaleString('fa-IR')+' kg'}}}); chSpark.render(); }
   chFlow=bar(document.getElementById('mFlow'), [{name:'دریافت',data:d.week.milk},{name:'ضایعات',data:d.week.waste}], d.week.labels.map(l=>l.slice(5)), ['#10b981','#f87171'],{h:200}); chFlow&&chFlow.render();
 }
+// ---- یادآورِ «بستن روز» (اجباری) ----
+async function dayCloseReminder(){
+  try{
+    const days=await api('/reports/days?limit=5');
+    const todayJ=new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replace(/‏/g,'');
+    // روزِ گذشته‌ای که بسته نشده و فعالیت داشته
+    const open=days.find(d=>!d.closed && d.jalali!==todayJ && ((d.milk&&d.milk.count>0)||d.sales>0||d.receipts>0));
+    const main=document.querySelector('main'); if(!main) return;
+    let bar=document.getElementById('dayReminder');
+    if(open){ if(!bar){ bar=document.createElement('div'); bar.id='dayReminder'; bar.className='mb-4'; main.prepend(bar); }
+      bar.innerHTML=`<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="text-amber-800 text-sm font-bold"><i class="fa-solid fa-triangle-exclamation ml-1"></i> روزِ ${open.jalali} هنوز بسته نشده است. لطفاً روز را ببندید.</div>
+        <a href="/dayclose" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-600"><i class="fa-solid fa-calendar-check ml-1"></i> بستن روز</a></div>`;
+    } else if(bar){ bar.remove(); }
+  }catch(e){}
+}
+// ---- پاپ‌آپ تغییرات (یک‌بار برای ادمین) ----
+const CHANGELOG_KEY='milkwear_changelog_2026_11_22';
+const CHANGELOG=[
+  ['fa-receipt','گزارش سفارش‌های روزانه','در «گزارش‌ها»: نمایش سفارش‌ها برای هر روز یا بازه، با خروجی اکسل.'],
+  ['fa-eye-slash','منوی تمیزترِ سفارش‌ها','سفارش‌های تکمیل‌شدهٔ روزهای قبل دیگر در لیست سفارش‌ها نمایش داده نمی‌شوند (از گزارش قابل دیدن‌اند).'],
+  ['fa-calendar-check','بستن روز','پایان هر روز می‌توانید روز را ببندید؛ بعد از آن اسنادِ آن روز قفل می‌شوند. یادآور هم اضافه شد.'],
+  ['fa-pen','ویرایش/لغو تا پایان روز','ویرایش و لغوِ فاکتور/سفارش و ویرایشِ تحویل شیر تا پایان روز ممکن است.'],
+  ['fa-gift','اعتبار/کارت هدیه','افزودن اعتبار به حساب مشتری (برای جبرانِ کسریِ بار) و نمایش شفافش در گردش حساب.'],
+  ['fa-box','کالاها','انتخاب/ویرایشِ واحد (عدد/کیلو)، حذف و بازگردانیِ کالا (بازگردانی در تنظیمات).'],
+  ['fa-user-gear','کاربران','حذفِ کاربر و تغییرِ رمز از «تنظیمات ← کاربران».'],
+];
+function showChangelog(){
+  if(document.getElementById('changelogModal')) return;
+  const m=document.createElement('div'); m.id='changelogModal';
+  m.className='fixed inset-0 z-[100] flex items-center justify-center p-4'; m.style.background='rgba(0,0,0,.5)';
+  m.innerHTML=`<div class="bg-white w-full max-w-md rounded-2xl shadow-2xl max-h-[85vh] flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b border-gray-100"><h3 class="font-black text-gray-800 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-green-600"></i> تازه‌ها و به‌روزرسانی‌ها</h3><button onclick="closeChangelog()" class="w-11 h-11 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 text-2xl leading-none">&times;</button></div>
+    <div class="p-4 overflow-y-auto space-y-3">${CHANGELOG.map(c=>`<div class="flex gap-3 items-start"><div class="w-9 h-9 shrink-0 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid ${c[0]}"></i></div><div><p class="font-bold text-sm text-gray-800">${c[1]}</p><p class="text-[12px] text-gray-500 leading-6">${c[2]}</p></div></div>`).join('')}</div>
+    <div class="p-4 border-t border-gray-100"><button onclick="closeChangelog()" class="btn-skeu text-white w-full py-3 rounded-xl font-bold">متوجه شدم</button></div>
+  </div>`;
+  m.addEventListener('click',e=>{ if(e.target===m) closeChangelog(); });
+  document.body.appendChild(m);
+}
+function closeChangelog(){ const m=document.getElementById('changelogModal'); if(m) m.remove(); try{ localStorage.setItem(CHANGELOG_KEY,'1'); }catch(e){} }
+function maybeChangelog(){ try{ if(localStorage.getItem(CHANGELOG_KEY)) return; }catch(e){} showChangelog(); }
+
 (async function(){ const u=await guard(['staff']); if(!u) return;
   if(!seesDashboard()){
     // نقشِ محدود: به‌جای داشبورد تحلیلی، منوی صفحاتِ مجاز
@@ -153,6 +195,7 @@ function drawCharts(d){
     renderLauncher(document.getElementById('launcher')); return;
   }
   mountChrome('dashboard','داشبورد'); live(loadDashboard, 15000);
+  if(u.role==='admin'){ dayCloseReminder(); maybeChangelog(); }
 })();
 </script>
 </body>

@@ -18,7 +18,7 @@ router.get('/dayclose-config', wrap(async (req, res) => {
 // روشن/خاموش کردنِ کلِ قابلیتِ «بستن روز» — فقط کاربرِ پشتیبانِ «aryalleh»
 router.post('/dayclose-config', wrap(async (req, res) => {
   const [[u]] = await pool.query('SELECT username FROM users WHERE id = ?', [req.user?.uid || 0]);
-  if (!u || u.username !== 'aryalleh') {
+  if (!u || String(u.username||'').toLowerCase() !== 'aryalleh') {
     throw new AppError(403, 'تغییرِ این قابلیت فقط توسط کاربرِ پشتیبان (aryalleh) ممکن است');
   }
   const enabled = !(req.body?.enabled === false || req.body?.enabled === 'false');
@@ -76,13 +76,42 @@ router.post('/days/:day/reopen', wrap(async (req, res) => {
   const { day } = req.params;
   if (!isValidDay(day)) throw new AppError(400, 'تاریخ نامعتبر (YYYY-MM-DD)');
   const [[u]] = await pool.query('SELECT username FROM users WHERE id = ?', [req.user?.uid || 0]);
-  if (!u || u.username !== 'aryalleh') {
+  if (!u || String(u.username||'').toLowerCase() !== 'aryalleh') {
     throw new AppError(403, 'بازگشاییِ روزِ بسته‌شده فقط توسط کاربرِ پشتیبان (aryalleh) ممکن است');
   }
   await pool.query(
     "UPDATE day_closings SET status='open', reopened_by=?, reopened_at=NOW() WHERE day=? AND branch_id IS NULL",
     [req.user.uid, day]);
   res.json({ ok: true, day, closed: false });
+}));
+
+// گزارش سفارش‌های روزانه — یک روز یا بازه (پیش‌فرض: امروز). با جمع‌بندیِ هر روز + فهرست.
+router.get('/orders', wrap(async (req, res) => {
+  const { from, to } = req.query;
+  const where = ['o.deleted_at IS NULL'], params = [];
+  if (from) { where.push('DATE(o.ordered_at) >= ?'); params.push(from); }
+  if (to) { where.push('DATE(o.ordered_at) <= ?'); params.push(to); }
+  if (!from && !to) where.push('DATE(o.ordered_at) = CURDATE()');
+  const [rows] = await pool.query(
+    `SELECT o.id, o.order_no, o.ordered_at, DATE_FORMAT(o.ordered_at,'%Y-%m-%d') ymd,
+            o.fulfillment_type, o.channel, o.status, o.total_amount, o.paid_amount, p.fullname
+       FROM orders o JOIN persons p ON p.id = o.person_id
+      WHERE ${where.join(' AND ')} ORDER BY o.ordered_at DESC, o.id DESC LIMIT 3000`, params);
+  const byDay = {};
+  for (const r of rows) {
+    const d = byDay[r.ymd] || (byDay[r.ymd] = { day: r.ymd, jalali: toJalaliDate(r.ymd), count: 0, total: 0, paid: 0, delivered: 0, canceled: 0 });
+    d.count++; d.total += Number(r.total_amount); d.paid += Number(r.paid_amount);
+    if (r.status === 'delivered' || r.status === 'settled') d.delivered++;
+    if (r.status === 'canceled') d.canceled++;
+  }
+  const orders = rows.map((r) => ({
+    order_no: r.order_no, date_jalali: toJalaliDate(r.ordered_at), customer: r.fullname,
+    fulfillment: r.fulfillment_type, status: r.status, total: Number(r.total_amount), paid: Number(r.paid_amount),
+  }));
+  res.json({
+    days: Object.values(byDay), orders,
+    totals: { count: rows.length, total: orders.reduce((s, o) => s + o.total, 0), paid: orders.reduce((s, o) => s + o.paid, 0) },
+  });
 }));
 
 // اجرای دستی بک‌آپ و گزارش روزانه (برای تست) — فقط مدیر

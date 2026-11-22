@@ -106,9 +106,43 @@
     <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">تراکنش‌های مالی</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">طرف حساب</th><th class="p-3">نوع</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">شرح</th></tr></thead><tbody id="finRows" class="divide-y divide-gray-100"></tbody></table></div>
   </div>
+
+  <div class="skeu-card p-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h3 class="font-bold text-gray-800"><i class="fa-solid fa-receipt text-amber-600 ml-1"></i> گزارش سفارش‌های روزانه</h3>
+      <div class="flex gap-2">
+        <button onclick="loadOrdersReport()" class="btn-skeu text-white px-4 py-2 rounded-lg font-bold text-sm">نمایش (بازهٔ بالا یا امروز)</button>
+        <button onclick="exportOrdersCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700"><i class="fa-solid fa-file-excel ml-1"></i> خروجی اکسل</button>
+      </div>
+    </div>
+    <div id="ordRepSummary" class="grid grid-cols-3 gap-2 mb-3"></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">روز</th><th class="p-2">تعداد</th><th class="p-2">تحویل‌شده</th><th class="p-2">لغو</th><th class="p-2">جمع فروش</th><th class="p-2">دریافتی</th></tr></thead><tbody id="ordRepDays" class="divide-y divide-gray-100"></tbody></table></div>
+    <div id="ordRepList" class="overflow-x-auto mt-3"></div>
+  </div>
 </main>
 <script>
 const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'پرداخت',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال'};
+let _ordRep={days:[],orders:[],totals:{count:0,total:0,paid:0}};
+const ORD_ST_FA={queued:'در صف',confirmed:'در انتظار',delivered:'تحویل‌شده',settled:'تسویه',canceled:'لغو',draft:'پیش‌نویس'};
+const ORD_FF_FA={delivery:'ارسالی',pickup:'حضوری'};
+async function loadOrdersReport(){
+  const from=document.getElementById('fromG').value, to=document.getElementById('toG').value;
+  const q=new URLSearchParams(); if(from)q.set('from',from); if(to)q.set('to',to);
+  try{ const d=await api('/reports/orders'+(q.toString()?('?'+q):'')); _ordRep=d;
+    document.getElementById('ordRepSummary').innerHTML=
+      `<div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">تعداد سفارش</div><div class="font-black">${fmt(d.totals.count)}</div></div><div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">جمع فروش</div><div class="font-black text-amber-700">${fmt(d.totals.total)}</div></div><div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">دریافتی</div><div class="font-black text-green-700">${fmt(d.totals.paid)}</div></div>`;
+    document.getElementById('ordRepDays').innerHTML=d.days.length?d.days.map(x=>`<tr><td class="p-2 font-bold">${x.jalali}</td><td class="p-2">${fmt(x.count)}</td><td class="p-2 text-green-600">${fmt(x.delivered)}</td><td class="p-2 text-red-500">${fmt(x.canceled)}</td><td class="p-2">${fmt(x.total)}</td><td class="p-2 text-green-700">${fmt(x.paid)}</td></tr>`).join(''):'<tr><td colspan="6" class="p-3 text-center text-gray-400">سفارشی نیست</td></tr>';
+    document.getElementById('ordRepList').innerHTML=d.orders.length?`<table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">شماره</th><th class="p-2">تاریخ</th><th class="p-2">مشتری</th><th class="p-2">نوع</th><th class="p-2">وضعیت</th><th class="p-2">مبلغ</th><th class="p-2">دریافتی</th></tr></thead><tbody class="divide-y divide-gray-100">${d.orders.map(o=>`<tr><td class="p-2 font-bold">${o.order_no}</td><td class="p-2 text-gray-500">${o.date_jalali}</td><td class="p-2">${o.customer}</td><td class="p-2 text-xs">${ORD_FF_FA[o.fulfillment]||o.fulfillment}</td><td class="p-2 text-xs">${ORD_ST_FA[o.status]||o.status}</td><td class="p-2">${fmt(o.total)}</td><td class="p-2 text-green-700">${fmt(o.paid)}</td></tr>`).join('')}</tbody></table>`:'';
+  }catch(e){ toast(e.message,'err'); }
+}
+function exportOrdersCSV(){
+  if(!_ordRep.orders||!_ordRep.orders.length){ toast('اول گزارش را نمایش بده','err'); return; }
+  const head=['شماره سفارش','تاریخ','مشتری','نوع','وضعیت','مبلغ','دریافتی'];
+  const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const lines=[head.map(esc).join(',')].concat(_ordRep.orders.map(o=>[o.order_no,o.date_jalali,o.customer,ORD_FF_FA[o.fulfillment]||o.fulfillment,ORD_ST_FA[o.status]||o.status,o.total,o.paid].map(esc).join(',')));
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='orders-report.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
 let fin={rows:[],summary:[]}, goods={sold:[],produced:[]};
 const today=()=>new Date().toISOString().slice(0,10);
 const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };

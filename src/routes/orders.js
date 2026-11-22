@@ -35,6 +35,10 @@ router.get('/', wrap(async (req, res) => {
     } else {
       where.push(...dateConds);
     }
+  } else if (!status) {
+    // پیش‌فرض (بدون فیلتر وضعیت/تاریخ): فقط سفارش‌های امروز + تحویل‌نشده‌ها.
+    // سفارش‌های تکمیل‌شدهٔ روزهای قبل در منو نمایش داده نمی‌شوند (از گزارش قابل دیدن‌اند).
+    where.push("(DATE(o.ordered_at) = CURDATE() OR o.status IN ('draft','queued','confirmed'))");
   }
   const [rows] = await pool.query(
     `SELECT o.id, o.order_no, o.waybill_no, o.channel, o.fulfillment_type, o.status,

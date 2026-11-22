@@ -105,7 +105,7 @@ async function reopenDay(day, jalali){
 (async function(){
   const u = await guard(['staff']); if(!u) return;
   mountChrome('dayclose','بستن روز');
-  IS_ARYALLEH = (u.username === 'aryalleh');
+  IS_ARYALLEH = ((u.username||'').toLowerCase()==='aryalleh');
   try{ const c = await api('/reports/dayclose-config'); ENABLED = c.enabled !== false; }catch(e){}
   renderCfg();
   load();

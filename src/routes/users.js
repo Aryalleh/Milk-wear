@@ -38,7 +38,7 @@ router.delete('/:id', wrap(async (req, res) => {
 
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL', [id]);
   if (!u) throw new AppError(404, 'کاربر یافت نشد');
-  if (u.username === 'aryalleh') throw new AppError(400, 'کاربرِ پشتیبان قابل حذف نیست');
+  if (String(u.username||'').toLowerCase() === 'aryalleh') throw new AppError(400, 'کاربرِ پشتیبان قابل حذف نیست');
 
   // جلوگیری از حذفِ آخرین مدیرِ فعال (قفل‌شدنِ سیستم)
   const [[adminRole]] = await pool.query("SELECT id FROM roles WHERE name = 'admin'");
@@ -91,6 +91,19 @@ router.post('/', wrap(async (req, res) => {
     [branch_id || null, fullname, username, hash, roleRow.id, mobile || null, bale_user_id || null]
   );
   res.status(201).json({ id: r.insertId });
+}));
+
+// بازنشانیِ رمزِ کاربر (فقط مدیر)
+router.put('/:id/password', wrap(async (req, res) => {
+  const { password } = req.body;
+  if (!password || String(password).length < 4) throw new AppError(400, 'رمز باید حداقل ۴ کاراکتر باشد');
+  const hash = await bcrypt.hash(String(password), 10);
+  const [r] = await pool.query('UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL', [hash, req.params.id]);
+  if (!r.affectedRows) throw new AppError(404, 'کاربر یافت نشد');
+  await pool.query(
+    `INSERT INTO audit_logs (entity_type, entity_id, action, user_id, reason)
+     VALUES ('users', ?, 'password_reset', ?, 'بازنشانی رمز')`, [req.params.id, req.user?.uid || null]);
+  res.json({ ok: true });
 }));
 
 // اتصال/تغییر شناسهٔ بله یک کاربر موجود (برای لاگین خودکار مینی‌اپ)
