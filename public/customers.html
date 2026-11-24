@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مشتری‌ها</title>
+  <script src="/assets/vendor/tailwind.js"></script>
+  <script src="/assets/app.js"></script>
+  <link rel="stylesheet" href="/assets/ui.css">
+  <link rel="stylesheet" href="/assets/vendor/fontawesome/css/all.min.css">
+</head>
+<body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
+<main class="max-w-[1200px] mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+  <!-- لیست مشتری‌ها -->
+  <section class="md:col-span-4 lg:col-span-3">
+    <div class="skeu-card p-4">
+      <div class="relative mb-3"><input id="search" oninput="loadPersons()" placeholder="جستجوی مشتری..." class="w-full pr-10 pl-3 py-2 input-skeu rounded-lg text-sm"><i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-gray-400"></i></div>
+      <div class="flex gap-1.5 mb-3 text-xs">
+        <button data-f="all" onclick="setFilter('all')" class="cf flex-1 py-1.5 rounded-lg font-bold">همه</button>
+        <button data-f="debtor" onclick="setFilter('debtor')" class="cf flex-1 py-1.5 rounded-lg font-bold">بدهکارها</button>
+        <button data-f="creditor" onclick="setFilter('creditor')" class="cf flex-1 py-1.5 rounded-lg font-bold">بستانکارها</button>
+      </div>
+      <p id="listSum" class="text-[11px] text-gray-500 mb-3 px-1"></p>
+      <div id="persons" class="space-y-2 overflow-y-auto max-h-[68vh] no-scrollbar"></div>
+      <p class="text-[11px] text-gray-400 mt-3 px-1">افزودن مشتری از «تنظیمات ← کاربران» انجام می‌شود.</p>
+    </div>
+  </section>
+
+  <section class="md:col-span-8 lg:col-span-9 space-y-6">
+    <div id="empty" class="empty-hint skeu-card p-10 text-center text-gray-400">
+      <i class="fa-solid fa-users text-4xl mb-3 text-gray-300"></i>
+      <p>یک مشتری را از لیست انتخاب کنید تا پنل او (بدهی، گردش حساب، فاکتورها و خریدهای ما از او) باز شود.</p>
+    </div>
+    <div id="sheetBackdrop" onclick="closeSheet()"></div>
+    <div id="detail" class="hidden space-y-4">
+      <div class="skeu-card p-5">
+        <button id="sheetClose" onclick="closeSheet()" class="float-left text-gray-400 text-3xl leading-none">&times;</button>
+        <div class="flex items-center gap-3 mb-1"><h2 id="pName" class="text-xl font-black text-gray-800"></h2><span id="pStatus" class="text-xs px-2 py-0.5 rounded-full font-bold"></span></div>
+        <p class="text-gray-500 text-sm mb-4">کد: <span id="pCode"></span> <span id="pMobile" class="mr-2" dir="ltr"></span></p>
+        <div class="grid grid-cols-2 md:flex gap-2 flex-wrap">
+          <button onclick="openBuy()" class="col-span-2 bg-amber-500 text-white px-4 py-3 rounded-lg font-bold text-sm hover:bg-amber-600 flex items-center justify-center gap-2"><i class="fa-solid fa-cart-arrow-down"></i> خرید ما از این مشتری</button>
+          <button onclick="payIn()" class="fin-only bg-green-600 text-white px-3 py-3 rounded-lg font-bold text-sm"><i class="fa-solid fa-money-bill-wave ml-1"></i> دریافت وجه</button>
+          <button onclick="addCredit()" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-3 rounded-lg font-bold text-sm"><i class="fa-solid fa-gift text-pink-500 ml-1"></i> اعتبار/هدیه</button>
+          <button onclick="printStatement()" class="bg-white border border-gray-200 text-gray-700 px-3 py-3 rounded-lg font-bold text-sm"><i class="fa-solid fa-file-lines ml-1"></i> صورتحساب</button>
+          <button onclick="thermalStatement()" class="bg-white border border-gray-200 text-gray-700 px-3 py-3 rounded-lg font-bold text-sm"><i class="fa-solid fa-print ml-1"></i> چاپ حرارتی</button>
+        </div>
+      </div>
+
+      <div class="skeu-card overflow-hidden">
+        <div class="acc-head open p-4 flex justify-between items-center" onclick="acc('acc-stats',this)"><h3 class="font-bold text-gray-700">وضعیت حساب</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
+        <div id="acc-stats" class="acc-body p-4 pt-0">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-red-50 border border-red-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-red-600 mb-1">بدهی فعلی مشتری</span><span id="sDebt" class="text-base font-black text-red-700">—</span></div>
+            <div class="bg-green-50 border border-green-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-green-600 mb-1">طلب مشتری از ما</span><span id="sCredit" class="text-base font-black text-green-800">—</span></div>
+            <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">جمع خرید از ما</span><span id="sBuy" class="text-base font-black text-gray-700">—</span></div>
+            <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl text-center"><span class="block text-[10px] text-gray-500 mb-1">جمع پرداخت‌ها</span><span id="sPaid" class="text-base font-black text-gray-700">—</span></div>
+          </div>
+          <p id="sLast" class="text-[11px] text-gray-400 mt-3"></p>
+        </div>
+      </div>
+
+      <div class="skeu-card overflow-hidden">
+        <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-ledger',this)"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-list-check text-green-600 ml-1"></i> گردش حساب</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
+        <div id="acc-ledger" class="acc-body hidden p-4 pt-0"><div id="ledgerBox"></div></div>
+      </div>
+
+      <div class="skeu-card overflow-hidden">
+        <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-orders',this)"><h3 class="font-bold text-gray-700"><i class="fa-solid fa-receipt text-green-600 ml-1"></i> فاکتورهای مشتری</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
+        <div id="acc-orders" class="acc-body hidden p-4 pt-0"><div id="ordersBox"></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- خرید ما از مشتری (کباب، پنیر پیتزا، قارچ، ...) → بستانکار مشتری / کم شدن از بدهی فاکتورش -->
+<div id="buyModal" class="mw-modal hidden fixed inset-0 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto" style="z-index:60">
+  <div class="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-2"><h3 class="font-black text-gray-800">خرید ما از مشتری</h3><button onclick="closeBuy()" class="text-gray-400 text-2xl">&times;</button></div>
+    <p id="buyPerson" class="text-sm text-gray-500 mb-1"></p>
+    <p class="text-[11px] text-gray-400 mb-3">هر چیزی که از این مشتری می‌خریم (مثلاً کباب، پنیر پیتزا، قارچ) اینجا ثبت می‌شود و مبلغش از بدهیِ فاکتورهای او کم می‌شود.</p>
+    <div id="buyRows" class="space-y-2"></div>
+    <button onclick="addBuyRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button>
+    <div class="mt-3"><label class="text-xs text-gray-500 block mb-1">اعمال روی فاکتور (اختیاری)</label><select id="buyOrder" class="input-skeu rounded-lg px-3 py-2 w-full"></select></div>
+    <div class="bg-amber-50 rounded-lg p-3 text-sm mt-3 flex justify-between"><span>جمع خرید از مشتری:</span><b id="buyTotal" class="text-amber-700">۰</b></div>
+    <div class="flex justify-end gap-2 mt-4"><button onclick="closeBuy()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button id="buySave" onclick="saveBuy()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ثبت</button></div>
+    <p id="buyErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
+
+<script>
+let currentPerson=null, myBranch=null, isFin=false, filter='all', personOrders=[];
+const TX_FA={PRODUCT_SALE:'فاکتور فروش',FEED_SALE:'خوراک',PAYMENT_IN:'دریافت وجه',PAYMENT_OUT:'پرداخت به مشتری',REFUND:'برگشت',GOODS_IN:'دریافت کالا',OPENING_BALANCE:'ماندهٔ اولیه',VOID:'ابطال',PURCHASE:'خرید ما از مشتری',CASH_WITHDRAWAL:'برداشت نقدی',MILK_DELIVERY:'شیر'};
+const ST_FA={draft:'پیش‌نویس',queued:'در صف',confirmed:'تأییدشده',delivered:'تحویل‌شده',completed:'تکمیل',cancelled:'لغوشده'};
+const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function setFilter(f){ filter=f; document.querySelectorAll('.cf').forEach(b=>b.className='cf flex-1 py-1.5 rounded-lg font-bold '+(b.dataset.f===f?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600')); loadPersons(); }
+async function loadPersons(){
+  const s=document.getElementById('search').value;
+  let list=await api('/persons?type=customer'+(s?('&q='+encodeURIComponent(s)):''));
+  const debtSum=list.filter(p=>p.balance<0).reduce((a,p)=>a-Number(p.balance),0);
+  document.getElementById('listSum').textContent=`${fmt(list.length)} مشتری · جمع بدهی‌ها: ${fmt(debtSum)} ریال`;
+  if(filter==='debtor') list=list.filter(p=>p.balance<0); else if(filter==='creditor') list=list.filter(p=>p.balance>0);
+  document.getElementById('persons').innerHTML = list.map(p=>{
+    const b=Number(p.balance), tone=b<0?'red':b>0?'green':'slate';
+    return `<div class="sidebar-item p-3 rounded-xl flex items-center justify-between ${p.id===currentPerson?'active':''}" onclick="selectPerson(${p.id})">
+      <div class="flex items-center gap-3 min-w-0"><div class="w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center font-black ${tone==='green'?'bg-green-50 text-green-700':tone==='red'?'bg-red-50 text-red-700':'bg-slate-100 text-slate-500'}">${esc((p.fullname||'?').trim().charAt(0))}</div>
+      <div class="min-w-0"><h3 class="font-bold text-gray-800 text-sm leading-tight truncate">${esc(p.fullname)}</h3><p class="text-[10px] text-gray-400">کد: ${esc(p.person_code)}</p></div></div>
+      <div class="text-left shrink-0"><span class="font-black text-sm ${tone==='green'?'text-green-600':tone==='red'?'text-red-600':'text-gray-400'}">${fmt(Math.abs(b))}</span><p class="text-[10px] text-gray-400">${b<0?'بدهکار':b>0?'بستانکار':'تسویه'}</p></div></div>`;
+  }).join('') || '<div class="text-gray-400 text-sm p-3">موردی نیست</div>';
+}
+async function selectPerson(id){
+  currentPerson=id; document.getElementById('empty').classList.add('hidden'); document.getElementById('detail').classList.remove('hidden'); loadPersons();
+  const d=await api('/persons/'+id+'/dashboard');
+  document.getElementById('pName').textContent=d.person.fullname; document.getElementById('pCode').textContent=d.person.code;
+  document.getElementById('pMobile').textContent=d.person.mobile||'';
+  const bal=d.balance.current_balance;
+  const map={creditor:['بستانکار','bg-green-100 text-green-700'],debtor:['بدهکار','bg-red-100 text-red-700'],settled:['تسویه','bg-gray-100 text-gray-500']};
+  const st=map[d.balance.status]||map.settled; const ps=document.getElementById('pStatus'); ps.className='text-xs px-2 py-0.5 rounded-full font-bold '+st[1]; ps.textContent=st[0];
+  document.getElementById('sDebt').textContent=fmt(bal<0?-bal:0); document.getElementById('sCredit').textContent=fmt(bal>0?bal:0);
+  document.getElementById('sBuy').textContent=fmt(d.balance.purchases_total); document.getElementById('sPaid').textContent=fmt(d.balance.payments_total);
+  const last=[]; if(d.balance.last_order_at) last.push('آخرین خرید: '+new Date(d.balance.last_order_at).toLocaleDateString('fa-IR'));
+  if(d.balance.last_payment_at) last.push('آخرین پرداخت: '+new Date(d.balance.last_payment_at).toLocaleDateString('fa-IR'));
+  document.getElementById('sLast').textContent=last.join(' · ');
+  openSheet(); loadLedger(id); loadOrders(id);
+}
+function refresh(){ if(currentPerson) selectPerson(currentPerson); }
+// ----- پاپ‌آپ موبایل -----
+function openSheet(){ document.getElementById('detail').classList.add('sheet'); document.getElementById('sheetBackdrop').classList.add('show');
+  document.querySelectorAll('#detail .acc-body').forEach(b=>b.classList.toggle('hidden', b.id!=='acc-stats'));
+  document.querySelectorAll('#detail .acc-head').forEach(h=>h.classList.toggle('open', h.getAttribute('onclick').includes('acc-stats'))); }
+function closeSheet(){ document.getElementById('detail').classList.remove('sheet'); document.getElementById('sheetBackdrop').classList.remove('show'); document.getElementById('detail').classList.add('hidden'); document.getElementById('empty').classList.remove('hidden'); currentPerson=null; loadPersons(); }
+function acc(id, head){ const body=document.getElementById(id); const isOpen=!body.classList.contains('hidden');
+  document.querySelectorAll('#detail .acc-body').forEach(b=>b.classList.add('hidden'));
+  document.querySelectorAll('#detail .acc-head').forEach(h=>h.classList.remove('open'));
+  if(!isOpen){ body.classList.remove('hidden'); head.classList.add('open'); } }
+
+// ----- گردش حساب -----
+function txBadge(r){ const credit=Number(r.credit)>0;
+  const lbl = r.type==='ADJUSTMENT' ? (credit?'اعتبار/هدیه':'اصلاح (بدهی)') : (TX_FA[r.type]||r.type);
+  const cls = r.type==='PURCHASE'?'bg-amber-100 text-amber-700':(credit?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600');
+  return `<span class="text-[10px] px-1.5 py-0.5 rounded-full ${cls} whitespace-nowrap">${lbl}</span>`; }
+async function loadLedger(id){ const rows=await api('/persons/'+id+'/ledger'); const box=document.getElementById('ledgerBox');
+  if(!rows.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">تراکنشی نیست</p>'; return; }
+  box.innerHTML=`<div class="space-y-2">${rows.map(r=>{ const b=Number(r.balance); return `<div class="border border-gray-100 rounded-xl p-3 flex justify-between items-center gap-2"><div class="min-w-0"><p class="font-bold text-sm flex items-center gap-1 flex-wrap">${txBadge(r)} <span>${esc(r.description||'')}</span></p><p class="text-[11px] text-gray-400">${esc(r.date_jalali)}</p></div><div class="text-left shrink-0"><p class="font-black ${r.credit?'text-green-600':'text-red-600'}">${r.credit?('+'+fmt(r.credit)):('-'+fmt(r.debit))}</p><p class="text-[11px] text-gray-400">مانده: ${fmt(Math.abs(b))} ${b<0?'بدهکار':b>0?'بستانکار':''}</p></div></div>`; }).join('')}</div>`; }
+
+// ----- فاکتورها (سفارش‌های مشتری) -----
+async function loadOrders(id){ personOrders=await api('/orders?person_id='+id); const box=document.getElementById('ordersBox');
+  if(!personOrders.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">فاکتوری نیست</p>'; return; }
+  box.innerHTML=`<div class="space-y-2">${personOrders.map(o=>{ const cancelled=o.status==='cancelled'; const rem=Number(o.total_amount)-Number(o.paid_amount);
+    return `<div class="border border-gray-100 rounded-xl p-3 flex items-center justify-between gap-2 ${cancelled?'opacity-50':''}"><div class="min-w-0"><p class="font-bold text-sm">${esc(o.order_no)} <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">${ST_FA[o.status]||o.status}</span></p><p class="text-[11px] text-gray-400 mt-0.5">${new Date(o.ordered_at).toLocaleDateString('fa-IR')} · مبلغ <b class="text-gray-700">${fmt(o.total_amount)}</b> · پرداخت نقدی ${fmt(o.paid_amount)}${rem>0&&!cancelled?` · <span class="text-red-600">نسیه ${fmt(rem)}</span>`:''}</p></div>
+      <div class="flex gap-1.5 shrink-0">${o.receipt_id?`<button onclick="printReceipt(${o.receipt_id})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="چاپ فاکتور"><i class="fa-solid fa-print"></i></button>`:''}${!cancelled?`<button onclick="openBuy(${o.id})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-600" title="ثبت خرید ما روی این فاکتور"><i class="fa-solid fa-cart-arrow-down"></i></button>`:''}</div></div>`; }).join('')}</div>`; }
+function printReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
+
+// ----- صورتحساب -----
+function printStatement(){ if(!currentPerson)return; window.open('/statement.html?person_id='+currentPerson+'&since=settlement','_blank'); }
+function thermalStatement(){ if(!currentPerson)return; const id=currentPerson;
+  previewThermal('/api/print/preview?kind=statement&person_id='+id+'&since=1', async()=>{ await api('/print/statement',{method:'POST',body:{person_id:id,since:true}}); toast('صورتحساب به صف چاپ رفت 🖨'); }); }
+
+// ----- دریافت وجه / اعتبار -----
+async function payIn(){ const a=prompt('مبلغ دریافتی از مشتری (ریال):'); if(!a)return; const amt=Number(a); if(!(amt>0)){ toast('مبلغ نامعتبر','err'); return; }
+  try{ await api('/payments',{method:'POST',body:{person_id:currentPerson,direction:'in',amount:amt,note:'دریافت از مشتری',branch_id:myBranch||null}}); toast('دریافت ثبت شد'); refresh(); }catch(e){ toast(e.message,'err'); } }
+async function addCredit(){ const a=prompt('مبلغ اعتبار/هدیه (ریال):'); if(a===null)return; const amt=Number(a); if(!(amt>0)){ toast('مبلغ نامعتبر','err'); return; }
+  const note=prompt('بابتِ؟','جبران کسری بار'); if(note===null)return;
+  try{ await api('/payments/adjust',{method:'POST',body:{person_id:currentPerson,direction:'credit',amount:amt,note:note||null,branch_id:myBranch||null}}); toast('اعتبار ثبت شد'); refresh(); }catch(e){ toast(e.message,'err'); } }
+
+// ----- خرید ما از مشتری -----
+function openBuy(orderId){ if(!currentPerson)return; document.getElementById('buyErr').textContent='';
+  document.getElementById('buyPerson').textContent='از: '+document.getElementById('pName').textContent;
+  document.getElementById('buyRows').innerHTML=''; addBuyRow();
+  const open=personOrders.filter(o=>o.status!=='cancelled');
+  document.getElementById('buyOrder').innerHTML='<option value="">— فقط به حساب مشتری —</option>'+open.map(o=>`<option value="${o.id}">${esc(o.order_no)} — ${fmt(o.total_amount)}</option>`).join('');
+  document.getElementById('buyOrder').value=orderId?String(orderId):'';
+  calcBuy(); document.getElementById('buyModal').classList.remove('hidden'); }
+function closeBuy(){ document.getElementById('buyModal').classList.add('hidden'); }
+function addBuyRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  div.innerHTML=`<input class="b-desc input-skeu rounded-lg px-3 py-2.5 flex-1 min-w-0" placeholder="شرح (مثلاً ۲ پرس کباب)"><input class="b-amt input-skeu rounded-lg px-3 py-2.5 w-32" type="number" inputmode="numeric" placeholder="مبلغ (ریال)"><button class="text-red-500 px-2 text-xl" onclick="this.parentElement.remove();calcBuy()">&times;</button>`;
+  div.querySelector('.b-amt').oninput=calcBuy; document.getElementById('buyRows').appendChild(div); }
+function readBuy(){ return [...document.getElementById('buyRows').children].map(r=>({d:r.querySelector('.b-desc').value.trim(),a:Math.round(Number(r.querySelector('.b-amt').value)||0)})).filter(x=>x.a>0); }
+function calcBuy(){ document.getElementById('buyTotal').textContent=fmt(readBuy().reduce((s,x)=>s+x.a,0)); }
+async function saveBuy(){ const err=document.getElementById('buyErr'); err.textContent='';
+  const rows=readBuy(); if(!rows.length){ err.textContent='حداقل یک قلم با مبلغ لازم است'; return; }
+  const total=rows.reduce((s,x)=>s+x.a,0);
+  const description=rows.map(x=>(x.d||'کالا')+(rows.length>1?(' '+fmt(x.a)):'')).join('، ');
+  const order_id=Number(document.getElementById('buyOrder').value)||null;
+  const btn=document.getElementById('buySave'); btn.disabled=true;
+  try{ await api('/submissions/on-behalf',{method:'POST',body:{person_id:currentPerson,amount:total,description,order_id}});
+    closeBuy(); toast('خرید ثبت شد — از بدهی مشتری کم شد'); refresh(); }
+  catch(e){ err.textContent=e.message; } finally{ btn.disabled=false; } }
+
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('customers','مشتری‌ها');
+  myBranch=u.branch_id||null; isFin=(u.role==='admin'||u.role==='accountant');
+  document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
+  setFilter('all');
+})();
+</script>
+</body>
+</html>

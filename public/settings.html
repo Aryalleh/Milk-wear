@@ -121,7 +121,7 @@
     <div class="skeu-card p-6">
       <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-user-lock text-indigo-600 ml-1"></i> دسترسی نقش‌ها به صفحات</h3>
       <p class="text-[11px] text-gray-400 mb-4">برای هر نقش مشخص کنید به کدام صفحات دسترسی داشته باشد. اگر «داشبورد» تیک نخورَد، آن نقش به‌جای داشبورد یک منوی ساده از صفحاتش می‌بیند. «مدیر» همیشه به همه‌جا دسترسی دارد.</p>
-      <div class="overflow-x-auto"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3 text-right">نقش</th><th class="p-3">داشبورد</th><th class="p-3">تحویل شیر</th><th class="p-3">سفارش‌ها و فروش</th><th class="p-3">تولید</th><th class="p-3">انبار</th><th class="p-3">گزارش‌ها</th></tr></thead><tbody id="accessTable" class="divide-y divide-gray-100"></tbody></table></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3 text-right">نقش</th><th class="p-3">داشبورد</th><th class="p-3">تحویل شیر</th><th class="p-3">مشتری‌ها</th><th class="p-3">سفارش‌ها و فروش</th><th class="p-3">تولید</th><th class="p-3">انبار</th><th class="p-3">گزارش‌ها</th></tr></thead><tbody id="accessTable" class="divide-y divide-gray-100"></tbody></table></div>
       <button onclick="saveAccess()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700 mt-4">ذخیره دسترسی‌ها</button>
       <p id="accessMsg" class="text-green-600 text-xs mt-2"></p>
     </div>
@@ -266,7 +266,7 @@ async function buyLayer(id,name){ const qty=prompt('تعداد خریداری‌
 async function saveAssign(pid){ const pkg=document.querySelector(`.pa-pkg[data-pid="${pid}"]`).value; const cap=document.querySelector(`.pa-cap[data-pid="${pid}"]`).value;
   try{ await api('/packagings/assign/'+pid,{method:'PUT',body:{packaging_id:pkg||null,packaging_capacity:Number(cap)||1}}); toast('ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 
-const ACCESS_PAGES=['dashboard','operations','orders','production','inventory','reports'];
+const ACCESS_PAGES=['dashboard','operations','customers','orders','production','inventory','reports'];
 const ACCESS_ROLE_FA={accountant:'حسابداری',station:'مسئول ایستگاه',store:'فروشگاه',distribution:'مدیر پخش',driver:'کارگر/راننده'};
 const ACCESS_DEFAULT={driver:['operations','orders']};
 let _rolePages={};

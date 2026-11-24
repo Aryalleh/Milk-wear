@@ -69,7 +69,7 @@ export async function buildDailyText() {
     `SELECT COALESCE(SUM(CASE WHEN current_balance>0 THEN current_balance ELSE 0 END),0) payable,
             COALESCE(SUM(CASE WHEN current_balance<0 THEN -current_balance ELSE 0 END),0) receivable FROM account_balances`);
   return [
-    `📊 گزارش روزانهٔ لبنیات — ${toJalaliDate(new Date())}`,
+    `📊 گزارش روزانهٔ لبنیات سنتی کلاچی — ${toJalaliDate(new Date())}`,
     `🥛 شیر امروز: ${fmt(m.kg)} کیلو (${fmt(m.val)} ریال) از ${fmt(m.farmers)} دامدار`,
     `🛒 فروش امروز: ${fmt(s.sales)} ریال`,
     `💵 دریافت از مشتری: ${fmt(s.recv)} | پرداخت/علی‌الحساب: ${fmt(s.paid)}`,

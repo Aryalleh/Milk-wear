@@ -35,7 +35,7 @@
         <div class="flex items-center gap-3 mb-1"><h2 id="pName" class="text-xl font-black text-gray-800"></h2><span id="pStatus" class="text-xs px-2 py-0.5 rounded-full font-bold"></span></div>
         <p class="text-gray-500 text-sm mb-4">کد: <span id="pCode"></span></p>
         <div class="flex gap-2 flex-wrap">
-          <button onclick="openInvoice()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 flex items-center gap-2"><i class="fa-solid fa-file-invoice"></i> تحویل شیر / خرید</button>
+          <button type="button" onclick="openInvoice()" class="w-full md:w-auto bg-green-600 text-white px-5 py-3 rounded-lg font-bold hover:bg-green-700 flex items-center justify-center gap-2"><i class="fa-solid fa-bottle-droplet"></i> ثبت تحویل شیر</button>
           <button onclick="doPay('out')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">پرداخت/قرض به دامدار</button>
           <button onclick="doPay('in')" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">دریافت وجه</button>
           <button onclick="doOnBehalf()" class="fin-only bg-white border border-gray-200 text-gray-700 px-3 py-2.5 rounded-lg font-bold text-sm">ثبت خرید/دریافت کالا از دامدار</button>
@@ -75,7 +75,7 @@
       </div>
 
       <div class="skeu-card overflow-hidden">
-        <div class="acc-head p-4 flex justify-between items-center" onclick="acc('acc-receipts',this)"><h3 class="font-bold text-gray-700">فاکتورهای این شخص</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
+        <div class="fin-only acc-head p-4 flex justify-between items-center" onclick="acc('acc-receipts',this)"><h3 class="font-bold text-gray-700">اسناد ثبت‌شده (چاپ/ابطال)</h3><i class="fa-solid fa-chevron-down chev text-gray-400"></i></div>
         <div id="acc-receipts" class="acc-body hidden p-4 pt-0"><div id="receiptsBox"></div></div>
       </div>
     </div>
@@ -83,7 +83,7 @@
 </main>
 
 <!-- ADD PERSON MODAL -->
-<div id="personModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+<div id="personModal" class="mw-modal hidden fixed inset-0 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
   <div class="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5">
     <div class="flex justify-between items-center mb-4"><h3 class="font-black text-gray-800">افزودن شخص جدید</h3><button onclick="closePerson()" class="text-gray-400 text-2xl">&times;</button></div>
     <div class="space-y-3">
@@ -108,24 +108,28 @@
 </div>
 
 <!-- INVOICE MODAL -->
-<div id="invoiceModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
+<div id="invoiceModal" class="mw-modal hidden fixed inset-0 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4 overflow-y-auto">
   <div class="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-2xl p-5 max-h-[92vh] overflow-y-auto">
-    <div class="flex justify-between items-center mb-3"><h3 class="font-black text-gray-800">فاکتور تحویل شیر و خرید</h3><button onclick="closeInvoice()" class="text-gray-400 text-2xl">&times;</button></div>
+    <div class="flex justify-between items-center mb-3"><h3 class="font-black text-gray-800">ثبت تحویل شیر</h3><button onclick="closeInvoice()" class="text-gray-400 text-2xl">&times;</button></div>
     <p id="invPerson" class="text-sm text-gray-500 mb-3"></p>
     <div class="mb-3"><label class="text-xs text-gray-500 block mb-1">سایت</label><select id="invSite" class="input-skeu rounded-lg px-3 py-2 w-full"></select></div>
-    <div class="border border-gray-200 rounded-xl p-3 mb-3"><h4 class="font-bold text-sm mb-2">🥛 تحویل شیر (اختیاری)</h4>
-      <div class="flex flex-wrap gap-2">
-        <select id="invShift" class="input-skeu rounded-lg px-3 py-2"><option value="">— بدون شیر —</option><option value="morning">صبح</option><option value="evening">شب</option></select>
-        <input id="invWeight" type="number" step="0.001" oninput="calcInv()" placeholder="وزن (کیلو)" class="input-skeu rounded-lg px-3 py-2 w-28">
-        <input id="invFat" type="number" step="0.1" placeholder="٪ چربی" class="input-skeu rounded-lg px-3 py-2 w-24">
-        <input id="invPrice" type="number" oninput="calcInv()" placeholder="قیمت کیلو (اختیاری)" class="input-skeu rounded-lg px-3 py-2 w-32">
+    <div class="border border-gray-200 rounded-xl p-3 mb-3"><h4 class="font-bold text-sm mb-2">🥛 شیر تحویلی</h4>
+      <input id="invShift" type="hidden" value="">
+      <div class="flex gap-2 mb-2">
+        <button type="button" data-sh="morning" onclick="setShift('morning')" class="shbtn flex-1 py-3 rounded-lg border-2 font-bold"><i class="fa-solid fa-sun ml-1"></i> صبح</button>
+        <button type="button" data-sh="evening" onclick="setShift('evening')" class="shbtn flex-1 py-3 rounded-lg border-2 font-bold"><i class="fa-solid fa-moon ml-1"></i> شب</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <input id="invWeight" type="number" inputmode="decimal" step="0.001" oninput="calcInv()" placeholder="وزن (کیلو) *" class="col-span-2 input-skeu rounded-lg px-3 py-3 text-lg font-bold">
+        <input id="invFat" type="number" inputmode="decimal" step="0.1" placeholder="٪ چربی" class="input-skeu rounded-lg px-3 py-2.5 min-w-0">
+        <input id="invPrice" type="number" inputmode="numeric" oninput="calcInv()" placeholder="قیمت کیلو (اختیاری)" class="input-skeu rounded-lg px-3 py-2.5 min-w-0">
       </div></div>
-    <div class="border border-gray-200 rounded-xl p-3 mb-3"><h4 class="font-bold text-sm mb-2">🛒 خرید کالا / خوراک (اختیاری)</h4><div id="invItems" class="space-y-2"></div><button onclick="addItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button></div>
+    <details class="border border-gray-200 rounded-xl p-3 mb-3"><summary class="font-bold text-sm cursor-pointer">🌾 تحویل خوراک/کالا به دامدار (اختیاری)</summary><div id="invItems" class="space-y-2 mt-2"></div><button type="button" onclick="addItemRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button></details>
     <div class="mb-3"><label class="text-xs text-gray-500 block mb-1">توضیحات</label><input id="invNote" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
-    <div class="bg-gray-50 rounded-lg p-3 text-sm flex flex-wrap gap-x-4 gap-y-1"><span>بستانکار شیر: <b id="sumMilk" class="text-green-700">۰</b></span><span>بدهکار خرید: <b id="sumBuy" class="text-red-700">۰</b></span><span>خالص: <b id="sumNet">۰</b></span></div>
+    <div class="bg-gray-50 rounded-lg p-3 text-sm flex flex-wrap gap-x-4 gap-y-1"><span>ارزش شیر: <b id="sumMilk" class="text-green-700">۰</b></span><span>خوراک/کالا: <b id="sumBuy" class="text-red-700">۰</b></span><span>خالص: <b id="sumNet">۰</b></span></div>
     <div class="flex justify-between items-center gap-2 mt-4">
-      <label class="flex items-center gap-1.5 text-sm font-bold text-gray-600"><input id="invPrint" type="checkbox" class="w-4 h-4"> چاپ رسید</label>
-      <div class="flex gap-2"><button onclick="closeInvoice()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold">انصراف</button><button onclick="submitInvoice()" class="btn-skeu text-white px-5 py-2 rounded-lg font-bold">ثبت فاکتور</button></div>
+      <label class="flex items-center gap-1.5 text-sm font-bold text-gray-600"><input id="invPrint" type="checkbox" class="w-5 h-5"> چاپ رسید</label>
+      <div class="flex gap-2"><button onclick="closeInvoice()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold">انصراف</button><button id="invSave" type="button" onclick="submitInvoice()" class="btn-skeu text-white px-6 py-3 rounded-lg font-bold">ثبت</button></div>
     </div>
     <p id="invErr" class="text-red-600 text-xs mt-2"></p>
   </div>
@@ -237,23 +241,34 @@ async function savePerson(){ document.getElementById('npErr').textContent='';
   const body={ fullname, roles:[pType], mobile:document.getElementById('npMobile').value||null, username:document.getElementById('npUser').value.trim()||null, password:document.getElementById('npPass').value||null };
   try{ await api('/persons',{method:'POST',body}); closePerson(); loadPersons(); }catch(e){ document.getElementById('npErr').textContent=e.message; } }
 // modal
-function openInvoice(){ if(!currentPerson)return; document.getElementById('invErr').textContent='';
-  document.getElementById('invPerson').textContent='برای: '+document.getElementById('pName').textContent;
-  document.getElementById('invSite').innerHTML=branches.filter(b=>b.is_active).map(b=>`<option value="${b.id}">${b.name}</option>`).join(''); if(myBranch)document.getElementById('invSite').value=myBranch;
-  document.getElementById('invShift').value='';document.getElementById('invWeight').value='';document.getElementById('invFat').value='';document.getElementById('invPrice').value='';document.getElementById('invNote').value='';
-  document.getElementById('invItems').innerHTML=''; addItemRow(); calcInv(); document.getElementById('invoiceModal').classList.remove('hidden'); }
-function closeInvoice(){ document.getElementById('invoiceModal').classList.add('hidden'); }
+function setShift(v){ document.getElementById('invShift').value=v;
+  document.querySelectorAll('.shbtn').forEach(b=>b.className='shbtn flex-1 py-3 rounded-lg border-2 font-bold '+(b.dataset.sh===v?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500')); }
+function openInvoice(){
+  if(!currentPerson){ toast('ابتدا دامدار را انتخاب کنید','err'); return; }
+  const modal=document.getElementById('invoiceModal');
+  try{
+    document.getElementById('invErr').textContent='';
+    document.getElementById('invPerson').textContent='دامدار: '+document.getElementById('pName').textContent;
+    const sites=(branches||[]).filter(b=>Number(b.is_active)!==0);
+    document.getElementById('invSite').innerHTML=sites.map(b=>`<option value="${b.id}">${b.name}</option>`).join(''); if(myBranch)document.getElementById('invSite').value=myBranch;
+    setShift(new Date().getHours()<15?'morning':'evening');
+    document.getElementById('invWeight').value='';document.getElementById('invFat').value='';document.getElementById('invPrice').value='';document.getElementById('invNote').value='';
+    document.getElementById('invItems').innerHTML=''; addItemRow(); calcInv();
+  }catch(e){ console.error(e); toast('خطا در آماده‌سازی فرم: '+e.message,'err'); }
+  modal.classList.remove('hidden'); modal.style.display='flex'; modal.scrollTop=0; }
+function closeInvoice(){ const m=document.getElementById('invoiceModal'); m.classList.add('hidden'); m.style.display=''; }
 function addItemRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
   div.innerHTML=`<select class="it-prod input-skeu rounded-lg px-2 py-2 flex-1"><option value="">— کالا —</option>${products.filter(p=>!p.is_raw_milk).map(p=>`<option value="${p.id}" data-price="${p.base_price}">${p.name} (${fmt(p.base_price)})</option>`).join('')}</select><input class="it-qty input-skeu rounded-lg px-2 py-2 w-20" type="number" step="0.001" placeholder="تعداد"><input class="it-price input-skeu rounded-lg px-2 py-2 w-24" type="number" placeholder="قیمت"><button class="text-red-500 px-2" onclick="this.parentElement.remove();calcInv()">&times;</button>`;
-  document.getElementById('invItems').appendChild(div); div.querySelector('.it-prod').onchange=(e)=>{div.querySelector('.it-price').value=e.target.selectedOptions[0]?.dataset.price||'';calcInv();}; div.querySelectorAll('input').forEach(i=>i.oninput=calcInv); }
+  document.getElementById('invItems').appendChild(div); div.querySelector('.it-prod').onchange=(e)=>{div.querySelector('.it-price').value=(e.target.options[e.target.selectedIndex]||{dataset:{}}).dataset.price||'';calcInv();}; div.querySelectorAll('input').forEach(i=>i.oninput=calcInv); }
 function readItems(){ return [...document.getElementById('invItems').children].map(r=>({product_id:Number(r.querySelector('.it-prod').value),quantity:Number(r.querySelector('.it-qty').value),unit_price:r.querySelector('.it-price').value===''?null:Number(r.querySelector('.it-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
 function calcInv(){ const w=Number(document.getElementById('invWeight').value)||0,pr=Number(document.getElementById('invPrice').value)||0,milk=Math.round(w*pr); const buy=readItems().reduce((s,i)=>s+Math.round((i.unit_price||0)*i.quantity),0);
   document.getElementById('sumMilk').textContent=fmt(milk); document.getElementById('sumBuy').textContent=fmt(buy); document.getElementById('sumNet').textContent=fmt(milk-buy); }
 async function submitInvoice(){ document.getElementById('invErr').textContent='';
   const body={person_id:currentPerson,branch_id:Number(document.getElementById('invSite').value),warehouse_id:null,items:readItems(),note:document.getElementById('invNote').value||null,print:document.getElementById('invPrint').checked};
   if(document.getElementById('invShift').value&&Number(document.getElementById('invWeight').value)>0) body.milk={shift:document.getElementById('invShift').value,weight_kg:Number(document.getElementById('invWeight').value),fat_pct:document.getElementById('invFat').value===''?null:Number(document.getElementById('invFat').value),price_per_kg:document.getElementById('invPrice').value===''?null:Number(document.getElementById('invPrice').value)};
-  if(!body.milk&&body.items.length===0){ document.getElementById('invErr').textContent='حداقل شیر یا یک قلم خرید لازم است'; return; }
-  try{ const whs=await api('/branches/'+document.getElementById('invSite').value+'/warehouses'); body.warehouse_id=whs[0]?.id||null; const r=await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); toast(body.print?'فاکتور ثبت و به صف چاپ رفت 🖨':'فاکتور ثبت شد'); }catch(e){ document.getElementById('invErr').textContent=e.message; } }
+  if(!body.milk&&body.items.length===0){ document.getElementById('invErr').textContent='وزن شیر را وارد کنید'; return; }
+  const btn=document.getElementById('invSave'); btn.disabled=true;
+  try{ const whs=await api('/branches/'+document.getElementById('invSite').value+'/warehouses'); body.warehouse_id=(whs[0]&&whs[0].id)||null; await api('/receipts',{method:'POST',body}); closeInvoice(); refresh(); toast(body.print?'ثبت شد و رسید به صف چاپ رفت 🖨':'تحویل شیر ثبت شد ✓'); }catch(e){ document.getElementById('invErr').textContent=e.message; } finally{ btn.disabled=false; } }
 
 async function loadStationReport(){ const d=await api('/milk/report');
   document.getElementById('repTotal').textContent = `مجموع: ${fmt(d.total.kg)} کیلو · ${fmt(d.total.value)} ریال · ${fmt(d.total.farmers)} دامدار`;
@@ -261,8 +276,8 @@ async function loadStationReport(){ const d=await api('/milk/report');
 (async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('operations','تحویل شیر');
   myBranch=u.branch_id||null; isFin=(u.role==='admin'||u.role==='accountant');
   document.querySelectorAll('.fin-only').forEach(x=>x.classList.toggle('hidden', !isFin));
-  [products,branches]=await Promise.all([api('/products'),api('/branches')]);
   loadPersons(); loadStationReport();
+  try{ [products,branches]=await Promise.all([api('/products'),api('/branches')]); }catch(e){ toast('خطا در دریافت کالاها/سایت‌ها: '+e.message,'err'); }
 })();
 </script>
 </body>

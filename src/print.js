@@ -79,7 +79,7 @@ export async function buildWaybillPayload(orderId) {
     branch_id: order.branch_id,
     payload: {
       doc: 'waybill', title: 'بارنامه',
-      branch: { name: branch?.name || 'سامانه لبنیات', phone: branch?.phone || '', address: branch?.address || '' },
+      branch: { name: 'لبنیات سنتی کلاچی', phone: branch?.phone || '', address: branch?.address || '' },
       order_no: order.order_no,
       waybill_no: order.waybill_no || order.order_no,
       date_jalali: toJalaliDate(order.ordered_at || order.created_at),
@@ -124,7 +124,7 @@ export async function buildReceiptPayload(receiptId) {
     branch_id: rc.branch_id,
     payload: {
       doc: 'receipt', title: 'فاکتور',
-      branch: { name: branch?.name || 'سامانه لبنیات', phone: branch?.phone || '', address: branch?.address || '' },
+      branch: { name: 'لبنیات سنتی کلاچی', phone: branch?.phone || '', address: branch?.address || '' },
       receipt_no: rc.receipt_no,
       date_jalali: toJalaliDateTime(rc.issued_at),
       person: person?.fullname || '', person_code: person?.person_code || '', mobile: person?.mobile || '',

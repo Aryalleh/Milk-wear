@@ -95,7 +95,7 @@ async function handleMessage(msg) {
   if (text === '/start' || text === '/login' || text === 'ورود') {
     const base = (process.env.APP_PUBLIC_URL || '').replace(/\/$/, '');
     if (base.startsWith('https://')) {
-      await baleSendMessage(chatId, 'برای ورود به سامانهٔ لبنیات، دکمهٔ زیر را بزنید:',
+      await baleSendMessage(chatId, 'برای ورود به سامانهٔ لبنیات سنتی کلاچی، دکمهٔ زیر را بزنید:',
         { inline_keyboard: [[{ text: '🥛 ورود به سامانه', web_app: { url: `${base}/login` } }]] });
     } else {
       await baleSendMessage(chatId,

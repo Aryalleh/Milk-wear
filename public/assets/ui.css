@@ -22,12 +22,17 @@ body { font-family:'Vazirmatn',sans-serif; }
 [x-cloak] { display:none !important; }
 /* پاپ‌آپ جزئیات شخص روی موبایل (bottom-sheet) */
 @media (max-width:767px){
-  #detail.sheet { position:fixed; inset:auto 0 0 0; max-height:88vh; overflow-y:auto; z-index:50;
+  #detail.sheet { position:fixed; top:auto; left:0; right:0; bottom:0; inset:auto 0 0 0; -webkit-overflow-scrolling:touch; max-height:88vh; overflow-y:auto; z-index:50;
     background:#f3f4f6; border-radius:18px 18px 0 0; box-shadow:0 -12px 30px rgba(0,0,0,.2); padding:12px 12px 90px; }
-  #sheetBackdrop.show { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:49; }
+  #sheetBackdrop.show { position:fixed; top:0; left:0; right:0; bottom:0; inset:0; background:rgba(0,0,0,.4); z-index:49; }
 }
 @media (min-width:768px){ #sheetClose, #sheetBackdrop { display:none; } }
 @media (max-width:767px){ .empty-hint { display:none !important; } }
 .acc-head { cursor:pointer; }
 .acc-head .chev { transition:transform .2s; }
 .acc-head.open .chev { transform:rotate(-180deg); }
+
+/* مودال‌ها: موقعیتِ صریح (برای مرورگرهای قدیمیِ گوشی که `inset` را نمی‌شناسند) و بالاتر از bottom-sheet */
+.mw-modal { position:fixed; top:0; left:0; right:0; bottom:0; z-index:60; }
+.mw-modal.hidden { display:none; }
+.fixed.inset-0 { top:0; left:0; right:0; bottom:0; }

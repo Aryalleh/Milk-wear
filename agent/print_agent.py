@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-پرینت‌ایجنت سامانهٔ لبنیات محمدپور
+پرینت‌ایجنت سامانهٔ لبنیات سنتی کلاچی
 ----------------------------------
 دو حالت چاپ:
   • حالت دقیق (پیش‌نمایش روشن): سرور صفحهٔ HTML را با کروم رندر می‌کند و ایجنت
@@ -199,7 +199,7 @@ def render_light(p):
     doc = p.get("doc"); b = p.get("branch") or {}
     c = Canvas()
     _logo_or_none(c)
-    c.center(b.get("name", "لبنیات محمدپور"), font(38, 800), gap=4)
+    c.center(b.get("name", "لبنیات سنتی کلاچی"), font(38, 800), gap=4)
     if doc == "test":
         c.box_center("چاپ آزمایشی", font(26, 700))
         c.center(p.get("message", "اتصال سالم است ✔"), font(24), gap=6)
@@ -332,7 +332,7 @@ def do_test_print():
     """چاپ آزمایشی با تنظیماتِ جاری — برای دکمهٔ پنل. (ok, message) برمی‌گرداند."""
     STATUS["printer_type"] = printer_type()
     payload = {"doc": "test", "message": "اتصال سالم است ✔",
-               "branch": {"name": "لبنیات محمدپور"}}
+               "branch": {"name": "لبنیات سنتی کلاچی"}}
     job = {"id": "test", "kind": "test", "light": True, "payload": payload, "copies": 1}
     try:
         print_job(_session(), job)

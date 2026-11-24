@@ -88,6 +88,7 @@ app.get('/login', pub('login.html'));
 app.get('/dashboard', pub('dashboard.html'));
 app.get('/r/:token', pub('receipt.html'));   // نمایش فاکتور با QR/توکن (عمومی)
 app.get('/operations', pub('operations.html'));
+app.get('/customers', pub('customers.html'));
 app.get('/production', pub('production.html'));
 app.get('/inventory', pub('inventory.html'));
 app.get('/settings', pub('settings.html'));

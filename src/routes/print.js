@@ -109,7 +109,7 @@ router.post('/test', requireRole('admin'), wrap(async (req, res) => {
     kind: 'test',
     payload: {
       doc: 'test', title: 'چاپ آزمایشی',
-      branch: { name: 'لبنیات محمدپور', phone: s.branch_phone || '', address: '' },
+      branch: { name: 'لبنیات سنتی کلاچی', phone: s.branch_phone || '', address: '' },
       message: 'اتصال پرینت‌ایجنت سالم است ✔', date_ts: Date.now(),
     },
   });

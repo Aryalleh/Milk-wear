@@ -2,9 +2,9 @@
 import { getSettings } from './print.js';
 
 // همهٔ صفحات کارمندی
-export const ALL_PAGES = ['dashboard', 'operations', 'orders', 'production', 'inventory', 'reports', 'settings'];
+export const ALL_PAGES = ['dashboard', 'operations', 'customers', 'orders', 'production', 'inventory', 'reports', 'settings'];
 // پیش‌فرض برای نقش‌هایی که در تنظیمات مشخص نشده‌اند (همه‌چیز جز تنظیمات)
-const DEFAULT_NONADMIN = ['dashboard', 'operations', 'orders', 'production', 'inventory', 'reports'];
+const DEFAULT_NONADMIN = ['dashboard', 'operations', 'customers', 'orders', 'production', 'inventory', 'reports'];
 // پیش‌فرضِ نقشِ کارگر/راننده: فروش + تحویل شیر + بردن بار
 export const DEFAULT_ROLE_PAGES = { driver: ['operations', 'orders'] };
 

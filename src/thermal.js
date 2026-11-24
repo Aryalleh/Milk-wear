@@ -91,7 +91,7 @@ export async function receiptHTML(p) {
   const qr = await qrSvg(p.qr_url);
   return `<!doctype html><html lang="fa" dir="rtl"><head>${head()}</head><body><div class="doc">
     <div class="center">
-      <div class="brand">${esc(p.branch?.name || 'سامانه لبنیات')}</div>
+      <div class="brand">${esc(p.branch?.name || 'لبنیات سنتی کلاچی')}</div>
       <div class="title">فاکتور</div>
       <div class="sub">شماره فاکتور: ${esc(p.receipt_no)}</div>
     </div>
@@ -116,7 +116,7 @@ export async function waybillHTML(p) {
   const qr = await qrSvg(p.qr_url);
   return `<!doctype html><html lang="fa" dir="rtl"><head>${head()}</head><body><div class="doc">
     <div class="center">
-      <div class="brand">${esc(p.branch?.name || 'سامانه لبنیات')}</div>
+      <div class="brand">${esc(p.branch?.name || 'لبنیات سنتی کلاچی')}</div>
       <div class="title">بارنامه</div>
       <div class="sub">شماره: ${esc(p.waybill_no || p.order_no)}</div>
     </div>
@@ -136,7 +136,7 @@ export async function waybillHTML(p) {
 
 export async function testHTML(p) {
   return `<!doctype html><html lang="fa" dir="rtl"><head>${head()}</head><body><div class="doc center">
-    <div class="brand">${esc(p.branch?.name || 'لبنیات محمدپور')}</div>
+    <div class="brand">${esc(p.branch?.name || 'لبنیات سنتی کلاچی')}</div>
     <div class="title">چاپ آزمایشی</div>
     <hr class="hr">
     <div class="sub" style="font-size:24px;margin:14px 0">${esc(p.message || 'اتصال پرینت‌ایجنت سالم است ✔')}</div>

@@ -20,8 +20,9 @@ const router = Router();
 // فهرست سفارش‌ها (کارمند) — با فیلتر وضعیت/کانال + ماندهٔ حساب طرف
 router.get('/', wrap(async (req, res) => {
   if (req.user.kind !== 'staff') throw new AppError(403, 'دسترسی مجاز نیست');
-  const { status, channel, fulfillment, from, to, include_pending } = req.query;
+  const { status, channel, fulfillment, from, to, include_pending, person_id } = req.query;
   const where = ['o.deleted_at IS NULL'], params = [];
+  if (person_id) { where.push('o.person_id = ?'); params.push(Number(person_id)); }
   if (status) { where.push('o.status = ?'); params.push(status); }
   if (channel) { where.push('o.channel = ?'); params.push(channel); }
   if (fulfillment) { where.push('o.fulfillment_type = ?'); params.push(fulfillment); }
@@ -35,7 +36,7 @@ router.get('/', wrap(async (req, res) => {
     } else {
       where.push(...dateConds);
     }
-  } else if (!status) {
+  } else if (!status && !person_id) {
     // پیش‌فرض (بدون فیلتر وضعیت/تاریخ): فقط سفارش‌های امروز + تحویل‌نشده‌ها.
     // سفارش‌های تکمیل‌شدهٔ روزهای قبل در منو نمایش داده نمی‌شوند (از گزارش قابل دیدن‌اند).
     where.push("(DATE(o.ordered_at) = CURDATE() OR o.status IN ('draft','queued','confirmed'))");

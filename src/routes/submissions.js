@@ -30,9 +30,16 @@ router.get('/', wrap(async (req, res) => {
 // ثبت فاکتور خرید از طرفِ شخص توسط کارمند/مدیر (مثلاً وقتی شخص با سیستم کار نمی‌کند)
 //  → مستقیم تأییدشده ثبت و به حساب شخص اضافه می‌شود
 router.post('/on-behalf', wrap(async (req, res) => {
-  const { person_id, amount, description, photo } = req.body;
+  const { person_id, amount, description, photo, order_id } = req.body;
   if (!person_id || !amount || Number(amount) <= 0) throw new AppError(400, 'شخص و مبلغ لازم است');
   const out = await withTx(async (conn) => {
+    // اختیاری: خرید از مشتری «روی فاکتورِ» او اعمال شود (فقط برچسبِ شرح؛ اثر مالی از طریق دفتر حساب است)
+    let onInvoice = '';
+    if (order_id) {
+      const [[o]] = await conn.query('SELECT order_no, person_id FROM orders WHERE id = ?', [order_id]);
+      if (!o || Number(o.person_id) !== Number(person_id)) throw new AppError(400, 'فاکتور متعلق به این شخص نیست');
+      onInvoice = ` (روی فاکتور ${o.order_no})`;
+    }
     const [s] = await conn.query(
       `INSERT INTO purchase_submissions (person_id, amount, description, photo, status, approved_by, approved_at)
        VALUES (?,?,?,?, 'approved', ?, NOW())`,
@@ -40,7 +47,7 @@ router.post('/on-behalf', wrap(async (req, res) => {
     const txId = await postTransaction(conn, {
       personId: person_id, txType: 'PURCHASE', amount: Math.round(Number(amount)),
       sourceType: 'manual', sourceId: s.insertId,
-      description: 'خرید از شخص (ثبت توسط کارمند)' + (description ? (' — ' + description) : ''),
+      description: 'خرید از شخص' + (description ? (' — ' + description) : '') + onInvoice,
       userId: req.user.uid, month: currentJalaliMonth(),
     });
     await conn.query('UPDATE purchase_submissions SET tx_id=? WHERE id=?', [txId, s.insertId]);
