@@ -211,7 +211,8 @@ router.post('/', wrap(async (req, res) => {
   const paid = Math.max(0, Math.round(Number(paid_amount || 0)));
   const allowNegative = req.body.allow_negative === true;   // بای‌پس خطای کسری موجودی
   const noPackaging = req.body.no_packaging === true;       // مشتری ظرف خودش را آورده
-  const paidFull = req.body.paid_full === true;             // «پرداخت کامل» = دقیقاً برابر جمع نهایی (با ظرف)
+  const paidFull = req.body.paid_full === true;             // «پرداخت فاکتور» = دقیقاً برابر جمع نهایی (با ظرف)
+  const settleAll = req.body.pay_mode === 'settle';          // «تسویهٔ کامل» = جمع فاکتور + بدهیِ قبلی (مانده صفر می‌شود)
   const marginPct = await packagingMargin();
 
   const result = await withTx(async (conn) => {
@@ -286,8 +287,15 @@ router.post('/', wrap(async (req, res) => {
     }
     // جمع کل شامل هزینهٔ ظرف
     const grandTotal = total + packagingTotal;
-    // «پرداخت کامل» دقیقاً برابرِ جمعِ نهایی (با ظرف) → مشتری بدهکارِ ظرف نمی‌شود
-    const finalPaid = paidFull ? grandTotal : paid;
+    // «پرداخت فاکتور» دقیقاً برابرِ جمعِ نهایی (با ظرف) → مشتری بدهکارِ ظرف نمی‌شود
+    // «تسویهٔ کامل» = جمع فاکتور + بدهیِ قبلی (اگر طلب داشته باشد، از آن کم می‌شود)
+    // مبلغِ دلخواه می‌تواند از جمعِ فاکتور بیشتر باشد؛ اضافه از بدهیِ قبلی کم می‌شود
+    let finalPaid = paid;
+    if (paidFull) finalPaid = grandTotal;
+    else if (settleAll) {
+      const [[ab]] = await conn.query('SELECT current_balance FROM account_balances WHERE person_id=?', [person_id]);
+      finalPaid = Math.max(0, grandTotal - Number(ab?.current_balance || 0));   // مانده منفی = بدهی
+    }
     if (packagingTotal > 0 || finalPaid !== paid)
       await conn.query('UPDATE orders SET total_amount=?, paid_amount=? WHERE id=?', [grandTotal, finalPaid, orderId]);
 
@@ -307,7 +315,8 @@ router.post('/', wrap(async (req, res) => {
         [branch_id || null, person_id, payment_method, finalPaid, req.user?.uid || null]);
       await postTransaction(conn, {
         personId: person_id, txType: 'PAYMENT_IN', amount: finalPaid,
-        sourceType: 'payment', sourceId: pay.insertId, description: 'دریافت هنگام فروش',
+        sourceType: 'payment', sourceId: pay.insertId,
+        description: finalPaid > grandTotal ? 'دریافت هنگام فروش (+ پرداخت بدهی قبلی)' : 'دریافت هنگام فروش',
         branchId: branch_id || null, userId: req.user?.uid, month: currentJalaliMonth(),
       });
     }

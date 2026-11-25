@@ -81,12 +81,20 @@
     <!-- پرداخت -->
     <div class="mt-4 bg-gray-50 rounded-xl p-3">
       <div class="flex justify-between items-center"><span class="text-sm font-bold text-gray-700">جمع فاکتور</span><span class="text-lg font-black text-green-700"><span id="cartTotal">۰</span> ریال</span></div>
-      <p id="pkgHint" class="text-[11px] text-amber-700 mb-2"></p>
-      <label class="text-xs text-gray-500 block mb-1">مبلغ پرداختی الان — می‌تواند کمتر/صفر باشد</label>
-      <input id="paidAmount" type="number" placeholder="۰" class="input-skeu rounded-lg px-3 py-2 w-full" oninput="window._payFull=false">
-      <div class="flex gap-2 mt-2 text-xs">
-        <button onclick="payFullBtn()" class="bg-white border px-2 py-1 rounded font-bold">پرداخت کامل</button>
-        <button onclick="window._payFull=false;document.getElementById('paidAmount').value=0" class="bg-white border px-2 py-1 rounded font-bold">بدون پرداخت</button>
+      <p id="pkgHint" class="text-[11px] text-amber-700 mb-1"></p>
+      <div id="prevBox" class="hidden text-sm space-y-1 mb-2">
+        <div class="flex justify-between"><span id="prevLbl" class="text-gray-600">بدهی قبلی</span><span id="prevAmt" class="font-bold"></span></div>
+        <div class="flex justify-between border-t border-gray-200 pt-1"><span class="font-black text-gray-800">جمع کل با بدهی قبلی</span><span class="font-black text-red-600"><span id="grandWithDebt">۰</span> ریال</span></div>
+      </div>
+      <label class="text-xs text-gray-500 block mb-1">مبلغ پرداختی الان — کمتر، برابر یا بیشتر از فاکتور (اضافه از بدهی قبلی کم می‌شود)</label>
+      <input id="paidAmount" type="number" inputmode="numeric" placeholder="۰" class="input-skeu rounded-lg px-3 py-2.5 w-full text-lg font-bold" oninput="window._payFull=false;window._payMode=null;payPreview()">
+      <p id="afterPay" class="text-[12px] font-bold mt-1"></p>
+      <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+        <button onclick="payFullBtn()" class="bg-white border border-green-300 text-green-700 px-2 py-2 rounded-lg font-bold">پرداخت فاکتور</button>
+        <button id="settleBtn" onclick="paySettleBtn()" class="bg-white border border-red-300 text-red-600 px-2 py-2 rounded-lg font-bold">تسویه کامل</button>
+        <button onclick="window._payFull=false;window._payMode=null;document.getElementById('paidAmount').value=0;payPreview()" class="bg-white border px-2 py-2 rounded-lg font-bold">بدون پرداخت</button>
+      </div>
+      <div class="flex gap-3 mt-2 text-xs">
         <label class="flex items-center gap-1 font-bold text-gray-600"><input id="noPack" type="checkbox" class="w-4 h-4" onchange="calc()"> بدون ظرف (ظرفِ مشتری)</label>
         <label class="flex items-center gap-1 mr-auto font-bold text-gray-600"><input id="doPrint" type="checkbox" class="w-4 h-4"> چاپ فاکتور</label>
       </div>
@@ -221,12 +229,12 @@ async function confirmDeliver(){ try{ const paid=toRial(document.getElementById(
 }catch(e){ document.getElementById('delErr').textContent=e.message; } }
 
 // --- ساخت سفارش/فروش ---
-function openCreate(){ cust=null; ff='delivery'; editId=null; window._payFull=false; document.getElementById('createTitle').textContent='سفارش / فروش جدید'; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden');
+function openCreate(){ cust=null; ff='delivery'; editId=null; window._payFull=false; window._payMode=null; window._custBal=0; document.getElementById('createTitle').textContent='سفارش / فروش جدید'; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden');
   document.getElementById('custSearch').value=''; document.getElementById('dest').value=''; document.getElementById('paidAmount').value=''; document.getElementById('doPrint').checked=false; document.getElementById('noPack').checked=false; document.getElementById('createErr').textContent='';
   document.getElementById('cart').innerHTML=''; addRow();
   const canDeliver=(window.__user?.role!=='driver');
   document.querySelector('.ffbtn[data-ff="delivery"]').style.display=canDeliver?'':'none';
-  setFF(canDeliver?'delivery':'pickup'); calc(); document.getElementById('createModal').classList.remove('hidden'); }
+  setFF(canDeliver?'delivery':'pickup'); calc(); document.getElementById('createModal').classList.remove('hidden');  setTimeout(payPreview,0); }
 function closeCreate(){ document.getElementById('createModal').classList.add('hidden'); }
 function setFF(v){ ff=v; document.querySelectorAll('.ffbtn').forEach(b=>b.className='ffbtn flex-1 py-2.5 rounded-xl border-2 font-bold text-sm '+(b.dataset.ff===v?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500'));
   document.getElementById('destWrap').style.display = v==='delivery'?'block':'none'; }
@@ -238,9 +246,24 @@ async function searchCust(){ const q=document.getElementById('custSearch').value
 async function pickCust(id,name,code){ cust={id,name,code}; document.getElementById('custResults').classList.add('hidden'); document.getElementById('custSearch').value='';
   const chip=document.getElementById('custChip'); chip.innerHTML=`<i class="fa-solid fa-user"></i> ${name} (${code}) <button onclick="clearCust()" class="text-green-600">&times;</button>`; chip.classList.remove('hidden');
   try{ const led=await api('/persons/'+id+'/dashboard'); const bal=Number(led.balance?.current_balance||0);
+    window._custBal=bal; payPreview();
     const el=document.getElementById('custDebt'); el.className='text-xs mt-1 font-bold '+(bal<0?'text-red-600':'text-green-600'); el.textContent= bal<0?`بدهی این شخص: ${money(-bal)} ریال`:(bal>0?`طلب این شخص: ${money(bal)} ریال`:'حساب تسویه'); el.classList.remove('hidden'); }catch{}
 }
-function clearCust(){ cust=null; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden'); }
+function clearCust(){ cust=null; window._custBal=0; document.getElementById('custChip').classList.add('hidden'); document.getElementById('custDebt').classList.add('hidden'); payPreview(); }
+// ----- جمع با بدهی قبلی + پیش‌نمایشِ ماندهٔ بعد از پرداخت -----
+const _inv=()=>Number(document.getElementById('cartTotal').dataset.raw||0);
+function payPreview(){ const bal=Number(window._custBal||0), inv=_inv(), box=document.getElementById('prevBox');
+  const show=!!cust && bal!==0 && !editId; box.classList.toggle('hidden',!show);
+  if(show){ document.getElementById('prevLbl').textContent=bal<0?'بدهی قبلی':'طلب قبلی (کم می‌شود)';
+    document.getElementById('prevAmt').innerHTML=bal<0?`<span class="text-red-600">${money(-bal)}</span>`:`<span class="text-green-600">−${money(bal)}</span>`;
+    document.getElementById('grandWithDebt').textContent=money(Math.max(0,inv-bal)); }
+  document.getElementById('settleBtn').classList.toggle('hidden', !(cust && bal<0) || !!editId);
+  if(window._payMode==='settle') document.getElementById('paidAmount').value=fromRial(Math.max(0,inv-bal));
+  const paid=toRial(document.getElementById('paidAmount').value||0)||0, after=bal-inv+paid, el=document.getElementById('afterPay');
+  if(!cust||editId){ el.textContent=''; return; }
+  el.className='text-[12px] font-bold mt-1 '+(after<0?'text-red-600':'text-green-700');
+  el.textContent='مانده حساب بعد از این خرید: '+(after<0?money(-after)+' ریال بدهکار':after>0?money(after)+' ریال بستانکار':'تسویه'); }
+function paySettleBtn(){ window._payFull=false; window._payMode='settle'; quoteNow().then(payPreview); }
 async function walkIn(){ try{ const list=await api('/persons?q=مشتری نقدی'); let w=list.find(p=>p.fullname==='مشتری نقدی');
   if(!w){ const r=await api('/persons',{method:'POST',body:{fullname:'مشتری نقدی',roles:['customer']}}); w={id:r.id,fullname:'مشتری نقدی',person_code:'—'}; }
   pickCust(w.id,'مشتری نقدی',w.person_code||'—'); ff='pickup'; setFF('pickup'); }catch(e){ toast(e.message,'err'); } }
@@ -266,7 +289,7 @@ let _quoteTimer=null;
 function calc(){
   // نمایشِ فوریِ جمع کالا؛ سپس جمع دقیق (با ظرف) از سرور
   const goods=[...document.getElementById('cart').children].reduce((s,r)=>{const p=toRial(r.querySelector('.c-price').value)||0,q=Number(r.querySelector('.c-qty').value)||0;return s+Math.round(p*q);},0);
-  const el=document.getElementById('cartTotal'); el.textContent=money(goods); el.dataset.raw=goods; el.dataset.pkg=0;
+  const el=document.getElementById('cartTotal'); el.textContent=money(goods); el.dataset.raw=goods; el.dataset.pkg=0; payPreview();
   clearTimeout(_quoteTimer); _quoteTimer=setTimeout(quoteNow, 350);
 }
 async function quoteNow(){
@@ -277,13 +300,14 @@ async function quoteNow(){
     el.textContent=money(q.grand_total); el.dataset.raw=q.grand_total; el.dataset.pkg=q.packaging_cost;
     if(h) h.textContent = q.packaging_cost>0?`شامل هزینهٔ ظرف: ${money(q.packaging_cost)} ریال (سود ${fmt(q.margin_pct)}٪)`:'';
     if(window._payFull) document.getElementById('paidAmount').value=fromRial(q.grand_total);
+    payPreview();
   }catch(e){}
 }
-function payFullBtn(){ window._payFull=true; quoteNow().then(()=>{ document.getElementById('paidAmount').value=fromRial(document.getElementById('cartTotal').dataset.raw||0); }); }
+function payFullBtn(){ window._payFull=true; window._payMode=null; quoteNow().then(()=>{ document.getElementById('paidAmount').value=fromRial(document.getElementById('cartTotal').dataset.raw||0); payPreview(); }); }
 async function submitOrder(allowNeg){ const errEl=document.getElementById('createErr'); errEl.textContent='';
   if(!cust){ errEl.textContent='طرف حساب را انتخاب کنید'; return; }
   const items=readCart(); if(!items.length){ errEl.textContent='حداقل یک قلم کالا لازم است'; return; }
-  const body={person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:toRial(document.getElementById('paidAmount').value||0), paid_full:!!window._payFull, payment_method:'cash', print:document.getElementById('doPrint').checked, allow_negative:!!allowNeg, no_packaging:document.getElementById('noPack').checked};
+  const body={person_id:cust.id, branch_id:branchId, warehouse_id:warehouse, fulfillment_type:ff, destination:ff==='delivery'?(document.getElementById('dest').value||null):null, items, paid_amount:toRial(document.getElementById('paidAmount').value||0), paid_full:!!window._payFull, pay_mode:window._payMode||null, payment_method:'cash', print:document.getElementById('doPrint').checked, allow_negative:!!allowNeg, no_packaging:document.getElementById('noPack').checked};
   try{
     if(editId){ const r=await api('/orders/'+editId+'/edit',{method:'PUT',body:{items,destination:document.getElementById('dest').value||null,allow_negative:!!allowNeg,no_packaging:document.getElementById('noPack').checked}}); closeCreate();
       let msg='سفارش ویرایش شد'; const b=Number(r&&r.balance);
