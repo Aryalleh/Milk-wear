@@ -96,8 +96,6 @@ router.get('/orders', wrap(async (req, res) => {
     `SELECT o.id, o.order_no, o.ordered_at, DATE_FORMAT(o.ordered_at,'%Y-%m-%d') ymd, o.person_id, o.branch_id,
             o.fulfillment_type, o.channel, o.status, o.total_amount, o.paid_amount, p.fullname,
             (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id,
-            (SELECT COALESCE(SUM(oi.quantity * pr.base_price),0) FROM order_items oi JOIN products pr ON pr.id = oi.product_id WHERE oi.order_id = o.id) AS list_value,
-            EXISTS(SELECT 1 FROM audit_logs a WHERE a.entity_type='orders' AND a.entity_id=o.id AND a.action='fix_x10') AS fixed,
             EXISTS(SELECT 1 FROM day_closings dc WHERE dc.day = DATE(o.ordered_at) AND dc.status='closed'
                      AND (dc.branch_id = o.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM orders o JOIN persons p ON p.id = o.person_id
@@ -111,9 +109,7 @@ router.get('/orders', wrap(async (req, res) => {
   }
   const orders = rows.map((r) => ({
     id: r.id, person_id: r.person_id, receipt_id: r.receipt_id, channel: r.channel,
-    fixed: !!Number(r.fixed), locked: !!Number(r.locked),
-    // «مشکوک به یک صفر کم»: جمعِ فاکتور کمتر از یک‌پنجمِ ارزشِ اقلام با قیمتِ فعلیِ کالاها
-    suspect: !Number(r.fixed) && r.status !== 'canceled' && Number(r.total_amount) > 0 && Number(r.total_amount) * 5 < Number(r.list_value),
+    locked: !!Number(r.locked),
     order_no: r.order_no, date_jalali: toJalaliDate(r.ordered_at), customer: r.fullname,
     fulfillment: r.fulfillment_type, status: r.status, total: Number(r.total_amount), paid: Number(r.paid_amount),
   }));

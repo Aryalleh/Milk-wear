@@ -149,6 +149,37 @@ router.post('/', wrap(async (req, res) => {
   res.status(201).json(receipt);
 }));
 
+// وضعیت حسابِ شخص روی فاکتور — زنده از دفتر حساب (بعد از ویرایش/لغو/تبدیل هم درست می‌ماند)
+//  previous: ماندهٔ قبل از این فاکتور | effect: اثرِ خودِ فاکتور | paid: پرداختِ هنگامِ خرید | after: ماندهٔ بعد
+//  علامت: منفی = شخص بدهکار، مثبت = بستانکار. current: ماندهٔ فعلیِ کلِ حساب.
+async function receiptAccount(rc) {
+  const conds = [], params = [];
+  if (rc.order_id) { conds.push("(source_type='order' AND source_id=?)"); params.push(rc.order_id); }
+  if (rc.milk_delivery_id) { conds.push("(source_type='milk_delivery' AND source_id=?)"); params.push(rc.milk_delivery_id); }
+  if (rc.payment_id) { conds.push("(source_type='payment' AND source_id=?)"); params.push(rc.payment_id); }
+  const signed = "COALESCE(SUM(CASE WHEN direction='credit' THEN amount ELSE -amount END),0)";
+  const [[cur]] = await pool.query('SELECT current_balance FROM account_balances WHERE person_id=?', [rc.person_id]);
+  const current = Number(cur?.current_balance || 0);
+  if (!conds.length) return { previous: null, effect: 0, paid: 0, after: null, current };
+  // جایگاهِ فاکتور در دفتر: اولین تراکنشِ منابعش (حتی اگر بعداً ویرایش/باطل شده باشد)
+  const [[anc]] = await pool.query(`SELECT MIN(id) id FROM transactions WHERE person_id=? AND (${conds.join(' OR ')})`, [rc.person_id, ...params]);
+  if (!anc?.id) return { previous: null, effect: 0, paid: 0, after: null, current };
+  const [[bf]] = await pool.query(`SELECT ${signed} b FROM transactions WHERE person_id=? AND status='active' AND id < ?`, [rc.person_id, anc.id]);
+  const [[ef]] = await pool.query(`SELECT ${signed} e FROM transactions WHERE person_id=? AND status='active' AND (${conds.join(' OR ')})`, [rc.person_id, ...params]);
+  let paid = 0;
+  if (rc.order_id && !rc.payment_id) {
+    const [[o]] = await pool.query("SELECT paid_amount, status FROM orders WHERE id=?", [rc.order_id]);
+    if (o && o.status !== 'canceled') paid = Number(o.paid_amount || 0);
+  }
+  let effect = Number(ef.e);
+  if (rc.payment_id) {   // پرداختِ همراهِ فاکتور (دامدار/فروشگاه) جدا نمایش داده می‌شود
+    const [[pp]] = await pool.query(`SELECT ${signed} p FROM transactions WHERE status='active' AND source_type='payment' AND source_id=?`, [rc.payment_id]);
+    paid = Number(pp.p); effect -= paid;
+  }
+  const previous = Number(bf.b);
+  return { previous, effect, paid, after: previous + effect + paid, current };
+}
+
 // ساخت نمای کامل فاکتور از روی رکورد (مشترک بین نمای کارمند و عمومی)
 export async function buildReceiptView(rc) {
   if (!rc.public_token) {
@@ -169,7 +200,8 @@ export async function buildReceiptView(rc) {
     items = rows;
   }
   const packaging_total = items.reduce((s, i) => s + Number(i.packaging_cost || 0), 0);
-  return { receipt: { ...rc, issued_at_jalali: toJalaliDateTime(rc.issued_at) }, person, branch, milk, items, packaging_total };
+  const account = await receiptAccount(rc);
+  return { receipt: { ...rc, issued_at_jalali: toJalaliDateTime(rc.issued_at) }, person, branch, milk, items, packaging_total, account };
 }
 
 // دریافت کامل یک فاکتور برای نمایش/پرینت (کارمند یا صاحب)

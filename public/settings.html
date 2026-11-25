@@ -200,10 +200,6 @@
       </div>
       <p id="curMsg" class="text-green-600 text-xs mt-2"></p>
     </div>
-    <div id="rmCard" class="skeu-card p-6 max-w-xl border-2 border-amber-200" data-nocur>
-      <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-right-left text-amber-600 ml-1"></i> تبدیل یک‌بارهٔ تومان به ریال</h3>
-      <div id="rmBody"><p class="text-gray-400 text-sm">در حال بارگذاری…</p></div>
-    </div>
     <div class="skeu-card p-6 max-w-md">
       <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-database text-cyan-600 ml-1"></i> ظرفیت مخزن شیر خام</h3>
       <div class="flex gap-2 items-end">
@@ -351,33 +347,7 @@ async function toggleTrust(id,val){ try{ await api('/persons/'+id+'/trusted',{me
 function showCurrency(c){ document.querySelectorAll('.curbtn').forEach(b=>b.className='curbtn flex-1 py-3 rounded-lg border-2 font-bold '+(b.dataset.cur===c?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500')); }
 async function saveCurrency(c){ try{ await api('/settings/currency',{method:'PUT',body:{value:c}}); showCurrency(c);
     document.getElementById('curMsg').textContent='ذخیره شد ✓ — صفحه دوباره بارگذاری می‌شود'; setTimeout(()=>location.reload(),900); }catch(e){ toast(e.message,'err'); } }
-async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; showCurrency(s.currency==='toman'?'toman':'rial'); checkUpdate(); loadRialMigration(); }
-// ----- تبدیل یک‌بارهٔ تومان → ریال -----
-let _rm=null;
-async function loadRialMigration(){ const box=document.getElementById('rmBody');
-  try{ _rm=await api('/system/rial-migration'); }catch(e){ box.innerHTML='<p class="text-red-500 text-sm">'+e.message+'</p>'; return; }
-  if(_rm.done){ const d=_rm.done; box.innerHTML=`<p class="text-green-700 font-bold text-sm"><i class="fa-solid fa-circle-check ml-1"></i> انجام شده در ${new Date(d.at).toLocaleString('fa-IR')}</p>
-      <p class="text-[11px] text-gray-500 mt-1">بخش‌ها: ${(d.scopes||[]).map(k=>_rm.scopes[k]||k).join('، ')}</p><p class="text-[11px] text-gray-400 mt-1">این تبدیل فقط یک‌بار قابل اجراست.</p>`; return; }
-  box.innerHTML=`<p class="text-[12px] text-gray-600 mb-3">اگر مبالغ را به خیالِ تومان ولی در سیستمِ ریالی وارد کرده‌اید، این ابزار مبالغِ بخش‌های انتخاب‌شده را <b>×۱۰</b> می‌کند تا واقعاً ریال شوند. بعد نمایش طبقِ «واحد پول» (بالا) است. <b class="text-red-600">فقط یک‌بار اجرا می‌شود و برگشت ندارد — قبلش از دیتابیس پشتیبان بگیرید.</b></p>
-    <div class="space-y-2 mb-3">${Object.entries(_rm.scopes).map(([k,t])=>`<label class="flex items-start gap-2 text-sm"><input type="checkbox" class="rm-sc w-4 h-4 mt-0.5" value="${k}" ${_rm.defaults.includes(k)?'checked':''} onchange="rmPreview()"><span>${t} <span id="rmc-${k}" class="text-[11px] text-amber-700 font-bold"></span></span></label>`).join('')}</div>
-    <p class="text-[11px] text-gray-500 mb-3">فقط بخش‌هایی را تیک بزنید که واقعاً به تومان وارد شده‌اند. فاکتورها/کالاهایی که قبلاً تکی ×۱۰ شده‌اند دوباره ضرب نمی‌شوند.</p>
-    <label class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3"><input id="rmToman" type="checkbox" checked class="w-4 h-4"> بعد از تبدیل، مبالغ «تومان» نمایش داده شوند</label>
-    <button id="rmRun" onclick="rmRun()" class="bg-amber-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-amber-700"><i class="fa-solid fa-play ml-1"></i> اجرای تبدیل</button>
-    <p id="rmMsg" class="text-xs mt-2"></p>`;
-  rmPreview(); }
-const rmScopes=()=>[...document.querySelectorAll('.rm-sc:checked')].map(c=>c.value);
-async function rmPreview(){ try{ const p=await api('/system/rial-migration/preview',{method:'POST',body:{scopes:rmScopes()}});
-    const lbl={invoices:`(${fmt(p.invoices.count)} فاکتور، ${fmt(p.invoices.payments)} پرداختِ همراه)`,products:`(${fmt(p.products.count)} کالا)`,payments:`(${fmt(p.payments.count)} مورد)`,credits:`(${fmt(p.credits.count)} مورد)`,milk:`(${fmt(p.milk.count)} تحویل)`,packaging:`(${fmt(p.packaging.count)} ظرف)`,expenses:`(${fmt(p.expenses.count)} هزینه)`};
-    Object.keys(lbl).forEach(k=>{ const e=document.getElementById('rmc-'+k); if(e) e.textContent=rmScopes().includes(k)?lbl[k]:''; });
-  }catch(e){ document.getElementById('rmMsg').textContent=e.message; } }
-async function rmRun(){ const sc=rmScopes(); if(!sc.length){ toast('هیچ بخشی انتخاب نشده','err'); return; }
-  const names=sc.map(k=>'• '+_rm.scopes[k]).join('\n');
-  const c=prompt(`این بخش‌ها ×۱۰ می‌شوند و برگشت ندارد:\n\n${names}\n\nاز دیتابیس پشتیبان گرفته‌اید؟ برای ادامه کلمهٔ «تبدیل» را بنویسید:`); if(c===null) return;
-  if(c.trim()!=='تبدیل'){ toast('تأیید نشد — کلمهٔ «تبدیل» را بنویسید','err'); return; }
-  const btn=document.getElementById('rmRun'); btn.disabled=true; document.getElementById('rmMsg').textContent='در حال تبدیل…';
-  try{ const r=await api('/system/rial-migration/run',{method:'POST',body:{scopes:sc,set_toman:document.getElementById('rmToman').checked,confirm:'تبدیل'}});
-    toast('تبدیل انجام شد ✓'); document.getElementById('rmMsg').innerHTML='<span class="text-green-700 font-bold">انجام شد. صفحه دوباره بارگذاری می‌شود…</span>'; setTimeout(()=>location.reload(),1500); }
-  catch(e){ document.getElementById('rmMsg').innerHTML='<span class="text-red-600">'+e.message+'</span>'; btn.disabled=false; } }
+async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; showCurrency(s.currency==='toman'?'toman':'rial'); checkUpdate(); }
 async function checkUpdate(){ const box=document.getElementById('verBox'), btn=document.getElementById('updBtn'); box.textContent='در حال بررسی…';
   try{ const v=await api('/system/version');
     if(v.behind>0){ box.innerHTML=`<span class="text-amber-700 font-bold"><i class="fa-solid fa-circle-up ml-1"></i> ${v.behind} به‌روزرسانیِ جدید موجود است.</span><div class="text-[11px] text-gray-400 mt-1">فعلی: ${v.current}<br>جدید: ${v.latest}</div>`; btn.disabled=false; btn.classList.remove('opacity-50'); }

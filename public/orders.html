@@ -138,13 +138,11 @@ function debtLabel(bal){ bal=Number(bal||0); if(bal<0) return `<span class="text
 function printWaybill(id){ previewThermal('/api/print/preview?kind=waybill&id='+id, async()=>{ await api('/print/waybill/'+id,{method:'POST'}); toast('بارنامه به صف چاپ رفت 🖨'); }); }
 function reprintReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
 const isAdminU=()=> (window.__user||{}).role==='admin';
-// دکمه‌های مشترکِ ویرایش / اصلاح صفر / لغو (هم جدول، هم کارت موبایل)
-function manageBtns(o, big){ const live=o.status!=='canceled', locked=!!Number(o.locked), fixed=!!Number(o.fixed);
+// دکمه‌های مشترکِ ویرایش / لغو (هم جدول، هم کارت موبایل)
+function manageBtns(o, big){ const live=o.status!=='canceled', locked=!!Number(o.locked);
   const c=big?'px-3 py-2 rounded-lg text-sm font-bold':'px-2 py-1 rounded-md text-xs font-bold';
   let h='';
   if(live && !locked) h+=`<button onclick="event.stopPropagation();editOrder(${o.id})" class="bg-amber-50 text-amber-700 ${c}" title="ویرایش"><i class="fa-solid fa-pen ml-1"></i>ویرایش</button>`;
-  if(live && isAdminU() && !fixed) h+=`<button onclick="event.stopPropagation();fixZero(${o.id},'${o.order_no}',${Number(o.total_amount)})" class="bg-orange-50 text-orange-700 ${c}" title="اصلاح یک صفر کم (×۱۰)">×۱۰</button>`;
-  if(live && fixed) h+=`<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 whitespace-nowrap self-center">اصلاح‌شده</span>`;
   if(live && !locked && o.status!=='settled') h+=`<button onclick="event.stopPropagation();cancelOrder(${o.id})" class="bg-red-50 text-red-600 ${c}" title="لغو / باطل"><i class="fa-solid fa-ban ml-1"></i>لغو</button>`;
   if(live && locked) h+=`<span class="text-gray-400 text-xs self-center whitespace-nowrap" title="روز بسته است؛ برای ویرایش/لغو باید روز بازگشایی شود"><i class="fa-solid fa-lock ml-1"></i>روز بسته</span>`;
   return h; }
@@ -154,12 +152,6 @@ function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o
   const dl=canDeliver?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
   const gf=(o.status!=='canceled')?`<button onclick="addCreditOrder(${o.person_id})" class="text-pink-500" title="افزودن اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:'';
   return `<div class="flex flex-wrap gap-2 items-center">${inv} ${wb} ${dl} ${gf} ${manageBtns(o,false)}</div>`; }
-async function fixZero(id,no,total){
-  if(!confirm(`فاکتور ${no} یک صفر کم دارد؟\n\nمبلغ: ${money(total)} ← ${money(total*10)}\n\nمبالغِ فاکتور، رسید، بدهیِ مشتری و پرداختِ همین فاکتور ×۱۰ می‌شوند (فقط یک‌بار).`)) return;
-  try{ await api('/orders/'+id+'/fix-zero',{method:'POST',body:{include_paid:true}}); toast('فاکتور اصلاح شد ✓'); load(); }
-  catch(e){ if(/پیدا نشد/.test(e.message) && confirm(e.message+'\n\nبدون اصلاحِ پرداخت ادامه بدهم؟')){
-      try{ await api('/orders/'+id+'/fix-zero',{method:'POST',body:{include_paid:false}}); toast('فاکتور اصلاح شد (بدون پرداخت) ✓'); load(); }catch(e2){ toast(e2.message,'err'); } }
-    else toast(e.message,'err'); } }
 async function cancelOrder(id){ if(!confirm('این سفارش لغو شود؟ فروش باطل و موجودی انبار برگردانده می‌شود.'))return;
   try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:'لغو دستی'}}); toast('سفارش لغو شد'); load(); }
   catch(e){ toast(e.message,'err'); } }

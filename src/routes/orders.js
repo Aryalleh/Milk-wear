@@ -47,7 +47,6 @@ router.get('/', wrap(async (req, res) => {
             p.fullname, p.mobile,
             COALESCE(ab.current_balance,0) AS balance,
             (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id,
-            EXISTS(SELECT 1 FROM audit_logs a WHERE a.entity_type='orders' AND a.entity_id=o.id AND a.action='fix_x10') AS fixed,
             EXISTS(SELECT 1 FROM day_closings dc WHERE dc.day = DATE(o.ordered_at) AND dc.status='closed'
                      AND (dc.branch_id = o.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM orders o JOIN persons p ON p.id = o.person_id
@@ -417,70 +416,6 @@ router.put('/:id/edit', wrap(async (req, res) => {
     await conn.query('UPDATE receipts SET purchase_amount=?, net_amount=?, balance_after=? WHERE order_id=?',
       [grandTotal, -grandTotal, balanceAfter, order.id]);
     return { ok: true, total_amount: grandTotal, packaging_cost: packagingTotal, balance: balanceAfter };
-  });
-  res.json(out);
-}));
-
-// اصلاحِ «یک صفر کم» — مبالغِ یک فاکتورِ فروش ×۱۰ می‌شود (برای فاکتورهایی که به خیالِ تومان، به ریال ثبت شده‌اند).
-//  فقط مدیر. اقلام، ظرف، جمع، تراکنشِ فروش، رسید و (اختیاری) پرداخت‌های همین فاکتور اصلاح می‌شوند؛ مانده بازمحاسبه.
-//  هر فاکتور فقط یک‌بار قابل اصلاح است (در audit_logs ثبت می‌شود). ماهِ بسته‌شده قابل اصلاح نیست.
-async function orderPayments(conn, order) {
-  // پرداخت‌هایی که هنگامِ ثبت/تحویلِ همین سفارش ثبت شده‌اند (به سفارش لینک مستقیم ندارند)
-  const [rows] = await conn.query(
-    `SELECT t.id AS tx_id, t.amount, t.is_locked, p.id AS pay_id
-       FROM transactions t JOIN payments p ON t.source_type='payment' AND t.source_id=p.id
-      WHERE t.status='active' AND t.tx_type='PAYMENT_IN' AND p.person_id=? AND (
-            (p.note IN ('دریافت هنگام فروش','فروش فروشگاهی') AND ABS(TIMESTAMPDIFF(SECOND, p.paid_at, ?)) <= 10)
-         OR t.description = ?
-         OR p.id = (SELECT rc.payment_id FROM receipts rc WHERE rc.order_id=? LIMIT 1))`,
-    [order.person_id, order.ordered_at, `دریافت هنگام تحویل سفارش ${order.order_no}`, order.id]);
-  return rows;
-}
-async function wasFixed(conn, orderId) {
-  const [[r]] = await conn.query("SELECT id FROM audit_logs WHERE entity_type='orders' AND entity_id=? AND action='fix_x10' LIMIT 1", [orderId]);
-  return !!r;
-}
-router.post('/:id/fix-zero', wrap(async (req, res) => {
-  if (req.user.kind !== 'staff' || req.user.role !== 'admin') throw new AppError(403, 'فقط مدیر');
-  const includePaid = req.body?.include_paid !== false;
-  const out = await withTx(async (conn) => {
-    const [[order]] = await conn.query('SELECT * FROM orders WHERE id=? AND deleted_at IS NULL FOR UPDATE', [req.params.id]);
-    if (!order) throw new AppError(404, 'سفارش یافت نشد');
-    if (order.status === 'canceled') throw new AppError(400, 'سفارشِ لغوشده نیازی به اصلاح ندارد');
-    if (await wasFixed(conn, order.id)) throw new AppError(400, `فاکتور ${order.order_no} قبلاً اصلاح (×۱۰) شده است`);
-
-    const [sales] = await conn.query(
-      "SELECT id, amount, is_locked FROM transactions WHERE source_type='order' AND source_id=? AND tx_type IN ('PRODUCT_SALE','FEED_SALE') AND status='active'",
-      [order.id]);
-    const pays = includePaid && Number(order.paid_amount) > 0 ? await orderPayments(conn, order) : [];
-    if (includePaid && Number(order.paid_amount) > 0) {
-      const found = pays.reduce((s, p) => s + Number(p.amount), 0);
-      if (found !== Number(order.paid_amount))
-        throw new AppError(409, `پرداختِ این فاکتور (${Number(order.paid_amount).toLocaleString('fa-IR')}) به‌طور کامل پیدا نشد؛ «بدون اصلاحِ پرداخت» را بزنید و پرداخت را جدا اصلاح کنید.`);
-    }
-    if ([...sales, ...pays].some((t) => Number(t.is_locked)))
-      throw new AppError(409, 'ماهِ این فاکتور بسته شده است؛ ابتدا ماه را بازگشایی کنید');
-
-    await conn.query('UPDATE order_items SET unit_price=unit_price*10, amount=amount*10, packaging_cost=COALESCE(packaging_cost,0)*10 WHERE order_id=?', [order.id]);
-    const newTotal = Number(order.total_amount) * 10;
-    const newPaid = includePaid ? Number(order.paid_amount) * 10 : Number(order.paid_amount);
-    await conn.query('UPDATE orders SET total_amount=?, paid_amount=? WHERE id=?', [newTotal, newPaid, order.id]);
-    for (const t of sales) await conn.query('UPDATE transactions SET amount=amount*10 WHERE id=?', [t.id]);
-    for (const p of pays) {
-      await conn.query('UPDATE transactions SET amount=amount*10 WHERE id=?', [p.tx_id]);
-      await conn.query('UPDATE payments SET amount=amount*10 WHERE id=?', [p.pay_id]);
-    }
-    const delta = newTotal - Number(order.total_amount) - (newPaid - Number(order.paid_amount));
-    await conn.query(
-      `UPDATE receipts SET purchase_amount=purchase_amount*10, net_amount=milk_amount-purchase_amount,
-              balance_after=balance_after-? WHERE order_id=?`, [delta, order.id]);
-    const balance = await recomputeBalance(conn, order.person_id);
-    await conn.query(
-      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, new_json, user_id, reason)
-       VALUES ('orders', ?, 'fix_x10', ?, ?, ?, 'اصلاح یک صفر کم')`,
-      [order.id, JSON.stringify({ total_amount: Number(order.total_amount), paid_amount: Number(order.paid_amount) }),
-       JSON.stringify({ total_amount: newTotal, paid_amount: newPaid, payments: pays.map((p) => p.pay_id) }), req.user.uid || null]);
-    return { ok: true, order_no: order.order_no, total_amount: newTotal, paid_amount: newPaid, balance };
   });
   res.json(out);
 }));

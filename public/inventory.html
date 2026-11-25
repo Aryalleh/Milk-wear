@@ -11,10 +11,6 @@
 </head>
 <body class="bg-dairy-bg min-h-screen pb-28 md:pb-8">
 <main class="max-w-[1100px] mx-auto p-4 md:p-6 space-y-5">
-  <div id="fixPriceCard" class="hidden skeu-card p-4 flex flex-wrap items-center justify-between gap-3">
-    <div class="min-w-0"><p class="font-bold text-gray-800 text-sm"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 ml-1"></i> قیمت‌هایی که یک صفر کم دارند</p>
-      <p class="text-[11px] text-gray-500">اگر قیمت کالایی را به خیال تومان ولی به ریال وارد کرده‌اید، اینجا ×۱۰ کنید.</p></div>
-    <button onclick="openFixPrices()" class="bg-amber-500 text-white px-4 py-2.5 rounded-lg font-bold text-sm hover:bg-amber-600"><i class="fa-solid fa-xmark ml-1"></i>۱۰ قیمت کالاها</button>
   </div>
   <!-- دسکتاپ: جدول -->
   <div class="hidden md:block skeu-card overflow-hidden">
@@ -30,17 +26,6 @@
   <!-- موبایل: کارت‌ها -->
   <div class="md:hidden space-y-3" id="invCards"></div>
 </main>
-
-<!-- مودال اصلاح یک صفر قیمت کالاها -->
-<div id="fixPriceModal" class="mw-modal hidden fixed inset-0 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4" style="z-index:60">
-  <div class="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
-    <div class="flex justify-between items-center mb-2"><h3 class="font-black text-gray-800">اصلاح یک صفر قیمت کالاها</h3><button onclick="closeFixPrices()" class="text-gray-400 text-2xl">&times;</button></div>
-    <p class="text-[11px] text-gray-500 mb-3">کالاهایی را که قیمتشان یک صفر کم دارد تیک بزنید. قیمت پایه ×۱۰ می‌شود (هر کالا فقط یک‌بار). فاکتورهای قبلی تغییر نمی‌کنند؛ آن‌ها را از «گزارش‌ها ← فاکتورها» اصلاح کنید.</p>
-    <label class="flex items-center gap-2 text-xs font-bold text-gray-600 mb-2"><input id="fpAll" type="checkbox" class="w-4 h-4" onchange="document.querySelectorAll('.fp-cb').forEach(c=>c.checked=this.checked);fpCount()"> انتخاب همه</label>
-    <div id="fpList" class="divide-y divide-gray-100 border border-gray-100 rounded-xl"></div>
-    <div class="flex justify-end gap-2 mt-4"><button onclick="closeFixPrices()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button id="fpSave" onclick="saveFixPrices()" class="bg-amber-500 text-white px-5 py-2.5 rounded-lg font-bold">×۱۰ برای <span id="fpN">۰</span> کالا</button></div>
-  </div>
-</div>
 
 <!-- FAB افزودن محصول -->
 <button onclick="openProduct()" class="fixed bottom-24 md:bottom-8 left-6 z-40 w-14 h-14 bg-green-700 rounded-full flex items-center justify-center text-white shadow-2xl hover:bg-green-800"><i class="fa-solid fa-plus text-xl"></i></button>
@@ -123,24 +108,6 @@ async function saveRestock(){ document.getElementById('rsErr').textContent=''; c
     else await api('/inventory/adjust',{method:'POST',body:{warehouse_id:wh,product_id:rsPid,direction:'out',quantity:q,note:document.getElementById('rsNote').value||null}});
     closeRestock(); toast(rsDir==='in'?'شارژ شد ✓':'از موجودی کم شد ✓'); loadInventory(); }catch(e){ document.getElementById('rsErr').textContent=e.message; } finally{ btn.disabled=false; } }
 // محصول جدید / ویرایش
-// ----- اصلاح یک صفر قیمت کالاها (مدیر) -----
-function openFixPrices(){ const list=products.filter(p=>!p.is_raw_milk);
-  document.getElementById('fpAll').checked=false;
-  document.getElementById('fpList').innerHTML=list.map(p=>{ const done=!!Number(p.price_fixed);
-    return `<label class="flex items-center gap-3 p-3 ${done?'opacity-50':''}">${done?'<i class="fa-solid fa-check text-green-600 w-4"></i>':`<input type="checkbox" class="fp-cb w-4 h-4" value="${p.id}" onchange="fpCount()">`}
-      <span class="flex-1 min-w-0 font-bold text-sm break-words">${p.name}</span>
-      <span class="text-xs text-left whitespace-nowrap">${done?'<span class="text-green-700">اصلاح‌شده</span>':`${money(p.base_price)} <span class="text-gray-400">←</span> <b class="text-amber-700">${money(Number(p.base_price)*10)}</b>`}</span></label>`; }).join('')||'<p class="p-4 text-center text-gray-400">کالایی نیست</p>';
-  fpCount(); document.getElementById('fixPriceModal').classList.remove('hidden'); }
-function closeFixPrices(){ document.getElementById('fixPriceModal').classList.add('hidden'); }
-function fpIds(){ return [...document.querySelectorAll('.fp-cb:checked')].map(c=>Number(c.value)); }
-function fpCount(){ document.getElementById('fpN').textContent=fmt(fpIds().length); }
-async function saveFixPrices(){ const ids=fpIds(); if(!ids.length){ toast('هیچ کالایی انتخاب نشده','err'); return; }
-  if(!confirm(`قیمت ${fmt(ids.length)} کالا ×۱۰ شود؟ این کار برای هر کالا فقط یک‌بار ممکن است.`)) return;
-  const btn=document.getElementById('fpSave'); btn.disabled=true;
-  try{ const r=await api('/products/fix-zero',{method:'POST',body:{ids}});
-    toast(`قیمت ${fmt(r.done.length)} کالا اصلاح شد`+(r.skipped.length?` · ${fmt(r.skipped.length)} رد شد`:''), r.skipped.length?'warn':'ok');
-    products=await api('/products'); closeFixPrices(); loadInventory(); }
-  catch(e){ toast(e.message,'err'); } finally{ btn.disabled=false; } }
 let editId=null;
 function openProduct(id){ editId = id || null;
   const p = editId ? products.find(x=>x.id===editId) : null;
@@ -167,7 +134,7 @@ async function deleteProduct(id,name){ if(!confirm('کالای «'+name+'» حذ
     toast(r.archived?'کالا بایگانی و از لیست حذف شد (در سوابق استفاده شده بود)':'کالا حذف شد');
     products=await api('/products'); loadInventory();
   }catch(e){ toast(e.message,'err'); } }
-(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('inventory','موجودی انبار'); if(u.role==='admin') document.getElementById('fixPriceCard').classList.remove('hidden'); try{ products=await api('/products'); }catch(e){ toast(e.message,'err'); } live(loadInventory, 20000); })();
+(async function(){ const u=await guard(['staff']); if(!u) return; mountChrome('inventory','موجودی انبار'); try{ products=await api('/products'); }catch(e){ toast(e.message,'err'); } live(loadInventory, 20000); })();
 </script>
 </body>
 </html>
