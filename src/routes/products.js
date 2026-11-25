@@ -6,7 +6,8 @@ const router = Router();
 
 router.get('/', wrap(async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT p.*, c.name AS category, u.symbol AS unit
+    `SELECT p.*, c.name AS category, u.symbol AS unit,
+            EXISTS(SELECT 1 FROM audit_logs a WHERE a.entity_type='products' AND a.entity_id=p.id AND a.action='fix_x10') AS price_fixed
        FROM products p
        LEFT JOIN product_categories c ON c.id = p.category_id
        LEFT JOIN units u ON u.id = p.unit_id
@@ -57,6 +58,29 @@ router.post('/', wrap(async (req, res) => {
      Math.round(Number(base_price) || 0), track_stock === false ? 0 : 1]
   );
   res.status(201).json({ id: r.insertId, code: finalCode });
+}));
+
+// اصلاحِ «یک صفر کم» در قیمت پایهٔ کالاها (قیمت‌هایی که به خیالِ تومان، به ریال وارد شده‌اند) — فقط مدیر.
+//  body: { ids: [..] } → base_price ×۱۰. هر کالا فقط یک‌بار (در audit_logs ثبت می‌شود). فاکتورهای قبلی تغییر نمی‌کنند.
+router.post('/fix-zero', wrap(async (req, res) => {
+  if (req.user.kind !== 'staff' || req.user.role !== 'admin') throw new AppError(403, 'فقط مدیر');
+  const ids = [...new Set((req.body?.ids || []).map(Number).filter((x) => x > 0))];
+  if (!ids.length) throw new AppError(400, 'هیچ کالایی انتخاب نشده');
+  const done = [], skipped = [];
+  for (const id of ids) {
+    const [[p]] = await pool.query('SELECT id, name, base_price FROM products WHERE id=?', [id]);
+    if (!p) { skipped.push({ id, reason: 'یافت نشد' }); continue; }
+    const [[f]] = await pool.query("SELECT id FROM audit_logs WHERE entity_type='products' AND entity_id=? AND action='fix_x10' LIMIT 1", [id]);
+    if (f) { skipped.push({ id, name: p.name, reason: 'قبلاً اصلاح شده' }); continue; }
+    const newPrice = Number(p.base_price) * 10;
+    await pool.query('UPDATE products SET base_price=? WHERE id=?', [newPrice, id]);
+    await pool.query(
+      `INSERT INTO audit_logs (entity_type, entity_id, action, old_json, new_json, user_id, reason)
+       VALUES ('products', ?, 'fix_x10', ?, ?, ?, 'اصلاح یک صفر کم در قیمت')`,
+      [id, JSON.stringify({ base_price: Number(p.base_price) }), JSON.stringify({ base_price: newPrice }), req.user.uid || null]);
+    done.push({ id, name: p.name, old: Number(p.base_price), new: newPrice });
+  }
+  res.json({ ok: true, done, skipped });
 }));
 
 // ویرایش کالا (قیمت پایه / حد نرمال موجودی / نام / فعال)
