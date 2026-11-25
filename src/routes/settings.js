@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireRole } from '../auth.js';
 import { AppError, wrap } from '../util.js';
+import { clearCurrencyCache } from '../currency.js';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.put('/:key', requireRole('admin'), wrap(async (req, res) => {
     `INSERT INTO settings (scope, scope_id, \`key\`, value_json) VALUES ('global', NULL, ?, ?)
      ON DUPLICATE KEY UPDATE value_json = VALUES(value_json)`,
     [req.params.key, JSON.stringify(value)]);
+  if (req.params.key === 'currency') clearCurrencyCache();
   res.json({ ok: true });
 }));
 

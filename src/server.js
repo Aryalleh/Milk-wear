@@ -32,6 +32,7 @@ import agentRoutes from './routes/agent.js';
 import printRoutes from './routes/print.js';
 import systemRoutes from './routes/system.js';
 import { auditLogger } from './audit.js';
+import { getCurrency } from './currency.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -52,9 +53,13 @@ const PUBLIC_DIR = path.join(__dirname, '../public');
 let BUILD = String(Date.now());
 try { BUILD = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: path.join(__dirname, '..') }).toString().trim() || BUILD; } catch { /* بدون git */ }
 function sendHtml(res, file) {
-  fs.readFile(file, 'utf8', (err, html) => {
+  fs.readFile(file, 'utf8', async (err, html) => {
     if (err) return res.status(404).end();
-    const out = html.replace(/((?:src|href)="\/assets\/[^"?]+)"/g, `$1?v=${BUILD}"`);
+    // واحد پولِ نمایش (ریال/تومان) از تنظیمات — قبل از هر اسکریپتی در دسترسِ صفحه است
+    const cur = await getCurrency().catch(() => 'rial');
+    const out = html
+      .replace(/((?:src|href)="\/assets\/[^"?]+)"/g, `$1?v=${BUILD}"`)
+      .replace(/<head>/i, `<head><script>window.MW_CUR=${JSON.stringify(cur)};</script>`);
     res.setHeader('Cache-Control', 'no-store');
     res.type('html').send(out);
   });

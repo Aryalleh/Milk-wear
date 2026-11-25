@@ -72,13 +72,13 @@ function card(d){
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
       ${cell('شیر ورودی (کیلو)', fa(d.milk.kg))}
-      ${cell('ارزش شیر', fa(d.milk.value), 'text-green-600')}
-      ${cell('فروش', fa(d.sales), 'text-red-600')}
+      ${cell('ارزش شیر', money(d.milk.value), 'text-green-600')}
+      ${cell('فروش', money(d.sales), 'text-red-600')}
       ${cell('فاکتورها', fa(d.receipts))}
-      ${cell('دریافت از مشتری', fa(d.received), 'text-green-700')}
-      ${cell('پرداخت به دامدار', fa(d.paid_out), 'text-red-700')}
-      ${cell('برداشت نقدی', fa(d.withdrawals))}
-      ${cell('خالص نقد روز', fa(d.net_cash), (d.net_cash>=0?'text-green-700':'text-red-700'))}
+      ${cell('دریافت از مشتری', money(d.received), 'text-green-700')}
+      ${cell('پرداخت به دامدار', money(d.paid_out), 'text-red-700')}
+      ${cell('برداشت نقدی', money(d.withdrawals))}
+      ${cell('خالص نقد روز', money(d.net_cash), (d.net_cash>=0?'text-green-700':'text-red-700'))}
     </div>
   </div>`;
 }

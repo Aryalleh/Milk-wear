@@ -7,6 +7,27 @@ if (window.tailwind) tailwind.config = { theme: { extend: {
 
 /* ---------- کمک‌ابزار ---------- */
 const fmt = (n) => Number(n||0).toLocaleString('fa-IR');
+/* واحد پول: مبالغ در سرور «ریال»اند؛ نمایش و ورودی طبق تنظیمات (ریال/تومان). سرور MW_CUR را در صفحه می‌گذارد. */
+const MW_CUR = (window.MW_CUR === 'toman') ? 'toman' : 'rial';
+const CUR_FA = MW_CUR === 'toman' ? 'تومان' : 'ریال';
+const money = (rial) => fmt(MW_CUR === 'toman' ? Math.round(Number(rial||0) / 10) : Number(rial||0));   // ریال → متنِ نمایشی
+const toRial = (v) => { if (v === '' || v == null) return v; const n = Number(v); return MW_CUR === 'toman' ? Math.round(n * 10) : Math.round(n); };   // ورودی کاربر → ریال
+const fromRial = (rial) => (rial === '' || rial == null) ? '' : (MW_CUR === 'toman' ? Math.round(Number(rial) / 10) : Number(rial));   // ریال → مقدارِ پیش‌فرضِ فیلد
+/* هر متنِ «ریال» در صفحه (برچسب‌ها، placeholderها) به واحدِ انتخابی تبدیل می‌شود — شاملِ محتوای بعداً اضافه‌شده */
+function mwCurText(root){
+  if (MW_CUR === 'rial' || !root) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n;
+  while ((n = w.nextNode())) if (n.nodeValue.indexOf('ریال') >= 0 && !(n.parentElement && n.parentElement.closest('[data-nocur]'))) n.nodeValue = n.nodeValue.replace(/ریال/g, 'تومان');
+  if (root.querySelectorAll) root.querySelectorAll('[placeholder*="ریال"],[title*="ریال"]').forEach(e => {
+    ['placeholder','title'].forEach(k => { const v = e.getAttribute(k); if (v && v.indexOf('ریال') >= 0) e.setAttribute(k, v.replace(/ریال/g, 'تومان')); }); });
+}
+if (MW_CUR === 'toman') {
+  const _start = () => { mwCurText(document.body);
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(x => mwCurText(x.nodeType === 3 ? x.parentNode : x)))).observe(document.body, { childList:true, subtree:true, characterData:false }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _start); else _start();
+  /* prompt()هایی که «ریال» دارند هم تومان نشان داده شوند */
+  const _p = window.prompt; window.prompt = (msg, def) => _p.call(window, String(msg||'').replace(/ریال/g, 'تومان'), def);
+}
 const ROLE_FA = { admin:'مدیر اصلی', accountant:'حسابداری', station:'متصدی سایت', store:'فروشگاه',
   distribution:'مدیر پخش', driver:'راننده', farmer:'دامدار', customer:'مشتری' };
 

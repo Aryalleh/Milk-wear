@@ -31,6 +31,8 @@
   </footer>
 <script>
   const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  const MW_CUR=(window.MW_CUR==='toman')?'toman':'rial', CUR_FA=MW_CUR==='toman'?'تومان':'ریال';
+  const money=(r)=>fmt(MW_CUR==='toman'?Math.round(Number(r||0)/10):Number(r||0));
   (async()=>{ const card=document.getElementById('card');
     try{
       const [m,branches,LOGO]=await Promise.all([
@@ -39,7 +41,7 @@
         fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null),
       ]);
       const b=branches[0]||{};
-      const rows=(m.items||[]).map(i=>`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">ارزش: ${fmt(i.amount)} ریال</p></div><span class="font-black text-blue-700 text-base">${fmt(i.qty)} ${i.unit||''}</span></div>`).join('');
+      const rows=(m.items||[]).map(i=>`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">ارزش: ${money(i.amount)} ${CUR_FA}</p></div><span class="font-black text-blue-700 text-base">${fmt(i.qty)} ${i.unit||''}</span></div>`).join('');
       card.innerHTML=`
         <div class="absolute -top-3 left-0 right-0 flex justify-around">${'<div class="w-6 h-6 rounded-full bg-[#f1f5f9]"></div>'.repeat(5)}</div>
         <div class="text-center mt-4 mb-6">
@@ -53,7 +55,7 @@
           <div class="flex justify-between"><span class="text-slate-400">شرح:</span><span class="font-bold text-slate-800">اقلامِ آمادهٔ بارگیری</span></div>
         </div>
         <div class="space-y-4 mb-6">${rows||'<p class="text-center text-slate-400 text-sm">سفارشی برای بار نیست</p>'}</div>
-        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">ارزش کل بار:</span><span class="text-lg font-black text-blue-700">${fmt(m.total)} <span class="text-[10px]">ریال</span></span></div>
+        <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span class="font-black text-slate-800">ارزش کل بار:</span><span class="text-lg font-black text-blue-700">${money(m.total)} <span class="text-[10px]">${CUR_FA}</span></span></div>
         <p class="text-[11px] text-slate-400 text-center mt-6">راننده لطفاً اقلام بالا را بار بزند · MILKWEAR</p>`;
     }catch(e){ card.innerHTML='<div class="text-center text-red-500 py-16">'+e.message+'</div>'; }
   })();

@@ -38,6 +38,8 @@
 
 <script>
   const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  const MW_CUR=(window.MW_CUR==='toman')?'toman':'rial', CUR_FA=MW_CUR==='toman'?'تومان':'ریال';
+  const money=(r)=>fmt(MW_CUR==='toman'?Math.round(Number(r||0)/10):Number(r||0));
   // حالت: /r/<token> (عمومی) یا ?id=<id> (کارمند/صاحب)
   const pathToken=(location.pathname.match(/^\/r\/([0-9a-f]{32})/)||[])[1];
   const qid=new URLSearchParams(location.search).get('id');
@@ -50,8 +52,8 @@
       const rc=d.receipt;
       let rows='';
       if(d.milk){ const lbl=d.milk.shift==='morning'?'شیر صبح (دامدار)':'شیر شب (دامدار)';
-        rows+=`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${lbl}</h3><p class="text-[10px] text-slate-400">${fmt(d.milk.weight_kg)} کیلوگرم × ${fmt(d.milk.price_per_kg)}${d.milk.fat_pct!=null?(' | چربی '+fmt(d.milk.fat_pct)+'٪'):''}</p></div><span class="font-black text-green-600 text-sm">+${fmt(d.milk.amount)}</span></div>`; }
-      (d.items||[]).forEach(i=>{ rows+=`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">${fmt(i.quantity)} ${i.unit||''} × ${fmt(i.unit_price)}</p></div><span class="font-black text-red-600 text-sm">-${fmt(i.amount)}</span></div>`; });
+        rows+=`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${lbl}</h3><p class="text-[10px] text-slate-400">${fmt(d.milk.weight_kg)} کیلوگرم × ${money(d.milk.price_per_kg)}${d.milk.fat_pct!=null?(' | چربی '+fmt(d.milk.fat_pct)+'٪'):''}</p></div><span class="font-black text-green-600 text-sm">+${money(d.milk.amount)}</span></div>`; }
+      (d.items||[]).forEach(i=>{ rows+=`<div class="flex justify-between items-center"><div><h3 class="font-bold text-slate-800 text-sm">${i.product_name}</h3><p class="text-[10px] text-slate-400">${fmt(i.quantity)} ${i.unit||''} × ${money(i.unit_price)}</p></div><span class="font-black text-red-600 text-sm">-${money(i.amount)}</span></div>`; });
       const qrUrl=location.origin+'/r/'+rc.public_token;
       const LOGO=await fetch('/api/public/logo').then(r=>r.ok?r.json():{}).then(x=>x.logo).catch(()=>null);
       card.innerHTML=`
@@ -67,10 +69,10 @@
         </div>
         <div class="space-y-4 mb-8">${rows||'<p class="text-center text-slate-400 text-sm">قلمی ثبت نشده</p>'}</div>
         <div class="bg-slate-50 p-4 rounded-2xl space-y-3">
-          <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بستانکار (شیر):</span><span class="font-bold">${fmt(rc.milk_amount)}</span></div>
-          ${d.packaging_total?`<div class="flex justify-between text-xs"><span class="text-slate-500">هزینهٔ ظرف/بسته‌بندی:</span><span class="font-bold">${fmt(d.packaging_total)}</span></div>`:''}
-          <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بدهکار (خرید):</span><span class="font-bold">${fmt(rc.purchase_amount)}</span></div>
-          <div class="flex justify-between items-center border-t border-slate-200 pt-3"><span class="font-black text-slate-800">خالص فاکتور:</span><span class="text-xl font-black text-green-700">${fmt(rc.net_amount)} <span class="text-[10px]">ریال</span></span></div>
+          <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بستانکار (شیر):</span><span class="font-bold">${money(rc.milk_amount)}</span></div>
+          ${d.packaging_total?`<div class="flex justify-between text-xs"><span class="text-slate-500">هزینهٔ ظرف/بسته‌بندی:</span><span class="font-bold">${money(d.packaging_total)}</span></div>`:''}
+          <div class="flex justify-between text-xs"><span class="text-slate-500">جمع بدهکار (خرید):</span><span class="font-bold">${money(rc.purchase_amount)}</span></div>
+          <div class="flex justify-between items-center border-t border-slate-200 pt-3"><span class="font-black text-slate-800">خالص فاکتور:</span><span class="text-xl font-black text-green-700">${money(rc.net_amount)} <span class="text-[10px]">${CUR_FA}</span></span></div>
         </div>
         <div class="mt-8 text-center"><canvas id="qr" class="mx-auto"></canvas><p id="qrLink" class="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">اسکن برای مشاهدهٔ فاکتور · MILKWEAR</p></div>
         <div class="mt-6 pt-4 border-t border-dashed border-slate-200 text-center text-[11px] text-slate-500 leading-6">

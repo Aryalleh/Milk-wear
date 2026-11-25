@@ -41,7 +41,7 @@
     <div class="space-y-3">
       <div><label class="text-xs text-gray-500 block mb-1">انبار</label><select id="rsWh" class="input-skeu rounded-lg px-3 py-2.5 w-full"></select></div>
       <div><label class="text-xs text-gray-500 block mb-1">مقدار</label><input id="rsQty" type="number" inputmode="decimal" step="0.001" class="input-skeu rounded-lg px-3 py-3 w-full text-lg font-bold"></div>
-      <div id="rsCostBox"><label class="text-xs text-gray-500 block mb-1">بهای واحد (اختیاری)</label><input id="rsCost" type="number" inputmode="numeric" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
+      <div id="rsCostBox"><label class="text-xs text-gray-500 block mb-1">بهای واحد (ریال، اختیاری)</label><input id="rsCost" type="number" inputmode="numeric" class="input-skeu rounded-lg px-3 py-2.5 w-full"></div>
       <div id="rsNoteBox" class="hidden"><label class="text-xs text-gray-500 block mb-1">علت (اختیاری)</label><input id="rsNote" class="input-skeu rounded-lg px-3 py-2.5 w-full" placeholder="مثلاً شمارش انبار، خرابی، اشتباه ثبت"></div>
     </div>
     <div class="flex justify-end gap-2 mt-5"><button onclick="closeRestock()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button id="rsSave" onclick="saveRestock()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ثبت</button></div>
@@ -103,7 +103,7 @@ async function setReorder(id, val){ try{ await api('/products/'+id,{method:'PUT'
 async function saveRestock(){ document.getElementById('rsErr').textContent=''; const q=Number(document.getElementById('rsQty').value); if(!q||q<=0){document.getElementById('rsErr').textContent='مقدار لازم است';return;}
   const wh=Number(document.getElementById('rsWh').value); if(!wh){ document.getElementById('rsErr').textContent='انباری تعریف نشده است'; return; }
   const btn=document.getElementById('rsSave'); btn.disabled=true;
-  try{ if(rsDir==='in') await api('/inventory/receive',{method:'POST',body:{warehouse_id:wh,product_id:rsPid,quantity:q,unit_cost:document.getElementById('rsCost').value||null}});
+  try{ if(rsDir==='in') await api('/inventory/receive',{method:'POST',body:{warehouse_id:wh,product_id:rsPid,quantity:q,unit_cost:document.getElementById('rsCost').value===''?null:toRial(document.getElementById('rsCost').value)}});
     else await api('/inventory/adjust',{method:'POST',body:{warehouse_id:wh,product_id:rsPid,direction:'out',quantity:q,note:document.getElementById('rsNote').value||null}});
     closeRestock(); toast(rsDir==='in'?'شارژ شد ✓':'از موجودی کم شد ✓'); loadInventory(); }catch(e){ document.getElementById('rsErr').textContent=e.message; } finally{ btn.disabled=false; } }
 // محصول جدید / ویرایش
@@ -114,7 +114,7 @@ function openProduct(id){ editId = id || null;
   document.getElementById('npTitle').textContent = p ? 'ویرایش کالا' : 'تعریف کالای جدید';
   document.getElementById('npSaveBtn').textContent = p ? 'ذخیره' : 'افزودن';
   document.getElementById('npName').value = p ? (p.name||'') : '';
-  document.getElementById('npPrice').value = p ? (p.base_price||'') : '';
+  document.getElementById('npPrice').value = p ? fromRial(p.base_price||'') : '';
   document.getElementById('npTrack').checked = p ? !!p.track_stock : true;
   document.getElementById('npTrack').disabled = !!p;   // تغییر ردیابی بعد از ساخت امن نیست
   document.getElementById('npCat').innerHTML=meta.categories.map(c=>`<option value="${c.id}" ${p&&p.category_id===c.id?'selected':''}>${c.name}</option>`).join('');
@@ -122,7 +122,7 @@ function openProduct(id){ editId = id || null;
   document.getElementById('productModal').classList.remove('hidden'); }
 function closeProduct(){ document.getElementById('productModal').classList.add('hidden'); }
 async function saveProduct(){ document.getElementById('npErr').textContent=''; const name=document.getElementById('npName').value.trim(); if(!name){document.getElementById('npErr').textContent='نام لازم است';return;}
-  const body={ name, category_id:Number(document.getElementById('npCat').value)||null, unit_id:Number(document.getElementById('npUnit').value)||null, base_price:document.getElementById('npPrice').value||0 };
+  const body={ name, category_id:Number(document.getElementById('npCat').value)||null, unit_id:Number(document.getElementById('npUnit').value)||null, base_price:toRial(document.getElementById('npPrice').value||0) };
   try{
     if(editId){ await api('/products/'+editId,{method:'PUT',body}); }
     else { body.track_stock=document.getElementById('npTrack').checked; await api('/products',{method:'POST',body}); }

@@ -107,13 +107,13 @@ async function loadDashboard(){
   const d = await api('/dashboard');
   const set=(id,val)=>{ const e=document.getElementById(id); if(e) e.textContent=val; };
   set('dToday','| امروز '+d.date_jalali);
-  set('dMilkKg',fmt(d.station.kg)); set('dMilkVal',fmt(d.station.value)); set('dFarmers',fmt(d.station.farmers)+' نفر');
+  set('dMilkKg',fmt(d.station.kg)); set('dMilkVal',money(d.station.value)); set('dFarmers',fmt(d.station.farmers)+' نفر');
   set('dProdMilk',fmt(d.production.milk_in)+' kg'); set('dProdBatches',fmt(d.production.batches)+' بَچ');
   document.getElementById('dProdOut').innerHTML = d.production.outputs.length? d.production.outputs.map(o=>`<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100">${o.name} ${fmt(o.qty)}</span>`).join(''):'<span class="text-gray-400 text-xs">—</span>';
-  set('dStoreVal',fmt(d.store.value)); set('dStoreCount',fmt(d.store.count)+' فاکتور');
+  set('dStoreVal',money(d.store.value)); set('dStoreCount',fmt(d.store.count)+' فاکتور');
   set('dDistOrders',fmt(d.distribution.orders)+' فاکتور'); set('dDistDelivered',fmt(d.distribution.delivered)); set('dDistRemaining',fmt(d.distribution.remaining));
-  set('dFarmerPayable',fmt(d.accounts.farmer_payable)); set('dFarmerRecv',fmt(d.accounts.farmer_receivable));
-  set('dCustPayable',fmt(d.accounts.customer_payable)); set('dCustRecv',fmt(d.accounts.customer_receivable));
+  set('dFarmerPayable',money(d.accounts.farmer_payable)); set('dFarmerRecv',money(d.accounts.farmer_receivable));
+  set('dCustPayable',money(d.accounts.customer_payable)); set('dCustRecv',money(d.accounts.customer_receivable));
   set('dSiloPct',fmt(d.silo.pct)); document.getElementById('dSiloBar').style.width=d.silo.pct+'%'; set('dWaste',fmt(d.waste_today));
   set('dFatVal', d.avg_fat_today!=null?fmt(d.avg_fat_today):'—'); document.getElementById('dFatThumb').style.right=fatPos(d.avg_fat_today)+'%';
   // موبایل
@@ -126,7 +126,7 @@ async function loadDashboard(){
 async function loadSubs(){ const box=document.getElementById('subsBox'); if(!box) return;
   let rows=[]; try{ rows=await api('/submissions'); }catch{ return; }
   if(!rows.length){ box.innerHTML=''; return; }
-  box.innerHTML=`<div class="skeu-card p-4" style="border-right:4px solid #f59e0b"><h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-bell text-amber-500 ml-1"></i> فاکتورهای فروش در انتظار تأیید (${fmt(rows.length)})</h3><div class="space-y-2">${rows.map(s=>`<div class="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl p-3"><div><p class="font-bold">${s.fullname} <span class="text-xs text-gray-400">(${s.person_code}${s.mobile?(' · '+s.mobile):''})</span></p><p class="text-sm text-gray-600">${fmt(s.amount)} ریال${s.description?(' · '+s.description):''}</p></div><div class="flex gap-2">${s.has_photo?`<button onclick="viewPhoto(${s.id})" class="bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-bold">عکس فاکتور</button>`:''}<button onclick="approveSub(${s.id})" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">تأیید</button><button onclick="rejectSub(${s.id})" class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold">رد</button></div></div>`).join('')}</div></div>`; }
+  box.innerHTML=`<div class="skeu-card p-4" style="border-right:4px solid #f59e0b"><h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-bell text-amber-500 ml-1"></i> فاکتورهای فروش در انتظار تأیید (${fmt(rows.length)})</h3><div class="space-y-2">${rows.map(s=>`<div class="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl p-3"><div><p class="font-bold">${s.fullname} <span class="text-xs text-gray-400">(${s.person_code}${s.mobile?(' · '+s.mobile):''})</span></p><p class="text-sm text-gray-600">${money(s.amount)} ریال${s.description?(' · '+s.description):''}</p></div><div class="flex gap-2">${s.has_photo?`<button onclick="viewPhoto(${s.id})" class="bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-bold">عکس فاکتور</button>`:''}<button onclick="approveSub(${s.id})" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">تأیید</button><button onclick="rejectSub(${s.id})" class="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold">رد</button></div></div>`).join('')}</div></div>`; }
 async function viewPhoto(id){ try{ const d=await api('/submissions/'+id+'/photo'); if(!d.photo){alert('عکسی ثبت نشده');return;} document.getElementById('photoImg').src=d.photo; document.getElementById('photoModal').classList.remove('hidden'); }catch(e){alert(e.message);} }
 async function approveSub(id){ if(!confirm('این فاکتور تأیید و به حساب شخص اضافه شود؟'))return; try{ await api('/submissions/'+id+'/approve',{method:'POST'}); loadDashboard(); }catch(e){alert(e.message);} }
 async function rejectSub(id){ if(!confirm('این فاکتور رد شود؟'))return; try{ await api('/submissions/'+id+'/reject',{method:'POST'}); loadSubs(); }catch(e){alert(e.message);} }

@@ -104,7 +104,7 @@
       </div>
       <div class="flex flex-wrap gap-2 items-end">
         <div class="flex-1 min-w-[160px]"><label class="text-xs text-gray-500 block mb-1">نام ظرف</label><input id="pgName" class="input-skeu rounded-lg px-3 py-2 w-full" placeholder="مثلاً لیوان ماست ۵۰۰گرمی"></div>
-        <div><label class="text-xs text-gray-500 block mb-1">قیمت پیش‌فرض</label><input id="pgDefPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
+        <div><label class="text-xs text-gray-500 block mb-1">قیمت پیش‌فرض (ریال)</label><input id="pgDefPrice" type="number" class="input-skeu rounded-lg px-3 py-2 w-28"></div>
         <button onclick="addPackaging()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold">افزودن ظرف</button>
       </div>
       <div class="overflow-x-auto mt-4"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ظرف</th><th class="p-2">موجودی</th><th class="p-2">باقیِ لایه‌ها</th><th class="p-2">خرید لایه</th></tr></thead><tbody id="pgTable" class="divide-y divide-gray-100"></tbody></table></div>
@@ -191,6 +191,15 @@
   </div>
 
   <div id="t-general" class="tabc hidden space-y-6">
+    <div class="skeu-card p-6 max-w-md" data-nocur>
+      <h3 class="font-bold text-gray-800 mb-2"><i class="fa-solid fa-coins text-amber-500 ml-1"></i> واحد پول</h3>
+      <p class="text-[11px] text-gray-500 mb-3">همهٔ مبالغ در برنامه، فاکتورها و چاپ‌ها با این واحد نمایش داده می‌شوند و فیلدهای مبلغ هم با همین واحد پر می‌شوند. داده‌های ذخیره‌شده تغییری نمی‌کنند.</p>
+      <div class="flex gap-2">
+        <button type="button" data-cur="rial" onclick="saveCurrency('rial')" class="curbtn flex-1 py-3 rounded-lg border-2 font-bold">ریال</button>
+        <button type="button" data-cur="toman" onclick="saveCurrency('toman')" class="curbtn flex-1 py-3 rounded-lg border-2 font-bold">تومان</button>
+      </div>
+      <p id="curMsg" class="text-green-600 text-xs mt-2"></p>
+    </div>
     <div class="skeu-card p-6 max-w-md">
       <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-database text-cyan-600 ml-1"></i> ظرفیت مخزن شیر خام</h3>
       <div class="flex gap-2 items-end">
@@ -247,7 +256,7 @@ async function loadPackaging(){
   window._pkgs=pkgs;
   document.getElementById('pgGlobalMargin').value = s.packaging_margin_pct ?? 0;
   document.getElementById('pgTable').innerHTML = pkgs.map(g=>{
-    const lys=(g.layers||[]).map(l=>`<span class="inline-block bg-gray-100 rounded px-2 py-0.5 text-[11px] ml-1 mb-1">${fmt(l.remaining)} از قیمت ${fmt(l.unit_price)}</span>`).join('')||'<span class="text-gray-400 text-xs">لایه‌ای نمانده</span>';
+    const lys=(g.layers||[]).map(l=>`<span class="inline-block bg-gray-100 rounded px-2 py-0.5 text-[11px] ml-1 mb-1">${fmt(l.remaining)} از قیمت ${money(l.unit_price)}</span>`).join('')||'<span class="text-gray-400 text-xs">لایه‌ای نمانده</span>';
     return `<tr><td class="p-2 font-bold align-top">${g.name}</td><td class="p-2 font-black align-top ${g.on_hand>0?'text-green-600':'text-gray-400'}">${fmt(g.on_hand)} ${g.unit||''}</td><td class="p-2 align-top">${lys}</td><td class="p-2 align-top"><button onclick="buyLayer(${g.id},'${(g.name||'').replace(/'/g,'')}')" class="text-green-700 text-xs font-bold"><i class="fa-solid fa-plus ml-1"></i>خرید</button></td></tr>`;
   }).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">ظرفی تعریف نشده</td></tr>';
   const opts=(sel)=>`<option value="">— بدون ظرف —</option>`+pkgs.map(g=>`<option value="${g.id}" ${sel==g.id?'selected':''}>${g.name}</option>`).join('');
@@ -258,11 +267,11 @@ async function loadPackaging(){
     <td class="p-2"><button onclick="saveAssign(${p.id})" class="text-blue-600 text-xs font-bold">ذخیره</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-3 text-center text-gray-400">کالایی نیست</td></tr>';
 }
 async function addPackaging(){ const name=document.getElementById('pgName').value.trim(); if(!name){ toast('نام لازم است','err'); return; }
-  try{ await api('/packagings',{method:'POST',body:{name,default_price:Number(document.getElementById('pgDefPrice').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+  try{ await api('/packagings',{method:'POST',body:{name,default_price:toRial(document.getElementById('pgDefPrice').value||0)}}); document.getElementById('pgName').value=''; document.getElementById('pgDefPrice').value=''; toast('ظرف افزوده شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
 async function saveGlobalMargin(){ const v=Number(document.getElementById('pgGlobalMargin').value)||0;
   try{ await api('/settings/packaging_margin_pct',{method:'PUT',body:{value:v}}); toast('درصد سود ظرف‌ها ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 async function buyLayer(id,name){ const qty=prompt('تعداد خریداری‌شده از «'+name+'»:'); if(!qty)return; const price=prompt('قیمت هر عدد (ریال):'); if(price===null)return;
-  try{ await api('/packagings/'+id+'/purchase',{method:'POST',body:{qty:Number(qty),unit_price:Number(price)}}); toast('لایهٔ قیمت اضافه شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
+  try{ await api('/packagings/'+id+'/purchase',{method:'POST',body:{qty:Number(qty),unit_price:toRial(price)}}); toast('لایهٔ قیمت اضافه شد'); loadPackaging(); }catch(e){ toast(e.message,'err'); } }
 async function saveAssign(pid){ const pkg=document.querySelector(`.pa-pkg[data-pid="${pid}"]`).value; const cap=document.querySelector(`.pa-cap[data-pid="${pid}"]`).value;
   try{ await api('/packagings/assign/'+pid,{method:'PUT',body:{packaging_id:pkg||null,packaging_capacity:Number(cap)||1}}); toast('ذخیره شد'); }catch(e){ toast(e.message,'err'); } }
 
@@ -335,7 +344,10 @@ function copyToken(){ if(!_agentToken) return; navigator.clipboard?.writeText(_a
 async function loadTrusted(){ const q=document.getElementById('trQ').value; const rows=await api('/persons'+(q?('?q='+encodeURIComponent(q)):''));
   document.getElementById('trTable').innerHTML=rows.map(p=>`<tr><td class="p-3 font-bold">${p.fullname}</td><td class="p-3">${p.person_code}</td><td class="p-3">${p.mobile||'—'}</td><td class="p-3"><button onclick="toggleTrust(${p.id},${p.trusted?0:1})" class="px-3 py-1.5 rounded-full text-xs font-bold ${p.trusted?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}"><i class="fa-solid ${p.trusted?'fa-shield-halved':'fa-shield'} ml-1"></i>${p.trusted?'معتمد':'عادی'}</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-gray-400">موردی نیست</td></tr>'; }
 async function toggleTrust(id,val){ try{ await api('/persons/'+id+'/trusted',{method:'PUT',body:{trusted:!!val}}); loadTrusted(); }catch(e){alert(e.message);} }
-async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; checkUpdate(); }
+function showCurrency(c){ document.querySelectorAll('.curbtn').forEach(b=>b.className='curbtn flex-1 py-3 rounded-lg border-2 font-bold '+(b.dataset.cur===c?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500')); }
+async function saveCurrency(c){ try{ await api('/settings/currency',{method:'PUT',body:{value:c}}); showCurrency(c);
+    document.getElementById('curMsg').textContent='ذخیره شد ✓ — صفحه دوباره بارگذاری می‌شود'; setTimeout(()=>location.reload(),900); }catch(e){ toast(e.message,'err'); } }
+async function loadGeneral(){ const s=await api('/settings'); document.getElementById('siloCap').value = s.silo_capacity_kg || 20000; showCurrency(s.currency==='toman'?'toman':'rial'); checkUpdate(); }
 async function checkUpdate(){ const box=document.getElementById('verBox'), btn=document.getElementById('updBtn'); box.textContent='در حال بررسی…';
   try{ const v=await api('/system/version');
     if(v.behind>0){ box.innerHTML=`<span class="text-amber-700 font-bold"><i class="fa-solid fa-circle-up ml-1"></i> ${v.behind} به‌روزرسانیِ جدید موجود است.</span><div class="text-[11px] text-gray-400 mt-1">فعلی: ${v.current}<br>جدید: ${v.latest}</div>`; btn.disabled=false; btn.classList.remove('opacity-50'); }

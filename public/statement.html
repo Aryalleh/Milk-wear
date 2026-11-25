@@ -35,6 +35,8 @@
 
 <script>
   const fmt=(n)=>Number(n||0).toLocaleString('fa-IR');
+  const MW_CUR=(window.MW_CUR==='toman')?'toman':'rial', CUR_FA=MW_CUR==='toman'?'تومان':'ریال';
+  const money=(r)=>fmt(MW_CUR==='toman'?Math.round(Number(r||0)/10):Number(r||0));
   const faD=(s)=>String(s||'').replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
   const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'علی‌الحساب',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال',PURCHASE:'خرید کالا',GOODS_IN:'دریافت کالا'};
   const shortD=(j)=>{ const p=String(j||'').split('/'); return p.length===3?`${p[1]}/${p[2]}`:j; };
@@ -50,7 +52,7 @@
       const b=branches[0]||{};
       const rows=d.ledger.map(r=>{ const cr=r.credit>0; const amt=cr?r.credit:r.debit;
         const desc = r.description ? r.description : (TYPE_FA[r.tx_type]||r.tx_type);
-        return `<tr><td>${shortD(r.date)}</td><td>${desc}</td><td class="text-left price ${cr?'':'text-red-600'}">${fmt(amt)}${cr?'+':'−'}</td></tr>`;
+        return `<tr><td>${shortD(r.date)}</td><td>${desc}</td><td class="text-left price ${cr?'':'text-red-600'}">${money(amt)}${cr?'+':'−'}</td></tr>`;
       }).join('');
       const closing=Number(d.closing); const isCred=closing>0;
       const balLabel = closing<0?'بدهکار':(closing>0?'بستانکار':'تسویه');
@@ -71,18 +73,18 @@
           <div class="flex justify-between"><span class="font-bold">طرف حساب:</span><span>${d.person.fullname}</span></div>
           <div class="flex justify-between"><span class="font-bold">کد تفصیلی:</span><span class="text-condensed">${d.person.person_code}</span></div>
           <div class="flex justify-between"><span class="font-bold">تلفن:</span><span>${d.person.mobile?faD(d.person.mobile):'—'}</span></div>
-          <div class="flex justify-between"><span class="font-bold">مانده قبلی:</span><span class="price">${fmt(d.opening)}</span></div>
+          <div class="flex justify-between"><span class="font-bold">مانده قبلی:</span><span class="price">${money(d.opening)}</span></div>
         </div>
         <div class="dashed-line"></div>
         <table>
-          <thead><tr class="bg-gray-100"><th class="w-14">تاریخ</th><th>شرح</th><th class="text-left">مبلغ (ریال)</th></tr></thead>
+          <thead><tr class="bg-gray-100"><th class="w-14">تاریخ</th><th>شرح</th><th class="text-left">مبلغ (${CUR_FA})</th></tr></thead>
           <tbody class="text-[10px]">${rows||'<tr><td colspan="3" class="text-center py-3">تراکنشی نیست</td></tr>'}</tbody>
         </table>
         <div class="mt-4 space-y-1.5 border-t-2 border-black pt-2">
-          <div class="flex justify-between text-[11px]"><span>جمع بدهکار:</span><span class="price">${fmt(d.total_debit)}</span></div>
-          <div class="flex justify-between text-[11px]"><span>جمع بستانکار:</span><span class="price">${fmt(d.total_credit)}</span></div>
+          <div class="flex justify-between text-[11px]"><span>جمع بدهکار:</span><span class="price">${money(d.total_debit)}</span></div>
+          <div class="flex justify-between text-[11px]"><span>جمع بستانکار:</span><span class="price">${money(d.total_credit)}</span></div>
           <div class="dashed-line opacity-30"></div>
-          <div class="flex justify-between text-xs font-black bg-black text-white p-1"><span>مانده نهایی (${balLabel}):</span><span class="price">${fmt(Math.abs(closing))}</span></div>
+          <div class="flex justify-between text-xs font-black bg-black text-white p-1"><span>مانده نهایی (${balLabel}):</span><span class="price">${money(Math.abs(closing))}</span></div>
         </div>
         <div class="mt-8 text-center space-y-3">
           <div class="text-[9px] font-bold space-y-1">
