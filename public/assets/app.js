@@ -43,6 +43,7 @@ async function guard(kinds){
 }
 
 /* ---------- هدر و ناوبری مشترک کارمندان ---------- */
+const NAV_SHORT = { dashboard:'خانه', operations:'شیر', customers:'مشتری', orders:'سفارش', inventory:'انبار', reports:'گزارش', settings:'تنظیم' };
 const NAV = [
   { key:'dashboard', label:'داشبورد', icon:'fa-house', href:'/dashboard' },
   { key:'operations', label:'تحویل شیر', icon:'fa-truck-droplet', href:'/operations' },
@@ -74,7 +75,7 @@ function mountChrome(active, title){
   top.className = 'skeu-header sticky top-0 z-40 text-white p-3 hidden md:block';
   top.innerHTML = `<div class="max-w-[1200px] mx-auto flex justify-between items-center gap-3">
     <div class="flex items-center gap-3 shrink-0"><i class="fa-solid fa-cow text-2xl"></i><h1 class="text-lg font-bold">لبنیات سنتی کلاچی</h1></div>
-    <nav class="flex gap-2">${items.map(n=>`<a href="${n.href}" class="nav-pill ${n.key===active?'active':'hover:bg-white/10'} px-4 py-2 rounded-full text-sm">${n.label}</a>`).join('')}</nav>
+    <nav class="flex gap-1 flex-wrap justify-center">${items.map(n=>`<a href="${n.href}" class="nav-pill ${n.key===active?'active':'hover:bg-white/10'} px-3 py-2 rounded-full text-sm whitespace-nowrap">${n.label}</a>`).join('')}</nav>
     <div class="flex items-center gap-3 bg-white/10 px-3 py-1.5 rounded-lg text-xs shrink-0"><span>${chip}</span><a href="#" onclick="logout();return false" class="hover:text-red-300"><i class="fa-solid fa-right-from-bracket"></i> خروج</a></div>
   </div>`;
 
@@ -89,7 +90,7 @@ function mountChrome(active, title){
   bottom.className = 'mw-bottomnav md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1';
   const mItems = items.filter(n => ['dashboard','operations','customers','orders','inventory','reports','settings'].includes(n.key));
   bottom.innerHTML = `<div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-around px-1 py-1">
-    ${mItems.map(n=>`<a href="${n.href}" class="bnav ${n.key===active?'active':''} flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded-xl min-w-0 flex-1"><i class="fa-solid ${n.icon} text-lg"></i><span class="text-[10px] font-bold truncate max-w-full">${n.label}</span></a>`).join('')}
+    ${mItems.map(n=>`<a href="${n.href}" class="bnav ${n.key===active?'active':''} flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-xl min-w-0 flex-1" title="${n.label}"><i class="fa-solid ${n.icon} text-lg"></i><span class="text-[10px] font-bold whitespace-nowrap leading-tight">${NAV_SHORT[n.key]||n.label}</span></a>`).join('')}
   </div>`;
 
   document.body.prepend(mtop); document.body.prepend(top); document.body.appendChild(bottom);
