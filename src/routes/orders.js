@@ -46,7 +46,10 @@ router.get('/', wrap(async (req, res) => {
             o.total_amount, o.paid_amount, o.ordered_at, o.destination, o.person_id,
             p.fullname, p.mobile,
             COALESCE(ab.current_balance,0) AS balance,
-            (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id
+            (SELECT rc.id FROM receipts rc WHERE rc.order_id = o.id LIMIT 1) AS receipt_id,
+            EXISTS(SELECT 1 FROM audit_logs a WHERE a.entity_type='orders' AND a.entity_id=o.id AND a.action='fix_x10') AS fixed,
+            EXISTS(SELECT 1 FROM day_closings dc WHERE dc.day = DATE(o.ordered_at) AND dc.status='closed'
+                     AND (dc.branch_id = o.branch_id OR dc.branch_id IS NULL)) AS locked
        FROM orders o JOIN persons p ON p.id = o.person_id
        LEFT JOIN account_balances ab ON ab.person_id = o.person_id
       WHERE ${where.join(' AND ')} ORDER BY o.id DESC LIMIT 300`, params);

@@ -137,16 +137,29 @@ function setF(f){ filter=f; document.querySelectorAll('.fbtn').forEach(b=>b.clas
 function debtLabel(bal){ bal=Number(bal||0); if(bal<0) return `<span class="text-red-600 font-bold">${money(-bal)} بدهکار</span>`; if(bal>0) return `<span class="text-green-600 font-bold">${money(bal)} بستانکار</span>`; return '<span class="text-gray-400">تسویه</span>'; }
 function printWaybill(id){ previewThermal('/api/print/preview?kind=waybill&id='+id, async()=>{ await api('/print/waybill/'+id,{method:'POST'}); toast('بارنامه به صف چاپ رفت 🖨'); }); }
 function reprintReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
+const isAdminU=()=> (window.__user||{}).role==='admin';
+// دکمه‌های مشترکِ ویرایش / اصلاح صفر / لغو (هم جدول، هم کارت موبایل)
+function manageBtns(o, big){ const live=o.status!=='canceled', locked=!!Number(o.locked), fixed=!!Number(o.fixed);
+  const c=big?'px-3 py-2 rounded-lg text-sm font-bold':'px-2 py-1 rounded-md text-xs font-bold';
+  let h='';
+  if(live && !locked) h+=`<button onclick="event.stopPropagation();editOrder(${o.id})" class="bg-amber-50 text-amber-700 ${c}" title="ویرایش"><i class="fa-solid fa-pen ml-1"></i>ویرایش</button>`;
+  if(live && isAdminU() && !fixed) h+=`<button onclick="event.stopPropagation();fixZero(${o.id},'${o.order_no}',${Number(o.total_amount)})" class="bg-orange-50 text-orange-700 ${c}" title="اصلاح یک صفر کم (×۱۰)">×۱۰</button>`;
+  if(live && fixed) h+=`<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 whitespace-nowrap self-center">اصلاح‌شده</span>`;
+  if(live && !locked && o.status!=='settled') h+=`<button onclick="event.stopPropagation();cancelOrder(${o.id})" class="bg-red-50 text-red-600 ${c}" title="لغو / باطل"><i class="fa-solid fa-ban ml-1"></i>لغو</button>`;
+  if(live && locked) h+=`<span class="text-gray-400 text-xs self-center whitespace-nowrap" title="روز بسته است؛ برای ویرایش/لغو باید روز بازگشایی شود"><i class="fa-solid fa-lock ml-1"></i>روز بسته</span>`;
+  return h; }
 function actions(o){ const inv=o.receipt_id?`<button onclick="reprintReceipt(${o.receipt_id})" class="text-blue-600" title="فاکتور"><i class="fa-solid fa-receipt"></i></button>`:'';
   const wb=`<button onclick="printWaybill(${o.id})" class="text-blue-600" title="بارنامه"><i class="fa-solid fa-truck"></i></button>`;
   const canDeliver=(o.status==='queued'||o.status==='confirmed');
-  const canEdit=(o.status!=='canceled');   // تا پایان روز، حتی تحویل‌شده/پرداخت‌شده (تفاوت مبلغ → اعتبار/بدهیِ دفعهٔ بعد)
-  const ed=canEdit?`<button onclick="editOrder(${o.id})" class="text-amber-600" title="ویرایش"><i class="fa-solid fa-pen"></i></button>`:'';
   const dl=canDeliver?`<button onclick="openDeliver(${o.id})" class="text-green-700 font-bold text-xs">تحویل</button>`:'';
-  const canCancel=(o.status!=='canceled'&&o.status!=='settled');
-  const cl=canCancel?`<button onclick="cancelOrder(${o.id})" class="text-red-500" title="لغو سفارش"><i class="fa-solid fa-ban"></i></button>`:'';
   const gf=(o.status!=='canceled')?`<button onclick="addCreditOrder(${o.person_id})" class="text-pink-500" title="افزودن اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:'';
-  return `<div class="flex gap-3 items-center">${inv} ${wb} ${ed} ${dl} ${gf} ${cl}</div>`; }
+  return `<div class="flex flex-wrap gap-2 items-center">${inv} ${wb} ${dl} ${gf} ${manageBtns(o,false)}</div>`; }
+async function fixZero(id,no,total){
+  if(!confirm(`فاکتور ${no} یک صفر کم دارد؟\n\nمبلغ: ${money(total)} ← ${money(total*10)}\n\nمبالغِ فاکتور، رسید، بدهیِ مشتری و پرداختِ همین فاکتور ×۱۰ می‌شوند (فقط یک‌بار).`)) return;
+  try{ await api('/orders/'+id+'/fix-zero',{method:'POST',body:{include_paid:true}}); toast('فاکتور اصلاح شد ✓'); load(); }
+  catch(e){ if(/پیدا نشد/.test(e.message) && confirm(e.message+'\n\nبدون اصلاحِ پرداخت ادامه بدهم؟')){
+      try{ await api('/orders/'+id+'/fix-zero',{method:'POST',body:{include_paid:false}}); toast('فاکتور اصلاح شد (بدون پرداخت) ✓'); load(); }catch(e2){ toast(e2.message,'err'); } }
+    else toast(e.message,'err'); } }
 async function cancelOrder(id){ if(!confirm('این سفارش لغو شود؟ فروش باطل و موجودی انبار برگردانده می‌شود.'))return;
   try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:'لغو دستی'}}); toast('سفارش لغو شد'); load(); }
   catch(e){ toast(e.message,'err'); } }
@@ -179,9 +192,10 @@ async function load(){ let rows=await api('/orders'+orderQuery());
       <div><h3 class="font-bold text-slate-800">${o.fullname} <span class="text-[10px] text-slate-400">(${FF[o.fulfillment_type]||''})</span></h3><p class="text-[11px] text-slate-500"><i class="fa-solid fa-phone text-[9px] ml-1"></i>${o.mobile||'بدون شماره'}</p><p class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot text-[9px] ml-1"></i>${o.destination||'بدون مقصد'}</p><p class="text-[11px] mt-1">بدهی طرف: ${debtLabel(o.balance)}</p></div>
       <span class="text-xs px-2 py-0.5 rounded-full ${(ST[o.status]||['',''])[1]}">${(ST[o.status]||[o.status])[0]}</span>
     </div>
-    <div class="flex justify-between items-center pt-2 border-t border-slate-100" onclick="event.stopPropagation()">
+    <div class="flex flex-wrap gap-2 justify-end pt-2 border-t border-slate-100" onclick="event.stopPropagation()">${manageBtns(o,true)}</div>
+    <div class="flex justify-between items-center pt-2" onclick="event.stopPropagation()">
       <button onclick="printWaybill(${o.id})" class="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-print ml-1"></i>بارنامه</button>
-      ${o.status!=='canceled'?`<button onclick="event.stopPropagation();editOrder(${o.id})" class="bg-amber-50 text-amber-700 px-3 py-2 rounded-lg text-sm font-bold"><i class="fa-solid fa-pen ml-1"></i>ویرایش</button>`:''}${(o.status==='queued'||o.status==='confirmed')?`<button onclick="event.stopPropagation();openDeliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل</button>`:(o.status==='delivered'?'<span class="text-xs text-green-600 font-bold self-center">تحویل‌شده ✓</span>':'')}${o.status!=='canceled'?`<button onclick="event.stopPropagation();addCreditOrder(${o.person_id})" class="bg-pink-50 text-pink-600 px-3 py-2 rounded-lg text-sm font-bold" title="اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:''}
+${(o.status==='queued'||o.status==='confirmed')?`<button onclick="event.stopPropagation();openDeliver(${o.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">تحویل</button>`:(o.status==='delivered'?'<span class="text-xs text-green-600 font-bold self-center">تحویل‌شده ✓</span>':'')}${o.status!=='canceled'?`<button onclick="event.stopPropagation();addCreditOrder(${o.person_id})" class="bg-pink-50 text-pink-600 px-3 py-2 rounded-lg text-sm font-bold" title="اعتبار/هدیه"><i class="fa-solid fa-gift"></i></button>`:''}
     </div>
   </div>`).join('')||'<div class="text-center text-gray-400 p-8">سفارشی نیست</div>'; }
 
@@ -308,7 +322,8 @@ async function printAllWaybills(){ const c=window._manCount||0; if(!c){ toast('�
   try{ const pk=await api('/packagings'); window.pkgMap=Object.fromEntries(pk.map(g=>[g.id,g])); }catch{}
   try{ jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' }); }catch(e){}
   setDay(new Date().toISOString().slice(0,10));   // پیش‌فرض: فقط امروز (+ سفارش‌های تحویل‌نشده)
-  live(load, 15000); })();
+  live(load, 15000);
+  const ed=Number(new URLSearchParams(location.search).get('edit')); if(ed){ history.replaceState(null,'','/orders'); editOrder(ed).catch(e=>toast(e.message,'err')); } })();
 </script>
 </body>
 </html>

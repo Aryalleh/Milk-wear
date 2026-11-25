@@ -163,6 +163,7 @@ async function loadOrdersReport(){
 }
 function ordActions(o){ const can=o.status!=='canceled'; let h='';
   if(o.receipt_id) h+=`<button onclick="ordPrint(${o.receipt_id})" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="نمایش/چاپ فاکتور"><i class="fa-solid fa-print"></i></button>`;
+  if(can && !o.locked && o.channel!=='farmer') h+=`<a href="/orders?edit=${o.id}" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-600" title="ویرایش فاکتور"><i class="fa-solid fa-pen"></i></a>`;
   if(can && !o.locked) h+=`<button onclick="ordCancel(${o.id},'${o.order_no}')" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500" title="لغو فاکتور"><i class="fa-solid fa-ban"></i></button>`;
   else if(can && o.locked) h+=`<span class="w-9 h-9 inline-flex items-center justify-center text-gray-300" title="روز بسته است — برای لغو، روز باید بازگشایی شود"><i class="fa-solid fa-lock"></i></span>`;
   if(can && isAdmin() && !o.fixed) h+=`<button onclick="ordFix([${o.id}])" class="h-9 px-2 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-700 text-xs font-bold" title="اصلاح یک صفر کم (×۱۰)">×۱۰</button>`;
