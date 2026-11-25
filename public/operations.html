@@ -243,9 +243,9 @@ async function savePerson(){ document.getElementById('npErr').textContent='';
 // modal
 // پنلِ شخص (bottom-sheet) هنگامِ باز شدنِ فرم کنار می‌رود و بعد از بستنِ فرم برمی‌گردد
 function hidePersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
-  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display='none'); }
+  document.querySelectorAll('.mw-bottomnav, nav.fixed.bottom-0').forEach(n=>n.style.display='none'); }
 function showPersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=''; });
-  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display=''); }
+  document.querySelectorAll('.mw-bottomnav, nav.fixed.bottom-0').forEach(n=>n.style.display=''); }
 function showModal(m){ document.body.appendChild(m); m.style.zIndex='1000'; m.classList.remove('hidden'); m.style.display='flex'; m.scrollTop=0; }
 function setShift(v){ document.getElementById('invShift').value=v;
   document.querySelectorAll('.shbtn').forEach(b=>b.className='shbtn flex-1 py-3 rounded-lg border-2 font-bold '+(b.dataset.sh===v?'border-green-600 bg-green-50 text-green-700':'border-gray-200 text-gray-500')); }

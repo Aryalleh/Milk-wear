@@ -166,9 +166,9 @@ async function addCredit(){ const a=prompt('مبلغ اعتبار/هدیه (ری
 // ----- خرید ما از مشتری -----
 // پنلِ شخص (bottom-sheet) هنگامِ باز شدنِ فرم کنار می‌رود و بعد از بستنِ فرم برمی‌گردد
 function hidePersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
-  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display='none'); }
+  document.querySelectorAll('.mw-bottomnav, nav.fixed.bottom-0').forEach(n=>n.style.display='none'); }
 function showPersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=''; });
-  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display=''); }
+  document.querySelectorAll('.mw-bottomnav, nav.fixed.bottom-0').forEach(n=>n.style.display=''); }
 function showModal(m){ document.body.appendChild(m); m.style.zIndex='1000'; m.classList.remove('hidden'); m.style.display='flex'; m.scrollTop=0; }
 function openBuy(orderId){ if(!currentPerson)return; document.getElementById('buyErr').textContent='';
   document.getElementById('buyPerson').textContent='از: '+document.getElementById('pName').textContent;

@@ -4,6 +4,8 @@ import session from 'express-session';
 import expressMySQLSession from 'express-mysql-session';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
+import { execFileSync } from 'child_process';
 import { authRequired, staffRequired } from './auth.js';
 import authRoutes from './routes/auth.js';
 import personRoutes from './routes/persons.js';
@@ -41,6 +43,27 @@ app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy',
     'frame-ancestors https://*.bale.ai; frame-src https://*.bale.ai');
   next();
+});
+
+// ---- نسخه‌گذاریِ فایل‌های مشترک (cache-busting) ----
+// گوشی‌ها (به‌خصوص داخلِ مینی‌اپِ بله) app.js/ui.css قدیمی را نگه می‌دارند. به آدرسِ فایل‌های /assets/
+// شمارهٔ نسخه (کامیتِ git یا زمانِ اجرا) اضافه می‌شود؛ با هر آپدیت آدرس عوض می‌شود و گوشی مجبور است نسخهٔ جدید را بگیرد.
+const PUBLIC_DIR = path.join(__dirname, '../public');
+let BUILD = String(Date.now());
+try { BUILD = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: path.join(__dirname, '..') }).toString().trim() || BUILD; } catch { /* بدون git */ }
+function sendHtml(res, file) {
+  fs.readFile(file, 'utf8', (err, html) => {
+    if (err) return res.status(404).end();
+    const out = html.replace(/((?:src|href)="\/assets\/[^"?]+)"/g, `$1?v=${BUILD}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('html').send(out);
+  });
+}
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD'].includes(req.method) || !/^\/[\w.-]+\.html$/.test(req.path)) return next();
+  const file = path.join(PUBLIC_DIR, req.path);
+  if (!file.startsWith(PUBLIC_DIR) || !fs.existsSync(file)) return next();
+  sendHtml(res, file);
 });
 
 app.use(express.static(path.join(__dirname, '../public'), {
@@ -82,7 +105,7 @@ app.use(auditLogger);
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // ---- روت‌های چندصفحه‌ای (هر روت یک فایل) ----
-const pub = (f) => (req, res) => res.sendFile(path.join(__dirname, '../public/' + f));
+const pub = (f) => (req, res) => sendHtml(res, path.join(PUBLIC_DIR, f));
 app.get('/', (req, res) => res.redirect('/dashboard'));
 app.get('/login', pub('login.html'));
 app.get('/dashboard', pub('dashboard.html'));
