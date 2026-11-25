@@ -27,7 +27,17 @@
   </div>
 
   <!-- کارت‌های کلیدی مالی -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+  <div id="rtabBar" class="flex flex-wrap gap-2">
+    <button data-k="summary" onclick="showRTab('summary')" class="rtb">خلاصه</button>
+    <button data-k="invoices" onclick="showRTab('invoices')" class="rtb">فاکتورها</button>
+    <button data-k="statement" onclick="showRTab('statement')" class="rtb">گردش حساب</button>
+    <button data-k="expenses" onclick="showRTab('expenses')" class="rtb">هزینه‌ها</button>
+    <button data-k="monthly" onclick="showRTab('monthly')" class="rtb">ماهانه</button>
+    <button data-k="fin" onclick="showRTab('fin')" class="rtb">مالی به تفکیک</button>
+    <button data-k="goods" onclick="showRTab('goods')" class="rtb">کالا و تولید</button>
+    <button data-k="tx" onclick="showRTab('tx')" class="rtb">تراکنش‌ها</button>
+  </div>
+  <div data-rtab="summary" class="rtab-sec grid grid-cols-2 md:grid-cols-4 gap-3">
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">فروش خالص</p><p id="tNetSale" class="font-black text-lg text-amber-800">—</p></div>
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">خرید شیر/کالا</p><p id="tPurch" class="font-black text-lg text-blue-700">—</p></div>
     <div class="skeu-card p-4 text-center"><p class="text-[11px] text-gray-500 mb-1">هزینه‌های کسب‌وکار</p><p id="tExp" class="font-black text-lg text-red-600">—</p></div>
@@ -38,14 +48,14 @@
   </div>
 
   <!-- حساب‌کتاب ماهانه + بستن ماه -->
-  <div class="skeu-card p-6">
+  <div data-rtab="monthly" class="rtab-sec skeu-card p-6">
     <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-calendar-check text-indigo-600 ml-1"></i> حساب‌کتاب ماهانه</h3>
     <p class="text-[11px] text-gray-400 mb-3">با «بستن ماه»، ثبت هر تراکنش/هزینه در آن ماه قفل می‌شود تا سود ماه نهایی بماند.</p>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">ماه</th><th class="p-2">فروش</th><th class="p-2">خرید</th><th class="p-2">هزینه</th><th class="p-2">سود</th><th class="p-2">وضعیت</th><th class="p-2"></th></tr></thead><tbody id="monthsTable" class="divide-y divide-gray-100"></tbody></table></div>
   </div>
 
   <!-- هزینه‌های کسب‌وکار -->
-  <div class="skeu-card p-6">
+  <div data-rtab="expenses" class="rtab-sec skeu-card p-6">
     <h3 class="font-bold text-gray-800 mb-1"><i class="fa-solid fa-money-bill-wave text-red-500 ml-1"></i> هزینه‌های کسب‌وکار</h3>
     <p class="text-[11px] text-gray-400 mb-4">حقوق، قبوض (آب/برق/گاز)، خودرو، اجاره، ملزومات… — از سود کم می‌شوند تا محاسبه دقیق باشد.</p>
     <div class="flex flex-wrap gap-2 items-end">
@@ -68,13 +78,13 @@
   </div>
 
   <!-- خلاصهٔ مالی به تفکیک نوع -->
-  <div class="skeu-card p-6">
+  <div data-rtab="fin" class="rtab-sec skeu-card p-6">
     <h3 class="font-bold text-gray-800 mb-4"><i class="fa-solid fa-coins text-amber-600 ml-1"></i> خلاصهٔ مالی (به تفکیک نوع)</h3>
     <div id="finSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
   </div>
 
   <!-- گردش حساب اشخاص (چاپ/خروجی) -->
-  <div class="skeu-card p-6">
+  <div data-rtab="statement" class="rtab-sec skeu-card p-6">
     <h3 class="font-bold text-gray-800 mb-3"><i class="fa-solid fa-file-invoice-dollar text-indigo-600 ml-1"></i> گردش حساب دامدار / مشتری</h3>
     <div class="flex flex-wrap gap-2 items-end">
       <div class="relative flex-1 min-w-[200px]"><label class="text-xs text-gray-500 block mb-1">شخص</label>
@@ -91,7 +101,7 @@
     <div id="stBox" class="mt-3"></div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div data-rtab="goods" class="rtab-sec grid grid-cols-1 lg:grid-cols-2 gap-5">
     <div class="skeu-card overflow-hidden">
       <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">فروش/خروج کالا</h3></div>
       <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">کالا</th><th class="p-3">مقدار</th><th class="p-3">ارزش (ریال)</th></tr></thead><tbody id="goodsSold" class="divide-y divide-gray-100"></tbody></table></div>
@@ -102,12 +112,12 @@
     </div>
   </div>
 
-  <div class="skeu-card overflow-hidden">
+  <div data-rtab="tx" class="rtab-sec skeu-card overflow-hidden">
     <div class="p-4 border-b border-gray-100 bg-gray-50/50"><h3 class="font-bold text-gray-700">تراکنش‌های مالی</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">تاریخ</th><th class="p-3">طرف حساب</th><th class="p-3">نوع</th><th class="p-3">بدهکار</th><th class="p-3">بستانکار</th><th class="p-3">شرح</th></tr></thead><tbody id="finRows" class="divide-y divide-gray-100"></tbody></table></div>
   </div>
 
-  <div class="skeu-card p-6">
+  <div data-rtab="invoices" class="rtab-sec skeu-card p-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
       <h3 id="invoices" class="font-bold text-gray-800"><i class="fa-solid fa-receipt text-amber-600 ml-1"></i> سفارش‌ها و فاکتورها (روزانه)</h3>
       <div class="flex gap-2">
@@ -131,6 +141,13 @@
 </main>
 <script>
 const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'پرداخت',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال'};
+// ---- تب‌های گزارش: هر گزارش جدا باز می‌شود (آخرین تب به خاطر سپرده می‌شود؛ #invoices هم کار می‌کند) ----
+const RTABS=['summary','invoices','statement','expenses','monthly','fin','goods','tx'];
+function showRTab(k){ if(!RTABS.includes(k)) k='summary';
+  document.querySelectorAll('.rtab-sec').forEach(e=>e.classList.toggle('hidden', e.dataset.rtab!==k));
+  document.querySelectorAll('#rtabBar .rtb').forEach(b=>b.className='rtb whitespace-nowrap px-3 md:px-4 py-2 rounded-full text-[13px] md:text-sm font-bold '+(b.dataset.k===k?'bg-dairy-dark text-white shadow':'bg-white text-gray-600 border border-gray-200'));
+  try{ localStorage.setItem('mw_rtab',k); }catch(e){}
+  if(location.hash.slice(1)!==k) history.replaceState(null,'','#'+k); }
 let _ordRep={days:[],orders:[],totals:{count:0,total:0,paid:0}};
 const ORD_ST_FA={queued:'در صف',confirmed:'در انتظار',delivered:'تحویل‌شده',settled:'تسویه',canceled:'لغو',draft:'پیش‌نویس'};
 const ORD_FF_FA={delivery:'ارسالی',pickup:'حضوری'};
@@ -298,6 +315,7 @@ async function delExpense(id){ if(!confirm('حذف این هزینه؟'))return;
   jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' });
   const t=today(); setDates(t.slice(0,8)+'01', t);
   document.getElementById('exDateG').value=t; document.getElementById('exDateJ').value=jdate(t);
+  let k0=location.hash.slice(1); if(!RTABS.includes(k0)){ try{ k0=localStorage.getItem('mw_rtab')||'summary'; }catch(e){ k0='summary'; } } showRTab(k0);
   loadReports(); loadOrdersReport(); })();
 </script>
 </body>
