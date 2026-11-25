@@ -164,14 +164,20 @@ async function addCredit(){ const a=prompt('مبلغ اعتبار/هدیه (ری
   try{ await api('/payments/adjust',{method:'POST',body:{person_id:currentPerson,direction:'credit',amount:amt,note:note||null,branch_id:myBranch||null}}); toast('اعتبار ثبت شد'); refresh(); }catch(e){ toast(e.message,'err'); } }
 
 // ----- خرید ما از مشتری -----
+// پنلِ شخص (bottom-sheet) هنگامِ باز شدنِ فرم کنار می‌رود و بعد از بستنِ فرم برمی‌گردد
+function hidePersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });
+  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display='none'); }
+function showPersonSheet(){ ['detail','sheetBackdrop'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=''; });
+  document.querySelectorAll('.mw-bottomnav').forEach(n=>n.style.display=''); }
+function showModal(m){ document.body.appendChild(m); m.style.zIndex='1000'; m.classList.remove('hidden'); m.style.display='flex'; m.scrollTop=0; }
 function openBuy(orderId){ if(!currentPerson)return; document.getElementById('buyErr').textContent='';
   document.getElementById('buyPerson').textContent='از: '+document.getElementById('pName').textContent;
   document.getElementById('buyRows').innerHTML=''; addBuyRow();
   const open=personOrders.filter(o=>o.status!=='cancelled');
   document.getElementById('buyOrder').innerHTML='<option value="">— فقط به حساب مشتری —</option>'+open.map(o=>`<option value="${o.id}">${esc(o.order_no)} — ${fmt(o.total_amount)}</option>`).join('');
   document.getElementById('buyOrder').value=orderId?String(orderId):'';
-  calcBuy(); document.getElementById('buyModal').classList.remove('hidden'); }
-function closeBuy(){ document.getElementById('buyModal').classList.add('hidden'); }
+  calcBuy(); hidePersonSheet(); showModal(document.getElementById('buyModal')); }
+function closeBuy(){ const m=document.getElementById('buyModal'); m.classList.add('hidden'); m.style.display=''; showPersonSheet(); }
 function addBuyRow(){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
   div.innerHTML=`<input class="b-desc input-skeu rounded-lg px-3 py-2.5 flex-1 min-w-0" placeholder="شرح (مثلاً ۲ پرس کباب)"><input class="b-amt input-skeu rounded-lg px-3 py-2.5 w-32" type="number" inputmode="numeric" placeholder="مبلغ (ریال)"><button class="text-red-500 px-2 text-xl" onclick="this.parentElement.remove();calcBuy()">&times;</button>`;
   div.querySelector('.b-amt').oninput=calcBuy; document.getElementById('buyRows').appendChild(div); }
