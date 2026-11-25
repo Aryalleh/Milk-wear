@@ -86,7 +86,7 @@ function mountChrome(active, title){
 
   // ناوبری پایین موبایل
   const bottom = document.createElement('nav');
-  bottom.className = 'md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1';
+  bottom.className = 'mw-bottomnav md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-1';
   const mItems = items.filter(n => ['dashboard','operations','customers','orders','inventory','reports','settings'].includes(n.key));
   bottom.innerHTML = `<div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-around px-1 py-1">
     ${mItems.map(n=>`<a href="${n.href}" class="bnav ${n.key===active?'active':''} flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded-xl min-w-0 flex-1"><i class="fa-solid ${n.icon} text-lg"></i><span class="text-[10px] font-bold truncate max-w-full">${n.label}</span></a>`).join('')}
@@ -134,3 +134,19 @@ async function previewThermal(imgUrl, onConfirm){
 
 /* ---------- آپدیت لایو ---------- */
 function live(fn, ms=15000){ fn(); const id=setInterval(()=>{ if(!document.hidden) fn(); }, ms); return id; }
+
+/* ---------- مودال‌ها: همیشه رویِ همه‌چیز ----------
+   هر پاپ‌آپ (div ثابتِ تمام‌صفحه با پس‌زمینهٔ تیره) به انتهای body منتقل می‌شود و z-index بالا می‌گیرد.
+   وقتی یک پاپ‌آپ باز است، پنلِ پایینِ شخص (bottom-sheet) و منوی پایین موقتاً پنهان می‌شوند
+   تا پاپ‌آپ و دکمه‌های ثبت/انصراف‌اش پشتِ آن‌ها نروند (مشکلِ گوشی‌ها). */
+function mwModals(){ return [...document.querySelectorAll('.mw-modal, div.fixed.inset-0[class*="bg-black"]')].filter(el=>el.id!=='mwPrev'); }
+function mwSyncModalState(){ const open=mwModals().some(el=>!el.classList.contains('hidden') && el.style.display!=='none');
+  document.body.classList.toggle('mw-modal-open', open); }
+function mwSetupModals(){
+  const list=mwModals(); if(!list.length) return;
+  const obs=new MutationObserver(mwSyncModalState);
+  list.forEach(el=>{ el.classList.add('mw-modal'); el.style.zIndex='1000'; document.body.appendChild(el);
+    obs.observe(el,{attributes:true,attributeFilter:['class','style']}); });
+  mwSyncModalState();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', mwSetupModals); else mwSetupModals();
