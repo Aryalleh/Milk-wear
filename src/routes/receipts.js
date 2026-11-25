@@ -152,7 +152,7 @@ router.post('/', wrap(async (req, res) => {
 // وضعیت حسابِ شخص روی فاکتور — زنده از دفتر حساب (بعد از ویرایش/لغو/تبدیل هم درست می‌ماند)
 //  previous: ماندهٔ قبل از این فاکتور | effect: اثرِ خودِ فاکتور | paid: پرداختِ هنگامِ خرید | after: ماندهٔ بعد
 //  علامت: منفی = شخص بدهکار، مثبت = بستانکار. current: ماندهٔ فعلیِ کلِ حساب.
-async function receiptAccount(rc) {
+export async function receiptAccount(rc) {
   const conds = [], params = [];
   if (rc.order_id) { conds.push("(source_type='order' AND source_id=?)"); params.push(rc.order_id); }
   if (rc.milk_delivery_id) { conds.push("(source_type='milk_delivery' AND source_id=?)"); params.push(rc.milk_delivery_id); }

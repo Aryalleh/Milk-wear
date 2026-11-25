@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { getAgentToken, isLightPrint } from '../print.js';
 import { docHTML } from '../thermal.js';
+import { getCurrency } from '../currency.js';
+import { receiptAccount } from './receipts.js';
 import { renderHtmlToPng, renderElementToPng } from '../render.js';
 import { AppError, wrap } from '../util.js';
 
@@ -32,9 +34,17 @@ router.post('/poll', wrap(async (req, res) => {
       "UPDATE print_jobs SET status='printing', picked_at=NOW(), attempts=attempts+1, agent_id=? WHERE id=?",
       [req.agentId, job.id]);
     await conn.commit();
-    const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
+    const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : (job.payload || {});
     // light=true یعنی ایجنت خودش با PIL رسم کند (بدون کروم/بدون درخواستِ /image)
     const light = await isLightPrint();
+    // برای رسمِ سبک: واحد پول + وضعیت حسابِ زندهٔ فاکتور (بدهی قبلی/این فاکتور/پرداختی/نهایی)
+    payload.currency = await getCurrency().catch(() => 'rial');
+    if (job.kind === 'receipt' && job.ref_id) {
+      try {
+        const [[rc]] = await pool.query('SELECT * FROM receipts WHERE id=?', [job.ref_id]);
+        if (rc) payload.account = await receiptAccount(rc);
+      } catch { /* بدون کادر حساب */ }
+    }
     res.json({ job: { id: job.id, kind: job.kind, copies: job.copies, light, payload } });
   } catch (e) {
     await conn.rollback(); throw e;
