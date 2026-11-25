@@ -139,6 +139,22 @@
     <div id="ordRepList" class="overflow-x-auto mt-3"></div>
   </div>
 </main>
+<!-- ویرایش فاکتور (داخل گزارش‌ها) -->
+<div id="oeModal" class="mw-modal hidden fixed inset-0 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4" style="z-index:60">
+  <div class="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-1"><h3 id="oeTitle" class="font-black text-gray-800">ویرایش فاکتور</h3><button onclick="oeClose()" class="text-gray-400 text-2xl">&times;</button></div>
+    <p id="oeWho" class="text-sm text-gray-500 mb-3"></p>
+    <div class="flex text-[11px] text-gray-400 gap-2 px-1 mb-1"><span class="flex-1">کالا</span><span class="w-20">مقدار</span><span class="w-28">قیمت واحد (ریال)</span><span class="w-6"></span></div>
+    <div id="oeRows" class="space-y-2"></div>
+    <button onclick="oeAddRow()" class="mt-2 text-sm text-green-700 font-bold">+ افزودن قلم</button>
+    <label class="flex items-center gap-2 text-sm text-gray-600 mt-3"><input id="oeNoPack" type="checkbox" class="w-4 h-4"> مشتری ظرف خودش را آورده (بدون هزینهٔ ظرف)</label>
+    <div class="mt-3"><label class="text-xs text-gray-500 block mb-1">توضیحات</label><input id="oeNote" class="input-skeu rounded-lg px-3 py-2 w-full"></div>
+    <div class="bg-gray-50 rounded-lg p-3 text-sm mt-3 flex justify-between"><span>جمع کالا (بدون ظرف):</span><b id="oeSum">۰</b></div>
+    <p class="text-[11px] text-gray-400 mt-2">تفاوتِ مبلغ خودکار در بدهیِ مشتری اعمال می‌شود. هزینهٔ ظرف دوباره حساب می‌شود.</p>
+    <div class="flex justify-end gap-2 mt-4"><button onclick="oeClose()" class="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-bold">انصراف</button><button id="oeSave" onclick="oeSave()" class="btn-skeu text-white px-5 py-2.5 rounded-lg font-bold">ذخیرهٔ تغییرات</button></div>
+    <p id="oeErr" class="text-red-600 text-xs mt-2"></p>
+  </div>
+</div>
 <script>
 const TYPE_FA={MILK_DELIVERY:'تحویل شیر',PRODUCT_SALE:'فروش کالا',FEED_SALE:'فروش خوراک',CASH_WITHDRAWAL:'برداشت نقدی',PAYMENT_OUT:'پرداخت',PAYMENT_IN:'دریافت',ADJUSTMENT:'اصلاح',REFUND:'برگشت',OPENING_BALANCE:'مانده اول',VOID:'ابطال'};
 // ---- تب‌های گزارش: هر گزارش جدا باز می‌شود (آخرین تب به خاطر سپرده می‌شود؛ #invoices هم کار می‌کند) ----
@@ -163,7 +179,7 @@ async function loadOrdersReport(){
 }
 function ordActions(o){ const can=o.status!=='canceled'; let h='';
   if(o.receipt_id) h+=`<button onclick="ordPrint(${o.receipt_id})" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="نمایش/چاپ فاکتور"><i class="fa-solid fa-print"></i></button>`;
-  if(can && !o.locked && o.channel!=='farmer') h+=`<a href="/orders?edit=${o.id}" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-600" title="ویرایش فاکتور"><i class="fa-solid fa-pen"></i></a>`;
+  if(can && !o.locked) h+=`<button onclick="ordEdit(${o.id})" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-600" title="ویرایش فاکتور"><i class="fa-solid fa-pen"></i></button>`;
   if(can && !o.locked) h+=`<button onclick="ordCancel(${o.id},'${o.order_no}')" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500" title="لغو فاکتور"><i class="fa-solid fa-ban"></i></button>`;
   else if(can && o.locked) h+=`<span class="w-9 h-9 inline-flex items-center justify-center text-gray-300" title="روز بسته است — برای لغو، روز باید بازگشایی شود"><i class="fa-solid fa-lock"></i></span>`;
   if(can && isAdmin() && !o.fixed) h+=`<button onclick="ordFix([${o.id}])" class="h-9 px-2 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-700 text-xs font-bold" title="اصلاح یک صفر کم (×۱۰)">×۱۰</button>`;
@@ -194,6 +210,34 @@ async function ordFix(ids){
 async function ordCancel(id,no){ const reason=prompt(`علت لغو فاکتور ${no}؟ (مبلغ از بدهی مشتری برمی‌گردد و کالا به انبار برمی‌گردد)`,'فاکتور تستی'); if(reason===null)return;
   try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:reason||'لغو'}}); toast('فاکتور لغو شد'); loadOrdersReport(); }catch(e){ toast(e.message,'err'); } }
 function ordPrint(rid){ previewThermal('/api/print/preview?kind=receipt&id='+rid, async()=>{ await api('/print/receipt/'+rid,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
+// ----- ویرایشِ فاکتور داخلِ گزارش‌ها -----
+let _oeId=null, _oeProducts=null;
+async function ordEdit(id){
+  try{ if(!_oeProducts) _oeProducts=await api('/products');
+    const d=await api('/orders/'+id); _oeId=id;
+    document.getElementById('oeTitle').textContent='ویرایش فاکتور '+d.order.order_no;
+    document.getElementById('oeWho').textContent=(d.person?.fullname||'')+' · '+(d.order.ordered_at_jalali||'');
+    document.getElementById('oeNoPack').checked=!!Number(d.order.no_packaging);
+    document.getElementById('oeNote').value=d.order.note||''; document.getElementById('oeErr').textContent='';
+    document.getElementById('oeRows').innerHTML=''; (d.items||[]).forEach(i=>oeAddRow(i)); if(!(d.items||[]).length) oeAddRow();
+    oeCalc(); document.getElementById('oeModal').classList.remove('hidden');
+  }catch(e){ toast(e.message,'err'); } }
+function oeClose(){ document.getElementById('oeModal').classList.add('hidden'); }
+function oeAddRow(it){ const div=document.createElement('div'); div.className='flex gap-2 items-center';
+  const opts=_oeProducts.filter(p=>!p.is_raw_milk||(it&&it.product_id===p.id)).map(p=>`<option value="${p.id}" data-price="${fromRial(p.base_price)}" ${it&&Number(it.product_id)===p.id?'selected':''}>${p.name}</option>`).join('');
+  div.innerHTML=`<select class="oe-prod input-skeu rounded-lg px-2 py-2 flex-1 min-w-0"><option value="">— کالا —</option>${opts}</select><input class="oe-qty input-skeu rounded-lg px-2 py-2 w-20" type="number" inputmode="decimal" step="0.001" value="${it?Number(it.quantity):1}"><input class="oe-price input-skeu rounded-lg px-2 py-2 w-28" type="number" inputmode="numeric" value="${it?fromRial(it.unit_price):''}"><button class="text-red-500 w-6 text-xl" onclick="this.parentElement.remove();oeCalc()">&times;</button>`;
+  div.querySelector('.oe-prod').onchange=(e)=>{ const o=e.target.options[e.target.selectedIndex]; div.querySelector('.oe-price').value=(o&&o.dataset.price)||''; oeCalc(); };
+  div.querySelectorAll('input').forEach(i=>i.oninput=oeCalc);
+  document.getElementById('oeRows').appendChild(div); }
+function oeItems(){ return [...document.getElementById('oeRows').children].map(r=>({product_id:Number(r.querySelector('.oe-prod').value),quantity:Number(r.querySelector('.oe-qty').value),unit_price:r.querySelector('.oe-price').value===''?null:toRial(r.querySelector('.oe-price').value)})).filter(x=>x.product_id&&x.quantity>0); }
+function oeCalc(){ document.getElementById('oeSum').textContent=money(oeItems().reduce((s,i)=>s+Math.round((i.unit_price||0)*i.quantity),0)); }
+async function oeSave(allowNeg){ const items=oeItems(), err=document.getElementById('oeErr'); err.textContent='';
+  if(!items.length){ err.textContent='حداقل یک قلم کالا لازم است'; return; }
+  const btn=document.getElementById('oeSave'); btn.disabled=true;
+  try{ await api('/orders/'+_oeId+'/edit',{method:'PUT',body:{items,no_packaging:document.getElementById('oeNoPack').checked,note:document.getElementById('oeNote').value||null,allow_negative:!!allowNeg}});
+    oeClose(); toast('فاکتور ویرایش شد ✓'); loadOrdersReport(); }
+  catch(e){ if(!allowNeg && /کسری موجودی/.test(e.message) && confirm(e.message+'\n\nبا وجود کسری موجودی ذخیره شود؟')){ btn.disabled=false; return oeSave(true); } err.textContent=e.message; }
+  finally{ btn.disabled=false; } }
 function exportOrdersCSV(){
   if(!_ordRep.orders||!_ordRep.orders.length){ toast('اول گزارش را نمایش بده','err'); return; }
   const head=['شماره سفارش','تاریخ','مشتری','نوع','وضعیت','مبلغ','دریافتی'];
