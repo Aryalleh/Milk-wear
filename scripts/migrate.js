@@ -90,6 +90,27 @@ async function main() {
     catch (e) { console.log(`  ⚠ ${table}: ${e.message}`); }
   }
 
+  // اصلاحِ دادهٔ «ابطالِ دوبل»: قبلاً هنگام لغو/ابطال، اصلِ تراکنش voided می‌شد و یک معکوسِ فعال هم ثبت می‌شد
+  // → مبلغ دو بار برمی‌گشت. معکوس‌هایی که اصلشان voided است، از مانده خارج می‌شوند. (idempotent)
+  if (await tableExists('transactions')) {
+    const [aff] = await conn.query(
+      `SELECT DISTINCT v.person_id FROM transactions v JOIN transactions o ON o.id = v.reverses_tx_id
+        WHERE v.tx_type='VOID' AND v.status='active' AND o.status='voided'`);
+    if (aff.length) {
+      const [r] = await conn.query(
+        `UPDATE transactions v JOIN transactions o ON o.id = v.reverses_tx_id
+            SET v.status='voided'
+          WHERE v.tx_type='VOID' AND v.status='active' AND o.status='voided'`);
+      const { recomputeBalance } = await import('../src/ledger.js');
+      for (const { person_id } of aff) await recomputeBalance(conn, person_id);
+      await conn.query(
+        `INSERT INTO audit_logs (entity_type, entity_id, action, new_json, reason)
+         VALUES ('transactions', NULL, 'fix_dbl_void', ?, 'اصلاح ابطال دوبل')`,
+        [JSON.stringify({ rows: r.affectedRows, persons: aff.map((a) => a.person_id) })]);
+      console.log(`  🛠  ابطالِ دوبل اصلاح شد: ${r.affectedRows} ردیف، مانده‌ی ${aff.length} شخص بازمحاسبه شد`);
+    } else console.log('  ✔ ابطالِ دوبل: موردی نبود');
+  }
+
   console.log(added ? `\n✅ ${added} ستون افزوده شد.` : '\n✅ همه‌چیز از قبل به‌روز بود.');
   await conn.end();
 }

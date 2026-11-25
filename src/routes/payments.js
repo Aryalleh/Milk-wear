@@ -115,8 +115,8 @@ router.post('/void/:txId', wrap(async (req, res) => {
     await conn.query(
       `INSERT INTO transactions
          (branch_id, person_id, tx_type, direction, amount, year_month_jalali,
-          source_type, source_id, description, reverses_tx_id, created_by)
-       VALUES (?,?, 'VOID', ?, ?, ?, 'manual', ?, ?, ?, ?)`,
+          source_type, source_id, description, reverses_tx_id, created_by, status)
+       VALUES (?,?, 'VOID', ?, ?, ?, 'manual', ?, ?, ?, ?, 'voided')`,
       [tx.branch_id, tx.person_id, revDir, tx.amount, tx.year_month_jalali,
        tx.id, `ابطال #${tx.id}: ${reason || ''}`, tx.id, req.user?.uid || null]
     );

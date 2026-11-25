@@ -119,7 +119,8 @@ export async function recomputeBalance(conn, personId) {
 
 /**
  * ابطالِ همهٔ تراکنش‌های فعالِ مرتبط با یک منبع (شیر/سفارش/پرداخت) — به‌جای حذف.
- * برای هر تراکنش: یک تراکنشِ معکوسِ VOID می‌سازد، اصل را voided می‌کند و در audit_logs ثبت می‌کند.
+ * برای هر تراکنش: اصل را voided می‌کند (از مانده خارج می‌شود) و یک ردیفِ VOID فقط برای سابقه می‌سازد.
+ * ردیفِ VOID خودش هم status='voided' دارد؛ وگرنه مبلغ دو بار برگردانده می‌شد (اصل حذف + معکوس).
  * سپس ماندهٔ همهٔ اشخاصِ درگیر را بازمحاسبه می‌کند. باید داخل withTx اجرا شود.
  */
 export async function voidTransactionsBySource(conn, { sourceType, sourceId, userId = null, reason = null }) {
@@ -134,8 +135,8 @@ export async function voidTransactionsBySource(conn, { sourceType, sourceId, use
     await conn.query(
       `INSERT INTO transactions
          (branch_id, person_id, tx_type, direction, amount, year_month_jalali,
-          source_type, source_id, description, reverses_tx_id, created_by)
-       VALUES (?,?, 'VOID', ?, ?, ?, 'manual', ?, ?, ?, ?)`,
+          source_type, source_id, description, reverses_tx_id, created_by, status)
+       VALUES (?,?, 'VOID', ?, ?, ?, 'manual', ?, ?, ?, ?, 'voided')`,
       [tx.branch_id, tx.person_id, revDir, tx.amount, tx.year_month_jalali,
        tx.id, `ابطال #${tx.id}: ${reason || ''}`, tx.id, userId]
     );

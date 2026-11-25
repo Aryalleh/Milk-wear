@@ -109,7 +109,7 @@
 
   <div class="skeu-card p-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-      <h3 class="font-bold text-gray-800"><i class="fa-solid fa-receipt text-amber-600 ml-1"></i> گزارش سفارش‌های روزانه</h3>
+      <h3 id="invoices" class="font-bold text-gray-800"><i class="fa-solid fa-receipt text-amber-600 ml-1"></i> سفارش‌ها و فاکتورها (روزانه)</h3>
       <div class="flex gap-2">
         <button onclick="loadOrdersReport()" class="btn-skeu text-white px-4 py-2 rounded-lg font-bold text-sm">نمایش (بازهٔ بالا یا امروز)</button>
         <button onclick="exportOrdersCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-700"><i class="fa-solid fa-file-excel ml-1"></i> خروجی اکسل</button>
@@ -117,6 +117,15 @@
     </div>
     <div id="ordRepSummary" class="grid grid-cols-3 gap-2 mb-3"></div>
     <div class="overflow-x-auto"><table class="w-full text-sm text-right"><thead class="bg-gray-50 text-gray-500"><tr><th class="p-2">روز</th><th class="p-2">تعداد</th><th class="p-2">تحویل‌شده</th><th class="p-2">لغو</th><th class="p-2">جمع فروش</th><th class="p-2">دریافتی</th></tr></thead><tbody id="ordRepDays" class="divide-y divide-gray-100"></tbody></table></div>
+    <div id="ordFixBar" class="hidden mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm">
+      <p class="font-bold text-amber-800 mb-1"><i class="fa-solid fa-wand-magic-sparkles ml-1"></i> اصلاحِ فاکتورهای «یک صفر کم»</p>
+      <p class="text-[11px] text-amber-700 mb-2">برای فاکتورهایی که مبلغشان به خیالِ تومان ولی به ریال ثبت شده: مبالغِ فاکتور، رسید، بدهیِ مشتری و پرداختِ همان فاکتور ×۱۰ می‌شوند. هر فاکتور فقط یک‌بار. ردیف‌های زرد «مشکوک» هستند (مبلغشان خیلی کمتر از قیمت فعلی کالاهاست).</p>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button onclick="selectSuspects()" class="bg-white border border-amber-300 text-amber-800 px-3 py-1.5 rounded-lg font-bold text-xs">انتخاب همهٔ مشکوک‌ها</button>
+        <button onclick="fixSelected()" class="bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs"><i class="fa-solid fa-xmark ml-1"></i>۱۰ برای انتخاب‌شده‌ها (<span id="ordSelCount">۰</span>)</button>
+        <label class="text-xs text-amber-800 flex items-center gap-1"><input id="fixPaid" type="checkbox" checked class="w-4 h-4"> مبلغِ پرداخت‌شدهٔ فاکتور هم اصلاح شود</label>
+      </div>
+    </div>
     <div id="ordRepList" class="overflow-x-auto mt-3"></div>
   </div>
 </main>
@@ -132,9 +141,41 @@ async function loadOrdersReport(){
     document.getElementById('ordRepSummary').innerHTML=
       `<div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">تعداد سفارش</div><div class="font-black">${fmt(d.totals.count)}</div></div><div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">جمع فروش</div><div class="font-black text-amber-700">${money(d.totals.total)}</div></div><div class="bg-gray-50 rounded-lg p-2 text-center"><div class="text-[11px] text-gray-500">دریافتی</div><div class="font-black text-green-700">${money(d.totals.paid)}</div></div>`;
     document.getElementById('ordRepDays').innerHTML=d.days.length?d.days.map(x=>`<tr><td class="p-2 font-bold">${x.jalali}</td><td class="p-2">${fmt(x.count)}</td><td class="p-2 text-green-600">${fmt(x.delivered)}</td><td class="p-2 text-red-500">${fmt(x.canceled)}</td><td class="p-2">${money(x.total)}</td><td class="p-2 text-green-700">${money(x.paid)}</td></tr>`).join(''):'<tr><td colspan="6" class="p-3 text-center text-gray-400">سفارشی نیست</td></tr>';
-    document.getElementById('ordRepList').innerHTML=d.orders.length?`<table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2">شماره</th><th class="p-2">تاریخ</th><th class="p-2">مشتری</th><th class="p-2">نوع</th><th class="p-2">وضعیت</th><th class="p-2">مبلغ</th><th class="p-2">دریافتی</th></tr></thead><tbody class="divide-y divide-gray-100">${d.orders.map(o=>`<tr><td class="p-2 font-bold">${o.order_no}</td><td class="p-2 text-gray-500">${o.date_jalali}</td><td class="p-2">${o.customer}</td><td class="p-2 text-xs">${ORD_FF_FA[o.fulfillment]||o.fulfillment}</td><td class="p-2 text-xs">${ORD_ST_FA[o.status]||o.status}</td><td class="p-2">${money(o.total)}</td><td class="p-2 text-green-700">${money(o.paid)}</td></tr>`).join('')}</tbody></table>`:'';
+    renderOrdList();
   }catch(e){ toast(e.message,'err'); }
 }
+function ordActions(o){ const can=o.status!=='canceled'; let h='';
+  if(o.receipt_id) h+=`<button onclick="ordPrint(${o.receipt_id})" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="نمایش/چاپ فاکتور"><i class="fa-solid fa-print"></i></button>`;
+  if(can && !o.locked) h+=`<button onclick="ordCancel(${o.id},'${o.order_no}')" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500" title="لغو فاکتور"><i class="fa-solid fa-ban"></i></button>`;
+  else if(can && o.locked) h+=`<span class="w-9 h-9 inline-flex items-center justify-center text-gray-300" title="روز بسته است — برای لغو، روز باید بازگشایی شود"><i class="fa-solid fa-lock"></i></span>`;
+  if(can && isAdmin() && !o.fixed) h+=`<button onclick="ordFix([${o.id}])" class="h-9 px-2 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-700 text-xs font-bold" title="اصلاح یک صفر کم (×۱۰)">×۱۰</button>`;
+  if(o.fixed) h+=`<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 whitespace-nowrap">اصلاح‌شده</span>`;
+  return `<div class="flex gap-1 items-center">${h}</div>`; }
+function renderOrdList(){ const d=_ordRep, box=document.getElementById('ordRepList');
+  document.getElementById('ordFixBar').classList.toggle('hidden', !(isAdmin() && d.orders.some(o=>o.status!=='canceled'&&!o.fixed)));
+  if(!d.orders.length){ box.innerHTML=''; updSel(); return; }
+  const cb=(o)=> (isAdmin() && o.status!=='canceled' && !o.fixed) ? `<input type="checkbox" class="ord-cb w-4 h-4" value="${o.id}" ${o.suspect?'data-suspect="1"':''} onchange="updSel()">` : '';
+  const rowCls=(o)=> o.status==='canceled'?'opacity-50 line-through':(o.suspect?'bg-amber-50':'');
+  const sus=(o)=> o.suspect?' <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-800 no-underline">مشکوک</span>':'';
+  box.innerHTML=`<div class="hidden md:block"><table class="w-full text-sm text-right"><thead class="text-gray-500"><tr><th class="p-2"></th><th class="p-2">شماره</th><th class="p-2">تاریخ</th><th class="p-2">مشتری</th><th class="p-2">نوع</th><th class="p-2">وضعیت</th><th class="p-2">مبلغ</th><th class="p-2">دریافتی</th><th class="p-2">عملیات</th></tr></thead><tbody class="divide-y divide-gray-100">${d.orders.map(o=>`<tr class="${rowCls(o)}"><td class="p-2">${cb(o)}</td><td class="p-2 font-bold">${o.order_no}${sus(o)}</td><td class="p-2 text-gray-500">${o.date_jalali}</td><td class="p-2">${o.customer}</td><td class="p-2">${ORD_FF_FA[o.fulfillment]||o.fulfillment}</td><td class="p-2">${ORD_ST_FA[o.status]||o.status}</td><td class="p-2 font-bold">${money(o.total)}</td><td class="p-2 text-green-700">${money(o.paid)}</td><td class="p-2">${ordActions(o)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="md:hidden space-y-2">${d.orders.map(o=>`<div class="border border-gray-100 rounded-xl p-3 ${rowCls(o)}"><div class="flex items-start gap-2">${cb(o)}<div class="min-w-0 flex-1"><p class="font-bold text-sm">${o.order_no}${sus(o)} · ${o.customer}</p><p class="text-[11px] text-gray-500 mt-0.5">${o.date_jalali} · ${ORD_ST_FA[o.status]||o.status} · مبلغ <b>${money(o.total)}</b> · دریافتی ${money(o.paid)}</p></div></div><div class="mt-2">${ordActions(o)}</div></div>`).join('')}</div>`;
+  updSel(); }
+function selIds(){ return [...new Set([...document.querySelectorAll('.ord-cb:checked')].map(c=>Number(c.value)))]; }
+function updSel(){ const el=document.getElementById('ordSelCount'); if(el) el.textContent=fmt(selIds().length); }
+function selectSuspects(){ document.querySelectorAll('.ord-cb').forEach(c=>c.checked=!!c.dataset.suspect); updSel(); if(!selIds().length) toast('فاکتور مشکوکی در این بازه نیست'); }
+function fixSelected(){ const ids=selIds(); if(!ids.length){ toast('هیچ فاکتوری انتخاب نشده','err'); return; } ordFix(ids); }
+async function ordFix(ids){
+  const list=_ordRep.orders.filter(o=>ids.includes(o.id));
+  const sum=list.map(o=>`${o.order_no}: ${money(o.total)} ← ${money(o.total*10)}`).join('\n');
+  if(!confirm(`این ${fmt(ids.length)} فاکتور ×۱۰ شوند؟\n\n${sum}\n\nاین کار برای هر فاکتور فقط یک‌بار ممکن است.`)) return;
+  const include_paid=document.getElementById('fixPaid').checked; let ok=0; const errs=[];
+  for(const o of list){ try{ await api('/orders/'+o.id+'/fix-zero',{method:'POST',body:{include_paid}}); ok++; }catch(e){ errs.push(o.order_no+': '+e.message); } }
+  toast(`${fmt(ok)} فاکتور اصلاح شد`+(errs.length?` · ${fmt(errs.length)} خطا`:''), errs.length?'warn':'ok');
+  if(errs.length) alert('این فاکتورها اصلاح نشدند:\n\n'+errs.join('\n'));
+  loadOrdersReport(); }
+async function ordCancel(id,no){ const reason=prompt(`علت لغو فاکتور ${no}؟ (مبلغ از بدهی مشتری برمی‌گردد و کالا به انبار برمی‌گردد)`,'فاکتور تستی'); if(reason===null)return;
+  try{ await api('/orders/'+id+'/cancel',{method:'POST',body:{reason:reason||'لغو'}}); toast('فاکتور لغو شد'); loadOrdersReport(); }catch(e){ toast(e.message,'err'); } }
+function ordPrint(rid){ previewThermal('/api/print/preview?kind=receipt&id='+rid, async()=>{ await api('/print/receipt/'+rid,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
 function exportOrdersCSV(){
   if(!_ordRep.orders||!_ordRep.orders.length){ toast('اول گزارش را نمایش بده','err'); return; }
   const head=['شماره سفارش','تاریخ','مشتری','نوع','وضعیت','مبلغ','دریافتی'];
@@ -257,7 +298,7 @@ async function delExpense(id){ if(!confirm('حذف این هزینه؟'))return;
   jalaliDatepicker.startWatch({ persianDigits:true, autoHide:true, hideAfterChange:true, targetValueInput:'attr', targetValueType:'attr' });
   const t=today(); setDates(t.slice(0,8)+'01', t);
   document.getElementById('exDateG').value=t; document.getElementById('exDateJ').value=jdate(t);
-  loadReports(); })();
+  loadReports(); loadOrdersReport(); })();
 </script>
 </body>
 </html>

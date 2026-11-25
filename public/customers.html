@@ -90,7 +90,7 @@
 <script>
 let currentPerson=null, myBranch=null, isFin=false, filter='all', personOrders=[];
 const TX_FA={PRODUCT_SALE:'فاکتور فروش',FEED_SALE:'خوراک',PAYMENT_IN:'دریافت وجه',PAYMENT_OUT:'پرداخت به مشتری',REFUND:'برگشت',GOODS_IN:'دریافت کالا',OPENING_BALANCE:'ماندهٔ اولیه',VOID:'ابطال',PURCHASE:'خرید ما از مشتری',CASH_WITHDRAWAL:'برداشت نقدی',MILK_DELIVERY:'شیر'};
-const ST_FA={draft:'پیش‌نویس',queued:'در صف',confirmed:'تأییدشده',delivered:'تحویل‌شده',completed:'تکمیل',cancelled:'لغوشده'};
+const ST_FA={draft:'پیش‌نویس',queued:'در صف',confirmed:'تأییدشده',delivered:'تحویل‌شده',completed:'تکمیل',canceled:'لغوشده',cancelled:'لغوشده'};
 const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function setFilter(f){ filter=f; document.querySelectorAll('.cf').forEach(b=>b.className='cf flex-1 py-1.5 rounded-lg font-bold '+(b.dataset.f===f?'bg-dairy-dark text-white':'bg-gray-100 text-gray-600')); loadPersons(); }
@@ -146,7 +146,7 @@ async function loadLedger(id){ const rows=await api('/persons/'+id+'/ledger'); c
 // ----- فاکتورها (سفارش‌های مشتری) -----
 async function loadOrders(id){ personOrders=await api('/orders?person_id='+id); const box=document.getElementById('ordersBox');
   if(!personOrders.length){ box.innerHTML='<p class="p-4 text-center text-gray-400">فاکتوری نیست</p>'; return; }
-  box.innerHTML=`<div class="space-y-2">${personOrders.map(o=>{ const cancelled=o.status==='cancelled'; const rem=Number(o.total_amount)-Number(o.paid_amount);
+  box.innerHTML=`<div class="space-y-2">${personOrders.map(o=>{ const cancelled=o.status==='canceled'; const rem=Number(o.total_amount)-Number(o.paid_amount);
     return `<div class="border border-gray-100 rounded-xl p-3 flex items-center justify-between gap-2 ${cancelled?'opacity-50':''}"><div class="min-w-0"><p class="font-bold text-sm">${esc(o.order_no)} <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">${ST_FA[o.status]||o.status}</span></p><p class="text-[11px] text-gray-400 mt-0.5">${new Date(o.ordered_at).toLocaleDateString('fa-IR')} · مبلغ <b class="text-gray-700">${money(o.total_amount)}</b> · پرداخت نقدی ${money(o.paid_amount)}${rem>0&&!cancelled?` · <span class="text-red-600">نسیه ${money(rem)}</span>`:''}</p></div>
       <div class="flex gap-1.5 shrink-0">${o.receipt_id?`<button onclick="printReceipt(${o.receipt_id})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-blue-50 text-blue-600" title="چاپ فاکتور"><i class="fa-solid fa-print"></i></button>`:''}${!cancelled?`<button onclick="openBuy(${o.id})" class="w-11 h-11 inline-flex items-center justify-center rounded-lg bg-amber-50 text-amber-600" title="ثبت خرید ما روی این فاکتور"><i class="fa-solid fa-cart-arrow-down"></i></button>`:''}</div></div>`; }).join('')}</div>`; }
 function printReceipt(id){ previewThermal('/api/print/preview?kind=receipt&id='+id, async()=>{ await api('/print/receipt/'+id,{method:'POST'}); toast('فاکتور به صف چاپ رفت 🖨'); }); }
@@ -173,7 +173,7 @@ function showModal(m){ document.body.appendChild(m); m.style.zIndex='1000'; m.cl
 function openBuy(orderId){ if(!currentPerson)return; document.getElementById('buyErr').textContent='';
   document.getElementById('buyPerson').textContent='از: '+document.getElementById('pName').textContent;
   document.getElementById('buyRows').innerHTML=''; addBuyRow();
-  const open=personOrders.filter(o=>o.status!=='cancelled');
+  const open=personOrders.filter(o=>o.status!=='canceled');
   document.getElementById('buyOrder').innerHTML='<option value="">— فقط به حساب مشتری —</option>'+open.map(o=>`<option value="${o.id}">${esc(o.order_no)} — ${money(o.total_amount)}</option>`).join('');
   document.getElementById('buyOrder').value=orderId?String(orderId):'';
   calcBuy(); hidePersonSheet(); showModal(document.getElementById('buyModal')); }
