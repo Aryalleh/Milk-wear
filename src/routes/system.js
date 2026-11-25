@@ -6,7 +6,11 @@ import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireRole } from '../auth.js';
-import { wrap } from '../util.js';
+import { wrap, AppError } from '../util.js';
+import { pool, withTx } from '../db.js';
+import { getSettings, setSetting } from '../print.js';
+import { clearCurrencyCache } from '../currency.js';
+import { SCOPES, DEFAULT_SCOPES, previewMigration, runMigration } from '../rialMigration.js';
 
 const run = promisify(execFile);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -66,6 +70,45 @@ router.post('/update', wrap(async (req, res) => {
       p.unref();
     } catch { /* اگر نشد، کدِ جدید با ری‌استارتِ دستی اعمال می‌شود */ }
   }, 700);
+}));
+
+// ---- تبدیلِ یک‌بارهٔ تومان → ریال (داده‌هایی که به خیالِ تومان ثبت شده‌اند) ----
+const pickScopes = (b) => { const s = Array.isArray(b?.scopes) ? b.scopes.filter((k) => SCOPES[k]) : DEFAULT_SCOPES; return s.length ? s : DEFAULT_SCOPES; };
+router.get('/rial-migration', wrap(async (req, res) => {
+  const st = await getSettings();
+  res.json({ done: st.rial_migration_done || null, scopes: SCOPES, defaults: DEFAULT_SCOPES });
+}));
+router.post('/rial-migration/preview', wrap(async (req, res) => {
+  const conn = await pool.getConnection();
+  try { res.json(await previewMigration(conn, pickScopes(req.body))); } finally { conn.release(); }
+}));
+router.post('/rial-migration/run', wrap(async (req, res) => {
+  if (req.body?.confirm !== 'تبدیل') throw new AppError(400, 'برای اجرا عبارتِ «تبدیل» را تأیید کنید');
+  const scopes = pickScopes(req.body);
+  // قفلِ سراسری تا بعد از commit نگه داشته می‌شود → دو اجرای هم‌زمان ممکن نیست؛ پرچمِ «انجام‌شده» داخلِ همان تراکنش است
+  const lockConn = await pool.getConnection();
+  let counts;
+  try {
+    const [[l]] = await lockConn.query("SELECT GET_LOCK('mw_rial_migration', 30) AS ok");
+    if (!Number(l.ok)) throw new AppError(409, 'تبدیل در حال اجراست؛ کمی بعد دوباره امتحان کنید');
+    counts = await withTx(async (conn) => {
+      const [[done]] = await conn.query("SELECT id FROM settings WHERE scope='global' AND `key`='rial_migration_done'");
+      if (done) throw new AppError(409, 'این تبدیل قبلاً یک‌بار انجام شده است و دوباره اجرا نمی‌شود');
+      const n = await runMigration(conn, scopes);
+      await conn.query("INSERT INTO settings (scope, scope_id, `key`, value_json) VALUES ('global', NULL, 'rial_migration_done', ?)",
+        [JSON.stringify({ at: new Date().toISOString(), scopes, counts: n, by: req.user?.uid || null })]);
+      await conn.query(
+        `INSERT INTO audit_logs (entity_type, entity_id, action, new_json, user_id, reason)
+         VALUES ('settings', NULL, 'rial_migration', ?, ?, 'تبدیل یک‌بارهٔ تومان به ریال')`,
+        [JSON.stringify({ scopes, counts: n }), req.user?.uid || null]);
+      return n;
+    });
+  } finally {
+    await lockConn.query("SELECT RELEASE_LOCK('mw_rial_migration')").catch(() => {});
+    lockConn.release();
+  }
+  if (req.body?.set_toman) { await setSetting('currency', 'toman'); clearCurrencyCache(); }
+  res.json({ ok: true, scopes, counts });
 }));
 
 export default router;
