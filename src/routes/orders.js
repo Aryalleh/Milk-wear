@@ -7,6 +7,7 @@ import { enqueueReceipt } from '../print.js';
 import { canCreateDelivery } from '../access.js';
 import { consumePackaging, restorePackagingForOrder } from '../packaging.js';
 import { getSettings } from '../print.js';
+import { receiptAccount } from './receipts.js';
 
 // درصد سودِ سراسریِ ظرف‌ها (همه یکسان، قابل تنظیم)
 async function packagingMargin() {
@@ -157,8 +158,14 @@ router.get('/:id', wrap(async (req, res) => {
   }
 
   order.ordered_at_jalali = toJalaliDate(order.ordered_at || order.created_at);
+  // وضعیت حسابِ زنده (بدهی قبلی / این بارنامه / پرداختی / نهایی) — مثلِ فاکتور
+  let account = null;
+  try {
+    const [[rcFull]] = await pool.query('SELECT * FROM receipts WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+    if (rcFull) account = await receiptAccount(rcFull);
+  } catch { /* بدون کادر حساب */ }
   res.json({
-    order, person, branch, items, receipt: receipt || null,
+    order, person, branch, items, receipt: receipt || null, account,
     balance: Number(bal?.current_balance || 0),
     balance_before: balanceBefore, balance_after: balanceAfter,
   });

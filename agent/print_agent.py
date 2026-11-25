@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-پرینت‌ایجنت سامانهٔ لبنیات سنتی کلاچی
+پرینت‌ایجنت سامانهٔ لبنیات محمدپور
 ----------------------------------
 دو حالت چاپ:
   • حالت دقیق (پیش‌نمایش روشن): سرور صفحهٔ HTML را با کروم رندر می‌کند و ایجنت
@@ -197,13 +197,9 @@ def _footer(c, b):
 # ---------------- رندرِ هر سند (سبک، بدون کروم) ----------------
 def render_light(p):
     doc = p.get("doc"); b = p.get("branch") or {}
-    # واحد پول طبق تنظیمات پنل (مبالغ در سرور ریال‌اند)
-    toman = (p.get("currency") == "toman")
-    CUR = "تومان" if toman else "ریال"
-    M = lambda v: fa_num(round(float(v or 0) / 10) if toman else (v or 0))
     c = Canvas()
     _logo_or_none(c)
-    c.center(b.get("name", "لبنیات سنتی کلاچی"), font(38, 800), gap=4)
+    c.center(b.get("name", "لبنیات محمدپور"), font(38, 800), gap=4)
     if doc == "test":
         c.box_center("چاپ آزمایشی", font(26, 700))
         c.center(p.get("message", "اتصال سالم است ✔"), font(24), gap=6)
@@ -219,13 +215,10 @@ def render_light(p):
         if p.get("destination"): c.between(p["destination"], "مقصد:", font(22))
         c.hr()
         for it in p.get("items", []):
-            c.between(M(it["amount"]), it["name"], font(24, 700))
-            c.rl(f"{fa_num(it['qty'])} {it.get('unit','')} × {M(it['price'])}", font(18), gap=4)
+            c.between(fa_num(it["amount"]), it["name"], font(24, 700))
+            c.rl(f"{fa_num(it['qty'])} {it.get('unit','')} × {fa_num(it['price'])}", font(18), gap=4)
         c.hr(dash=False)
-        _bal = lambda v: (M(-int(v or 0)) + " بدهکار") if int(v or 0) < 0 else ((M(int(v or 0)) + " بستانکار") if int(v or 0) > 0 else "تسویه")
-        c.between(_bal(p.get("balance_before", 0)), "بدهیِ قبل:", font(20))
-        c.between(M(p.get("total", 0)), "جمعِ این بارنامه:", font(22, 700))
-        c.between(_bal(p.get("balance_after", 0)) + " " + CUR, "بدهیِ بعد:", font(26, 800))
+        c.between(fa_num(p.get("total", 0)) + " ریال", "جمع کل:", font(26, 800))
         _qr(c, p.get("qr_url")); _footer(c, b); return c.render()
 
     if doc == "statement":
@@ -234,17 +227,17 @@ def render_light(p):
         c.hr()
         c.between(person.get("fullname",""), "طرف حساب:", font(22))
         c.between(fa_dig(person.get("person_code","")), "کد:", font(20))
-        c.between(M(p.get("opening",0)), "ماندهٔ قبلی:", font(22)); c.hr()
+        c.between(fa_num(p.get("opening",0)), "ماندهٔ قبلی:", font(22)); c.hr()
         for r in p.get("ledger", []):
             cr = r["credit"] > 0; amt = r["credit"] if cr else r["debit"]
             d = (r.get("description") or r.get("tx_type") or "")[:26]
             short = "/".join(str(r.get("date","")).split("/")[1:]) or r.get("date","")
-            c.between(M(amt) + ("+" if cr else "−"), f"{short} {d}", font(18), gap=2)
+            c.between(fa_num(amt) + ("+" if cr else "−"), f"{short} {d}", font(18), gap=2)
         c.hr(dash=False)
-        c.between(M(p.get("total_debit",0)), "جمع بدهکار:", font(20))
-        c.between(M(p.get("total_credit",0)), "جمع بستانکار:", font(20))
+        c.between(fa_num(p.get("total_debit",0)), "جمع بدهکار:", font(20))
+        c.between(fa_num(p.get("total_credit",0)), "جمع بستانکار:", font(20))
         cl = p.get("closing", 0); lbl = "بدهکار" if cl < 0 else ("بستانکار" if cl > 0 else "تسویه")
-        c.between(M(abs(cl)) + " " + CUR + " " + lbl, "مانده نهایی:", font(26, 800), gap=4)
+        c.between(fa_num(abs(cl)) + " " + lbl, "مانده نهایی:", font(26, 800), gap=4)
         _footer(c, b); return c.render()
 
     if doc == "manifest":
@@ -252,51 +245,25 @@ def render_light(p):
         for it in p.get("items", []):
             c.between(f"{fa_num(it['qty'])} {it.get('unit','')}", it["name"], font(24, 700), gap=4)
         c.hr(dash=False)
-        c.between(M(p.get("total",0)) + " " + CUR, "ارزش کل بار:", font(24, 800))
+        c.between(fa_num(p.get("total",0)) + " ریال", "ارزش کل بار:", font(24, 800))
         c.center("راننده اقلام بالا را بار بزند", font(16), gap=2); return c.render()
 
     # receipt (پیش‌فرض)
     c.between(p.get("receipt_no",""), "شماره فاکتور:", font(20))
-    c.between(p.get("date_jalali",""), "تاریخ و ساعت صدور:", font(20))
+    c.between(p.get("date_jalali",""), "تاریخ ثبت:", font(22))
     c.between(p.get("person",""), "طرف حساب:", font(22)); c.hr()
     if p.get("milk"):
         m = p["milk"]; lbl = "شیر صبح" if m.get("shift") == "morning" else "شیر شب"
-        c.between("+" + M(m.get("amount",0)), lbl, font(24, 700))
-        c.rl(f"{fa_num(m.get('weight_kg',0))} کیلو × {M(m.get('price_per_kg',0))}", font(18), gap=4)
+        c.between("+" + fa_num(m.get("amount",0)), lbl, font(24, 700))
+        c.rl(f"{fa_num(m.get('weight_kg',0))} کیلو × {fa_num(m.get('price_per_kg',0))}", font(18), gap=4)
     for it in p.get("items", []):
-        c.between("−" + M(it["amount"]), it["name"], font(24, 700))
-        c.rl(f"{fa_num(it['qty'])} {it.get('unit','')} × {M(it['price'])}", font(18), gap=4)
+        c.between("−" + fa_num(it["amount"]), it["name"], font(24, 700))
+        c.rl(f"{fa_num(it['qty'])} {it.get('unit','')} × {fa_num(it['price'])}", font(18), gap=4)
     c.hr(dash=False)
-    c.between(M(p.get("milk_amount",0)), "جمع بستانکار (شیر):", font(18))
-    c.between(M(p.get("purchase_amount",0)), "جمع بدهکار (خرید):", font(18))
-    c.between(M(p.get("net_amount",0)) + " " + CUR, "خالص فاکتور:", font(26, 800), gap=4)
-    _account_box(c, p.get("account"), M, CUR)
+    c.between(fa_num(p.get("milk_amount",0)), "جمع بستانکار (شیر):", font(18))
+    c.between(fa_num(p.get("purchase_amount",0)), "جمع بدهکار (خرید):", font(18))
+    c.between(fa_num(p.get("net_amount",0)) + " ریال", "خالص فاکتور:", font(26, 800), gap=4)
     _qr(c, p.get("qr_url")); _footer(c, b); return c.render()
-
-
-def _account_box(c, a, M, CUR):
-    """وضعیت حساب به‌صورت محاسبهٔ مرحله‌به‌مرحله — مثل فاکتورِ صفحهٔ وب.
-    بدهی قبلی + این فاکتور = بدهی جدید − پرداختی = نهایی  (بدهی مثبت، طلب منفی)"""
-    if not a or a.get("previous") is None:
-        return
-    old = -int(a.get("previous") or 0)        # بدهی قبلی
-    inv = -int(a.get("effect") or 0)          # اثر این فاکتور (+ خرید، − شیر)
-    new = old + inv
-    paid = int(a.get("paid") or 0)
-    fin = new - paid
-    lab = lambda v, d, cr: d if v >= 0 else cr
-    amt = lambda v: "۰" if v == 0 else (M(abs(v)) + " " + CUR)
-    c.hr(gap=10, dash=False)
-    c.box_center("وضعیت حساب (" + CUR + ")", font(22, 700))
-    c.between(amt(old), lab(old, "بدهی قبلی:", "طلب قبلی:"), font(20), gap=2)
-    if inv >= 0: c.between(M(inv), "+ مبلغ این فاکتور:", font(20), gap=2)
-    else:        c.between(M(-inv), "− بستانکاری این فاکتور (شیر):", font(20), gap=2)
-    c.hr(gap=4)
-    c.between(amt(new), lab(new, "= بدهی جدید با این فاکتور:", "= طلب جدید با این فاکتور:"), font(22, 700), gap=2)
-    if paid:
-        c.between(M(paid), "− پرداختی:", font(20), gap=2)
-    c.hr(gap=4, dash=False)
-    c.between(amt(fin), ("= بدهی نهایی:" if fin > 0 else ("= طلب نهایی:" if fin < 0 else "= حساب تسویه:")), font(28, 800), gap=6)
 
 
 # ---------------- پرینتر ----------------
@@ -362,7 +329,7 @@ def do_test_print():
     """چاپ آزمایشی با تنظیماتِ جاری — برای دکمهٔ پنل. (ok, message) برمی‌گرداند."""
     STATUS["printer_type"] = printer_type()
     payload = {"doc": "test", "message": "اتصال سالم است ✔",
-               "branch": {"name": "لبنیات سنتی کلاچی"}}
+               "branch": {"name": "لبنیات محمدپور"}}
     job = {"id": "test", "kind": "test", "light": True, "payload": payload, "copies": 1}
     try:
         print_job(_session(), job)

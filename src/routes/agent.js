@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { getAgentToken, isLightPrint } from '../print.js';
 import { docHTML } from '../thermal.js';
-import { getCurrency } from '../currency.js';
 import { receiptAccount } from './receipts.js';
 import { renderHtmlToPng, renderElementToPng } from '../render.js';
 import { AppError, wrap } from '../util.js';
@@ -37,13 +36,10 @@ router.post('/poll', wrap(async (req, res) => {
     const payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : (job.payload || {});
     // light=true یعنی ایجنت خودش با PIL رسم کند (بدون کروم/بدون درخواستِ /image)
     const light = await isLightPrint();
-    // برای رسمِ سبک: واحد پول + وضعیت حسابِ زندهٔ فاکتور (بدهی قبلی/این فاکتور/پرداختی/نهایی)
-    payload.currency = await getCurrency().catch(() => 'rial');
-    if (job.kind === 'receipt' && job.ref_id) {
-      try {
-        const [[rc]] = await pool.query('SELECT * FROM receipts WHERE id=?', [job.ref_id]);
-        if (rc) payload.account = await receiptAccount(rc);
-      } catch { /* بدون کادر حساب */ }
+    // رسمِ سبک توسطِ ایجنتِ فعلی (بدون تغییرِ ایجنت): بدهیِ گذشته و پرداختی به‌صورتِ ردیف به اقلام اضافه
+    // و «جمع کل» = مبلغِ قابل‌پرداختِ کل می‌شود — همان چیزی که ایجنت از قبل چاپ می‌کند.
+    if (light && (job.kind === 'waybill' || job.kind === 'receipt') && job.ref_id) {
+      try { await addDebtRows(job, payload); } catch (e) { console.error('addDebtRows:', e.message); }
     }
     res.json({ job: { id: job.id, kind: job.kind, copies: job.copies, light, payload } });
   } catch (e) {
@@ -94,5 +90,31 @@ router.post('/jobs/:id/error', wrap(async (req, res) => {
     res.json({ ok: true, requeued: false });
   }
 }));
+
+// ردیف‌های «بدهی گذشته» و «پرداختی» برای چاپِ سبک (مبالغ ریال؛ ایجنت «ریال» چاپ می‌کند)
+async function addDebtRows(job, payload) {
+  const [[rc]] = job.kind === 'receipt'
+    ? await pool.query('SELECT * FROM receipts WHERE id=?', [job.ref_id])
+    : await pool.query('SELECT * FROM receipts WHERE order_id=? ORDER BY id DESC LIMIT 1', [job.ref_id]);
+  if (!rc) return;
+  const a = await receiptAccount(rc);
+  if (!a || a.previous == null) return;
+  const oldDebt = -Number(a.previous || 0);      // مثبت = بدهی، منفی = طلب
+  const invoice = -Number(a.effect || 0);        // اثرِ این فاکتور (+ خرید، − شیر)
+  const paid = Number(a.paid || 0);
+  const due = oldDebt + invoice - paid;          // کلِ قابل‌پرداخت بعد از این فاکتور
+  if (!oldDebt && !paid) return;
+  const items = Array.isArray(payload.items) ? payload.items : (payload.items = []);
+  if (oldDebt > 0) items.push({ name: 'بدهی گذشته', qty: 1, unit: '', price: oldDebt, amount: oldDebt });
+  else if (oldDebt < 0) items.push({ name: 'طلب گذشته (کم می‌شود)', qty: 1, unit: '', price: oldDebt, amount: oldDebt });
+  if (paid) items.push({ name: 'پرداختی (کم می‌شود)', qty: 1, unit: '', price: -paid, amount: -paid });
+  if (job.kind === 'waybill') {
+    payload.total = due;                          // «جمع کل:» روی بارنامه
+  } else {
+    // فاکتور: «جمع بدهکار» شامل بدهیِ گذشته و «خالص فاکتور» = قابل‌پرداختِ کل
+    payload.purchase_amount = Number(payload.purchase_amount || 0) + Math.max(oldDebt, 0);
+    payload.net_amount = -due;
+  }
+}
 
 export default router;
