@@ -45,14 +45,24 @@
   const qid=new URLSearchParams(location.search).get('id');
   // وضعیت حساب: منفی = بدهکار، مثبت = بستانکار
   const balTxt=(v)=>{ v=Number(v||0); return v<0?`${money(-v)} <span class="text-[10px]">${CUR_FA} بدهکار</span>`:(v>0?`${money(v)} <span class="text-[10px]">${CUR_FA} بستانکار</span>`:'تسویه'); };
+  // وضعیت حساب به‌صورت محاسبهٔ مرحله‌به‌مرحله (بدهی = مثبت، طلب = منفی)
   const acctBox=(a)=>{ if(!a||a.previous==null) return '';
-    const inv=-Number(a.effect||0);   // مبلغِ فاکتور از دیدِ بدهی (مثبت = به بدهی اضافه شد)
-    return `<div class="mt-4 border-2 border-slate-800 rounded-2xl p-4 space-y-2 text-sm">
-      <div class="flex justify-between"><span class="text-slate-600">${Number(a.previous)<0?'بدهی قبلی':'مانده قبلی'}:</span><span class="font-bold">${balTxt(a.previous)}</span></div>
-      <div class="flex justify-between"><span class="text-slate-600">${inv>=0?'مبلغ این فاکتور':'بستانکاری این فاکتور'}:</span><span class="font-bold">${money(Math.abs(inv))}</span></div>
-      ${Number(a.paid)?`<div class="flex justify-between"><span class="text-slate-600">پرداختی:</span><span class="font-bold text-green-700">${money(a.paid)}</span></div>`:''}
-      <div class="flex justify-between items-center border-t border-slate-300 pt-2"><span class="font-black">مانده کل حساب:</span><span class="text-lg font-black ${Number(a.after)<0?'text-red-600':'text-green-700'}">${balTxt(a.after)}</span></div>
-      ${Number(a.current)!==Number(a.after)?`<div class="flex justify-between text-[11px] text-slate-400"><span>ماندهٔ فعلی (امروز):</span><span>${balTxt(a.current)}</span></div>`:''}
+    const oldD=-Number(a.previous||0);            // بدهی قبلی
+    const invD=-Number(a.effect||0);              // اثر این فاکتور روی بدهی (+ خرید، − شیر/بستانکاری)
+    const newD=oldD+invD;                         // بدهی جدید با این فاکتور
+    const paid=Number(a.paid||0);
+    const finD=newD-paid;                         // ماندهٔ نهایی
+    const D=(v)=> v===0?'<span class="font-bold">۰</span>':`${money(Math.abs(v))} <span class="text-[10px] font-bold">${CUR_FA}</span>`;
+    const L=(v,debt,credit)=> v>=0?debt:credit;   // برچسب، معنی (بدهی/طلب) را می‌گوید
+    const row=(sign,label,val,cls='')=>`<div class="flex justify-between items-center py-1.5 ${cls}"><span class="flex items-center gap-2"><span class="w-5 text-center font-black text-slate-400">${sign}</span><span class="whitespace-nowrap">${label}</span></span><span class="font-bold text-left">${val}</span></div>`;
+    return `<div class="mt-5 border-2 border-slate-800 rounded-2xl p-4 text-sm">
+      <h4 class="font-black text-slate-800 mb-2 text-center">وضعیت حساب ${CUR_FA==='تومان'?'(تومان)':'(ریال)'}</h4>
+      ${row('', L(oldD,'بدهی قبلی','طلب قبلی'), D(oldD))}
+      ${row(invD>=0?'+':'−', invD>=0?'مبلغ این فاکتور':'بستانکاری این فاکتور (شیر)', money(Math.abs(invD)))}
+      ${row('=', `<b>${L(newD,'بدهی جدید با این فاکتور','طلب جدید با این فاکتور')}</b>`, D(newD), 'border-t border-slate-300 mt-1')}
+      ${paid?row('−','پرداختی', `<span class="text-green-700">${money(paid)}</span>`):''}
+      <div class="flex justify-between items-center mt-2 pt-2 border-t-2 border-slate-800"><span class="flex items-center gap-2"><span class="w-5 text-center font-black">=</span><span class="font-black text-base">${finD>0?'بدهی نهایی':finD<0?'طلب نهایی':'حساب تسویه'}</span></span><span class="text-lg font-black ${finD>0?'text-red-600':'text-green-700'}">${D(finD)}</span></div>
+      ${(-Number(a.current))!==finD?`<div class="flex justify-between text-[11px] text-slate-400 mt-2"><span>${L(-Number(a.current),'بدهیِ امروز (با خریدهای بعدی)','طلبِ امروز (با خریدهای بعدی)')}:</span><span>${D(-Number(a.current))}</span></div>`:''}
     </div>`; };
   (async()=>{
     const card=document.getElementById('card');
